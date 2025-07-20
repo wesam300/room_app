@@ -22,7 +22,7 @@ const FRUITS: Fruit[] = [
   { name: 'grapes', multiplier: 10, emoji: '🍇' },
 ];
 
-const FRUIT_GRID_ORDER = [
+const FRUIT_GRID_ORDER: (Fruit | null)[] = [
     FRUITS[0], FRUITS[1], FRUITS[2],
     FRUITS[7], null,      FRUITS[3],
     FRUITS[6], FRUITS[5], FRUITS[4],
@@ -59,7 +59,7 @@ const formatBetAmount = (amount: number) => {
 
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState(100000000);
-  const [bets, setBets] = useState<{[key: string]: number}>({});
+  const [bets, setBets] = useState<{ [key: string]: number }>({});
   const [activeBetAmount, setActiveBetAmount] = useState(BET_AMOUNTS[0].value);
   const [result, setResult] = useState<{ fruit: Fruit; winnings: number } | null>(null);
   const [gameState, setGameState] = useState<GameState>('betting');
@@ -81,7 +81,7 @@ export default function FruityFortunePage() {
     setTimeLeft(ROUND_DURATION_S);
     setHighlightedIndex(-1);
   }, []);
-
+  
   const runSpinner = useCallback(() => {
     const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
     const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
@@ -109,16 +109,20 @@ export default function FruityFortunePage() {
             clearInterval(spinInterval);
             setTimeout(() => { 
                 const finalBets = betsRef.current;
-                const winnings = (finalBets[randomFruit.name] || 0) * randomFruit.multiplier;
+                const betOnWinningFruit = finalBets[randomFruit.name] || 0;
+                const winnings = betOnWinningFruit * randomFruit.multiplier;
+                
                 setResult({ fruit: randomFruit, winnings });
                 setHistory(prev => [randomFruit, ...prev].slice(0, 5));
                 setBalance(prev => prev + winnings);
                 setGameState('result');
+                
                 setTimeout(startNewRound, 4000); 
             }, 1000);
         }
     }, SPIN_ANIMATION_MS);
-  }, [startNewRound, highlightedIndex]);
+  }, [highlightedIndex, startNewRound]);
+
 
   useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -250,7 +254,7 @@ const FruitButton = ({ fruit, betAmount, onSelect, disabled, isHighlighted }: { 
       disabled && "opacity-70 cursor-not-allowed"
     )}
   >
-    <div className="absolute inset-0 bg-gradient-to-b from-purple-400/20 to-purple-800/20 -z-10"></div>
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 to-purple-800/20 -z-10"></div>
     <FruitImage fruit={fruit} size={56} />
     <span className="text-sm font-semibold mt-1 text-white">{fruit.multiplier} مرة</span>
     {betAmount > 0 && (
