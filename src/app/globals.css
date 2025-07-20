@@ -2,83 +2,51 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes background-pan {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-@keyframes rocket-shake {
-  0%, 100% { transform: translateX(0) rotate(-45deg); }
-  50% { transform: translateX(5px) rotate(-45deg); }
-}
-
-@keyframes rocket-takeoff {
-  0% { transform: translateY(0) rotate(-45deg); opacity: 1; }
-  100% { transform: translateY(-100vh) rotate(-45deg); opacity: 1; }
-}
-
-@keyframes particle-up {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-100px);
-    opacity: 0;
-  }
-}
-
 @layer base {
   :root {
-    --background: 260 60% 5%;
-    --foreground: 210 40% 98%;
-    --card: 260 50% 15%;
-    --card-foreground: 210 40% 98%;
-    --popover: 260 50% 10%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 48 93% 58%; /* gold */
-    --primary-foreground: 260 60% 10%;
-    --secondary: 220 50% 50%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 260 40% 25%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 220 60% 60%; /* a brighter blue */
-    --accent-foreground: 210 40% 98%;
+    --background: 4 6% 96%; /* Soft Coral Light */
+    --foreground: 0 0% 10%;
+    --card: 4 6% 96%;
+    --card-foreground: 0 0% 10%;
+    --popover: 4 6% 96%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 79% 50%; /* Crimson */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 33 94% 59%; /* Apricot */
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 33 94% 59%; /* Apricot */
+    --accent-foreground: 0 0% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 260 40% 30%;
-    --input: 260 40% 20%;
-    --ring: 220 70% 65%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 0 79% 50%;
     --radius: 0.75rem;
+    --background-body: 26 88% 78%; /* Soft Coral base #F77D71 */
   }
 
   .dark {
-    --background: 260 60% 5%;
-    --foreground: 210 40% 98%;
-    --card: 260 50% 15%;
-    --card-foreground: 210 40% 98%;
-    --popover: 260 50% 10%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 48 93% 58%; /* gold */
-    --primary-foreground: 260 60% 10%;
-    --secondary: 220 50% 50%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 260 40% 25%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 220 60% 60%; /* a brighter blue */
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 70% 50%;
+    --background: 26 88% 78%; /* Soft Coral base #F77D71 */
+    --foreground: 0 0% 10%;
+    --card: 4 6% 96%; /* A lighter coral for cards */
+    --card-foreground: 0 0% 10%;
+    --popover: 4 6% 96%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 69% 42%; /* Crimson #D62828 */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 35 93% 58%; /* Apricot #F7B731 */
+    --secondary-foreground: 0 0% 10%;
+    --muted: 26 88% 70%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 35 93% 58%; /* Apricot #F7B731 */
+    --accent-foreground: 0 0% 10%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
-    --border: 260 40% 30%;
-    --input: 260 40% 20%;
-    --ring: 220 70% 65%;
+    --border: 0 69% 42%;
+    --input: 26 88% 70%;
+    --ring: 0 69% 42%;
   }
 }
 

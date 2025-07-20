@@ -9,7 +9,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Rocket Crash Game',
+  title: 'Fruity Fortune',
   description: 'Built with Firebase Studio',
 };
 
