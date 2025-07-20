@@ -88,9 +88,5 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: url('https://placehold.co/1080x1920/0f0524/0f0524.png');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
   }
 }
