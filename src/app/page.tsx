@@ -79,7 +79,6 @@ export default function FruityFortunePage() {
   }, [bets]);
 
   const startNewRound = useCallback(() => {
-    console.log("Starting new round");
     setResult(null);
     setBets({});
     setGameState('betting');
@@ -131,25 +130,18 @@ export default function FruityFortunePage() {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-  
-    if (gameState === 'betting') {
+
+    if (gameState === 'betting' || gameState === 'waiting') {
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(timerRef.current!);
-            setGameState('waiting');
-            setTimeLeft(PRE_SPIN_DELAY_S);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (gameState === 'waiting') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            runSpinner();
+            if (gameState === 'betting') {
+              setGameState('waiting');
+              setTimeLeft(PRE_SPIN_DELAY_S); 
+            } else if (gameState === 'waiting') {
+              runSpinner();
+            }
             return 0;
           }
           return prev - 1;
