@@ -17,7 +17,7 @@ export default function ProfilePage() {
   const [age, setAge] = useState('');
   const [country, setCountry] = useState('');
   const [gender, setGender] = useState('');
-  const [avatar, setAvatar] = useState('https://placehold.co/100x100.png');
+  const [avatar, setAvatar] = useState('https://placehold.co/100x100/eab308/422006.png?text=U');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -55,18 +55,15 @@ export default function ProfilePage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-900/50" style={{
-      backgroundImage: 'url(https://placehold.co/1920x1080/0a0a0a/444444?text=.)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }} data-ai-hint="space stars">
-      <Card className="w-full max-w-lg bg-card/80 backdrop-blur-sm animate-slide-in">
+    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gradient-to-b from-[#2a1a08] to-[#4e3415]">
+       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/arabesque.png')] opacity-5"></div>
+      <Card className="w-full max-w-lg bg-card/80 backdrop-blur-sm animate-slide-in border-yellow-600/50">
         <CardHeader>
-          <CardTitle className="text-center text-2xl">Create Your Profile</CardTitle>
+          <CardTitle className="text-center text-2xl text-primary">Create Your Profile</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col items-center space-y-2">
-            <Avatar className="h-24 w-24">
+            <Avatar className="h-24 w-24 ring-2 ring-primary">
               <AvatarImage src={avatar} alt="User Avatar" />
               <AvatarFallback>{name.charAt(0) || 'U'}</AvatarFallback>
             </Avatar>
@@ -99,7 +96,7 @@ export default function ProfilePage() {
             <Label htmlFor="country">Country</Label>
             <Input id="country" placeholder="Enter your country" value={country} onChange={(e) => setCountry(e.target.value)} />
           </div>
-          <Button className="w-full" onClick={handleSubmit}>Save & Enter Room</Button>
+          <Button className="w-full bg-primary/80 hover:bg-primary text-primary-foreground" onClick={handleSubmit}>Save & Enter Room</Button>
         </CardContent>
       </Card>
     </main>

@@ -4,26 +4,48 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --background: 27 34% 15%;
+    --foreground: 38 92% 95%;
+    --card: 33 31% 22%;
+    --card-foreground: 38 92% 95%;
+    --popover: 27 34% 15%;
+    --popover-foreground: 38 92% 95%;
+    --primary: 40 85% 65%;
+    --primary-foreground: 27 34% 10%;
+    --secondary: 33 31% 22%;
+    --secondary-foreground: 40 85% 65%;
+    --muted: 33 31% 22%;
+    --muted-foreground: 38 40% 75%;
+    --accent: 40 85% 65%;
+    --accent-foreground: 27 34% 10%;
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --destructive-foreground: 38 92% 95%;
+    --border: 33 31% 25%;
+    --input: 33 31% 25%;
+    --ring: 40 85% 65%;
     --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 27 34% 15%;
+    --foreground: 38 92% 95%;
+    --card: 33 31% 22%;
+    --card-foreground: 38 92% 95%;
+    --popover: 27 34% 15%;
+    --popover-foreground: 38 92% 95%;
+    --primary: 40 85% 65%;
+    --primary-foreground: 27 34% 10%;
+    --secondary: 33 31% 22%;
+    --secondary-foreground: 40 85% 65%;
+    --muted: 33 31% 22%;
+    --muted-foreground: 38 40% 75%;
+    --accent: 40 85% 65%;
+    --accent-foreground: 27 34% 10%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 38 92% 95%;
+    --border: 33 31% 25%;
+    --input: 33 31% 25%;
+    --ring: 40 85% 65%;
   }
 }
 
@@ -69,4 +91,3 @@
 .animate-slide-in {
   animation: slide-in 0.5s ease-out forwards;
 }
-
