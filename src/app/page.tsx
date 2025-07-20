@@ -126,24 +126,26 @@ export default function FruityFortunePage() {
     }, SPIN_ANIMATION_MS);
   }, [startNewRound, highlightedIndex]);
 
+
   useEffect(() => {
     if (timerRef.current) {
-      clearInterval(timerRef.current);
+        clearInterval(timerRef.current);
     }
-    
+
     if (gameState === 'betting') {
+        setTimeLeft(ROUND_DURATION_S);
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(timerRef.current!);
                     setGameState('waiting');
-                    setTimeLeft(PRE_SPIN_DELAY_S);
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
     } else if (gameState === 'waiting') {
+        setTimeLeft(PRE_SPIN_DELAY_S);
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
@@ -155,13 +157,14 @@ export default function FruityFortunePage() {
             });
         }, 1000);
     }
-  
+
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
     };
   }, [gameState, runSpinner]);
+
 
   const handleBet = (fruit: Fruit) => {
     if (gameState !== 'betting') return;
@@ -276,11 +279,11 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
         <>
             <style jsx>{`
                 @keyframes blink-red {
-                    0%, 100% { background-color: #f87171; box-shadow: 0 0 2px #f87171, 0 0 5px #f87171; }
+                    0%, 100% { background-color: #f87171; box-shadow: 0 0 3px #f87171, 0 0 6px #f87171; }
                     50% { background-color: transparent; box-shadow: none; }
                 }
                 @keyframes blink-white {
-                    0%, 100% { background-color: #fefefe; box-shadow: 0 0 2px #fefefe, 0 0 5px #fefefe; }
+                    0%, 100% { background-color: #fefefe; box-shadow: 0 0 3px #fefefe, 0 0 6px #fefefe; }
                     50% { background-color: transparent; box-shadow: none; }
                 }
                 .dot {
@@ -292,30 +295,16 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
                 .dot-red { animation: blink-red 1s infinite steps(1, end); }
                 .dot-white { animation: blink-white 1s infinite steps(1, end) 0.5s; }
             `}</style>
-            {[...Array(10)].map((_, i) => (
-                <div key={`top-red-${i}`} className="dot dot-red" style={{top: '4px', left: `${8 + i * 8.5}%`}}/>
-            ))}
-            {[...Array(10)].map((_, i) => (
-                 <div key={`top-white-${i}`} className="dot dot-white" style={{top: '12px', left: `${8 + i * 8.5}%`}}/>
-            ))}
-             {[...Array(10)].map((_, i) => (
-                <div key={`bottom-white-${i}`} className="dot dot-white" style={{bottom: '4px', left: `${8 + i * 8.5}%`}}/>
-            ))}
-            {[...Array(10)].map((_, i) => (
-                <div key={`bottom-red-${i}`} className="dot dot-red" style={{bottom: '12px', left: `${8 + i * 8.5}%`}}/>
-            ))}
-             {[...Array(6)].map((_, i) => (
-                <div key={`left-red-${i}`} className="dot dot-red" style={{left: '4px', top: `${18 + i * 11}%`}}/>
-            ))}
-            {[...Array(6)].map((_, i) => (
-                <div key={`left-white-${i}`} className="dot dot-white" style={{left: '12px', top: `${18 + i * 11}%`}}/>
-            ))}
-            {[...Array(6)].map((_, i) => (
-                <div key={`right-white-${i}`} className="dot dot-white" style={{right: '4px', top: `${18 + i * 11}%`}}/>
-            ))}
-            {[...Array(6)].map((_, i) => (
-                <div key={`right-red-${i}`} className="dot dot-red" style={{right: '12px', top: `${18 + i * 11}%`}}/>
-            ))}
+            {[...Array(9)].map((_, i) => <div key={`top-red-${i}`} className="dot dot-red" style={{top: '4px', left: `calc(${10 + i * 10}%)`, transform: 'translateX(-50%)'}}/>)}
+            {[...Array(9)].map((_, i) => <div key={`top-white-${i}`} className="dot dot-white" style={{top: '12px', left: `calc(${10 + i * 10}%)`, transform: 'translateX(-50%)'}}/>)}
+            {[...Array(9)].map((_, i) => <div key={`bottom-red-${i}`} className="dot dot-red" style={{bottom: '4px', left: `calc(${10 + i * 10}%)`, transform: 'translateX(-50%)'}}/>)}
+            {[...Array(9)].map((_, i) => <div key={`bottom-white-${i}`} className="dot dot-white" style={{bottom: '12px', left: `calc(${10 + i * 10}%)`, transform: 'translateX(-50%)'}}/>)}
+
+            {[...Array(6)].map((_, i) => <div key={`left-red-${i}`} className="dot dot-red" style={{left: '4px', top: `calc(${23 + i * 11}%)`, transform: 'translateY(-50%)'}}/>)}
+            {[...Array(6)].map((_, i) => <div key={`left-white-${i}`} className="dot dot-white" style={{left: '12px', top: `calc(${23 + i * 11}%)`, transform: 'translateY(-50%)'}}/>)}
+            
+            {[...Array(6)].map((_, i) => <div key={`right-red-${i}`} className="dot dot-red" style={{right: '4px', top: `calc(${23 + i * 11}%)`, transform: 'translateY(-50%)'}}/>)}
+            {[...Array(6)].map((_, i) => <div key={`right-white-${i}`} className="dot dot-white" style={{right: '12px', top: `calc(${23 + i * 11}%)`, transform: 'translateY(-50%)'}}/>)}
         </>
     );
 
