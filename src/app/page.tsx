@@ -51,6 +51,16 @@ const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
   </div>
 );
 
+const formatBetAmount = (amount: number) => {
+    if (amount >= 1000000) {
+        return `${(amount / 1000000).toFixed(0)}M`;
+    }
+    if (amount >= 1000) {
+        return `${(amount / 1000).toFixed(0)}k`;
+    }
+    return amount.toString();
+}
+
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState(100000000);
   const [bets, setBets] = useState<{[key: string]: number}>({});
@@ -253,7 +263,7 @@ const FruitButton = ({ fruit, betAmount, onSelect, disabled, isHighlighted }: { 
     <span className="text-sm font-semibold mt-1 text-white">{fruit.multiplier} مرة</span>
     {betAmount > 0 && (
         <div className="absolute top-0 right-0 bg-yellow-500 text-purple-900 text-xs font-bold px-2 py-0.5 rounded-bl-lg rounded-tr-md">
-            {betAmount > 1000 ? `${(betAmount/1000).toFixed(0)}k` : betAmount}
+            {formatBetAmount(betAmount)}
         </div>
     )}
   </button>
