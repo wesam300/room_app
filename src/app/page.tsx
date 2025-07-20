@@ -22,8 +22,19 @@ const FRUITS: Fruit[] = [
   { name: 'grapes', multiplier: 10, emoji: '🍇' },
 ];
 
+const FRUIT_GRID_ORDER = [
+    FRUITS[0], FRUITS[1], FRUITS[2],
+    FRUITS[7], null,      FRUITS[3],
+    FRUITS[6], FRUITS[5], FRUITS[4],
+];
+
+const SPINNER_ORDER = [0, 1, 2, 5, 8, 7, 6, 3]; // Indexes in FRUIT_GRID_ORDER
+
 const BET_AMOUNTS = [10, 50, 100, 500];
-const SPIN_DURATION_S = 20;
+const ROUND_DURATION_S = 30;
+const SPIN_ANIMATION_MS = 100;
+const TOTAL_SPIN_DURATION_MS = 3000;
+
 
 const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
   <div className="relative" style={{ width: size, height: size }}>
@@ -34,66 +45,95 @@ const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
 
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState(1000);
-  const [selectedFruit, setSelectedFruit] = useState<Fruit | null>(null);
-  const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
-  const [result, setResult] = useState<{ fruit: Fruit; won: boolean } | null>(null);
+  const [bets, setBets] = useState<{[key: string]: number}>({});
+  const [activeBetAmount, setActiveBetAmount] = useState(BET_AMOUNTS[0]);
+  const [result, setResult] = useState<{ fruit: Fruit; winnings: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(SPIN_DURATION_S);
+  const [timeLeft, setTimeLeft] = useState(ROUND_DURATION_S);
   const [history, setHistory] = useState<Fruit[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  const finishGame = useCallback(() => {
-    if (!selectedFruit) return;
+  const startNewRound = useCallback(() => {
+    setIsSpinning(false);
+    setResult(null);
+    setBets({});
+    setTimeLeft(ROUND_DURATION_S);
+    setHighlightedIndex(-1);
+  }, []);
 
-    const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
-    const won = randomFruit.name === selectedFruit.name;
+  const finishRound = useCallback(() => {
+    setIsSpinning(true);
     
-    setResult({ fruit: randomFruit, won });
-    setHistory(prev => [randomFruit, ...prev].slice(0, 5));
+    const totalBet = Object.values(bets).reduce((acc, val) => acc + val, 0);
 
-    if (won) {
-      setBalance(prev => prev + betAmount * selectedFruit.multiplier);
+    // If no bets were placed, just start a new round after a delay
+    if (totalBet === 0) {
+        setTimeout(startNewRound, 4000);
+        return;
     }
 
-    setIsSpinning(false);
-  }, [selectedFruit, betAmount]);
+    const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+    const winnings = (bets[randomFruit.name] || 0) * randomFruit.multiplier;
+    
+    // Spinner animation logic
+    let spinCycles = 0;
+    const totalSpins = Math.floor(TOTAL_SPIN_DURATION_MS / (SPINNER_ORDER.length * SPIN_ANIMATION_MS));
+    const finalStopIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
+
+    const spinInterval = setInterval(() => {
+        setHighlightedIndex(prev => {
+            const nextIndex = (prev + 1) % SPINNER_ORDER.length;
+            if (nextIndex === 0) spinCycles++;
+
+            // Check if spinning should stop
+            if (spinCycles >= totalSpins && SPINNER_ORDER[nextIndex] === finalStopIndex) {
+                clearInterval(spinInterval);
+                setTimeout(() => { // Show final result after animation stops
+                    setResult({ fruit: randomFruit, winnings });
+                    setHistory(prev => [randomFruit, ...prev].slice(0, 5));
+                    setBalance(prev => prev + winnings);
+                    setTimeout(startNewRound, 4000); // Wait 4s before starting new round
+                }, 1000);
+            }
+            return nextIndex;
+        });
+    }, SPIN_ANIMATION_MS);
+
+  }, [bets, startNewRound]);
+
 
   useEffect(() => {
-    let timer: NodeJS.Timeout | undefined;
-    if (isSpinning) {
-      timer = setInterval(() => {
+    const timer = setInterval(() => {
+      if (!isSpinning) {
         setTimeLeft(prev => {
           if (prev <= 1) {
-            clearInterval(timer);
-            finishGame();
+            finishRound();
             return 0;
           }
           return prev - 1;
         });
-      }, 1000);
-    } else if (result) {
-        const resetTimer = setTimeout(() => {
-            resetGame();
-        }, 4000);
-        return () => clearTimeout(resetTimer);
-    }
+      }
+    }, 1000);
     return () => clearInterval(timer);
-  }, [isSpinning, finishGame, result]);
+  }, [isSpinning, finishRound]);
 
-  const startGame = () => {
-    if (selectedFruit && balance >= betAmount) {
-      setBalance(prev => prev - betAmount);
-      setResult(null);
-      setTimeLeft(SPIN_DURATION_S);
-      setIsSpinning(true);
+  const handleBet = (fruit: Fruit) => {
+    if (isSpinning || timeLeft <= 0) return;
+
+    if (balance >= activeBetAmount) {
+        setBalance(prev => prev - activeBetAmount);
+        setBets(prev => ({
+            ...prev,
+            [fruit.name]: (prev[fruit.name] || 0) + activeBetAmount
+        }));
+    } else {
+        // Maybe show a toast message for insufficient balance
+        console.log("Not enough balance");
     }
   };
 
-  const resetGame = () => {
-    setSelectedFruit(null);
-    setResult(null);
-  };
-  
-  const canPlay = !isSpinning && selectedFruit !== null && balance >= betAmount && !result;
+  const totalBetAmount = useMemo(() => Object.values(bets).reduce((sum, current) => sum + current, 0), [bets]);
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#3a1a52] p-4 font-headline text-white">
@@ -107,29 +147,34 @@ export default function FruityFortunePage() {
         <div className="bg-gradient-to-b from-[#4c2a6c] to-[#3a1a52] border-4 border-yellow-500 rounded-3xl p-4 shadow-2xl space-y-4">
           
           <div className="grid grid-cols-3 gap-2 justify-items-center">
-            <FruitButton fruit={FRUITS[0]} isSelected={selectedFruit?.name === FRUITS[0].name} onSelect={() => setSelectedFruit(FRUITS[0])} disabled={isSpinning || !!result} />
-            <FruitButton fruit={FRUITS[1]} isSelected={selectedFruit?.name === FRUITS[1].name} onSelect={() => setSelectedFruit(FRUITS[1])} disabled={isSpinning || !!result} />
-            <FruitButton fruit={FRUITS[2]} isSelected={selectedFruit?.name === FRUITS[2].name} onSelect={() => setSelectedFruit(FRUITS[2])} disabled={isSpinning || !!result} />
-
-            <FruitButton fruit={FRUITS[7]} isSelected={selectedFruit?.name === FRUITS[7].name} onSelect={() => setSelectedFruit(FRUITS[7])} disabled={isSpinning || !!result} />
-            <TimerDisplay timeLeft={timeLeft} isSpinning={isSpinning} result={result} />
-            <FruitButton fruit={FRUITS[3]} isSelected={selectedFruit?.name === FRUITS[3].name} onSelect={() => setSelectedFruit(FRUITS[3])} disabled={isSpinning || !!result} />
-
-            <FruitButton fruit={FRUITS[6]} isSelected={selectedFruit?.name === FRUITS[6].name} onSelect={() => setSelectedFruit(FRUITS[6])} disabled={isSpinning || !!result} />
-            <FruitButton fruit={FRUITS[5]} isSelected={selectedFruit?.name === FRUITS[5].name} onSelect={() => setSelectedFruit(FRUITS[5])} disabled={isSpinning || !!result} />
-            <FruitButton fruit={FRUITS[4]} isSelected={selectedFruit?.name === FRUITS[4].name} onSelect={() => setSelectedFruit(FRUITS[4])} disabled={isSpinning || !!result} />
+            {FRUIT_GRID_ORDER.map((fruit, index) => {
+                if (!fruit) {
+                    return <TimerDisplay key={index} timeLeft={timeLeft} isSpinning={isSpinning} result={result} />;
+                }
+                const isHighlighted = isSpinning && SPINNER_ORDER[highlightedIndex] === index;
+                return (
+                    <FruitButton
+                        key={fruit.name}
+                        fruit={fruit}
+                        betAmount={bets[fruit.name] || 0}
+                        onSelect={() => handleBet(fruit)}
+                        disabled={isSpinning || timeLeft <= 0}
+                        isHighlighted={isHighlighted}
+                    />
+                );
+            })}
           </div>
 
           <div className="grid grid-cols-4 gap-2">
             {BET_AMOUNTS.map(amount => (
               <Button
                 key={amount}
-                onClick={() => setBetAmount(amount)}
-                disabled={isSpinning || !!result}
+                onClick={() => setActiveBetAmount(amount)}
+                disabled={isSpinning || timeLeft <= 0}
                 className={cn(
                   "bg-yellow-500 text-purple-900 font-bold rounded-full hover:bg-yellow-400 transition-transform hover:scale-105",
-                  betAmount === amount && "ring-2 ring-white shadow-lg",
-                  (isSpinning || !!result) && "opacity-50 cursor-not-allowed"
+                  activeBetAmount === amount && "ring-2 ring-white shadow-lg",
+                  (isSpinning || timeLeft <= 0) && "opacity-50 cursor-not-allowed"
                 )}
               >
                 {amount}
@@ -139,9 +184,10 @@ export default function FruityFortunePage() {
 
         </div>
 
-        <Button onClick={startGame} disabled={!canPlay} size="lg" className="w-full bg-yellow-500 hover:bg-yellow-400 text-purple-900 font-bold text-xl shadow-xl h-14 rounded-full transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
-            {isSpinning ? `...بدء...` : 'راهن'}
-        </Button>
+         <div className="bg-black/20 p-2 rounded-lg">
+            <p className="text-lg text-yellow-300">إجمالي الرهان</p>
+            <p className="text-2xl font-bold tracking-wider">{totalBetAmount.toLocaleString()}</p>
+        </div>
 
 
         <div className="bg-black/20 p-2 rounded-lg mt-4">
@@ -164,31 +210,44 @@ export default function FruityFortunePage() {
   );
 }
 
-const FruitButton = ({ fruit, isSelected, onSelect, disabled }: { fruit: Fruit, isSelected: boolean, onSelect: () => void, disabled: boolean }) => (
+const FruitButton = ({ fruit, betAmount, onSelect, disabled, isHighlighted }: { fruit: Fruit, betAmount: number, onSelect: () => void, disabled: boolean, isHighlighted: boolean }) => (
   <button
     onClick={onSelect}
     disabled={disabled}
     className={cn(
-      "bg-black/20 rounded-lg p-2 flex flex-col items-center justify-center aspect-square transition-all duration-200 transform hover:bg-black/40",
-      isSelected && "ring-2 ring-yellow-400 scale-105 bg-black/50",
-      disabled && "opacity-50 cursor-not-allowed"
+      "bg-black/20 rounded-lg p-2 flex flex-col items-center justify-center aspect-square transition-all duration-200 transform hover:bg-black/40 relative overflow-hidden",
+      isHighlighted && "ring-4 ring-yellow-400 scale-105 bg-black/50 shadow-2xl shadow-yellow-400/50",
+      disabled && "opacity-70 cursor-not-allowed"
     )}
   >
     <FruitImage fruit={fruit} size={40} />
     <span className="text-xs font-semibold mt-1 text-yellow-300">{fruit.multiplier}x</span>
+    {betAmount > 0 && (
+        <div className="absolute top-0 right-0 bg-yellow-500 text-purple-900 text-xs font-bold px-1.5 py-0.5 rounded-bl-lg">
+            {betAmount}
+        </div>
+    )}
   </button>
 );
 
 
-const TimerDisplay = ({ timeLeft, isSpinning, result }: { timeLeft: number, isSpinning: boolean, result: { fruit: Fruit; won: boolean } | null }) => {
+const TimerDisplay = ({ timeLeft, isSpinning, result }: { timeLeft: number, isSpinning: boolean, result: { fruit: Fruit; winnings: number } | null }) => {
     const displayClasses = "flex items-center justify-center text-5xl font-mono bg-black/30 border-4 border-yellow-600 rounded-lg aspect-square";
 
     if (result) {
         return (
             <div className={cn(displayClasses, "animate-pulse")}>
-                 <div className="flex flex-col items-center">
+                 <div className="flex flex-col items-center text-center">
                     <FruitImage fruit={result.fruit} size={56} />
-                    {result.won && <span className="text-sm text-yellow-300 font-bold animate-pulse">WIN!</span>}
+                    {result.winnings > 0 ? 
+                        <span className="text-sm text-yellow-300 font-bold animate-pulse">
+                            ربحت {result.winnings.toLocaleString()}!
+                        </span>
+                        :
+                        <span className="text-sm text-white/70 font-bold">
+                            حظ أوفر
+                        </span>
+                    }
                  </div>
             </div>
         );
@@ -196,13 +255,9 @@ const TimerDisplay = ({ timeLeft, isSpinning, result }: { timeLeft: number, isSp
     
     return (
         <div className={displayClasses}>
-            {isSpinning ? (
-                <span className={cn("transition-colors", timeLeft <= 5 ? "text-red-500 animate-ping" : "text-white")}>
-                    {timeLeft.toString().padStart(2, '0')}
-                </span>
-            ) : (
-                 <span className="text-yellow-400 text-3xl font-bold">بدء</span>
-            )}
+             <span className={cn("transition-colors", timeLeft <= 5 && !isSpinning ? "text-red-500 animate-ping" : "text-white")}>
+                {isSpinning ? '...' : timeLeft.toString().padStart(2, '0')}
+            </span>
         </div>
     );
 };
