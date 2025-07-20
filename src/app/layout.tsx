@@ -2,8 +2,8 @@ import type {Metadata} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Fruity Fortune',
-  description: 'A fun fruit betting game',
+  title: 'New App',
+  description: 'Built with Firebase Studio',
 };
 
 export default function RootLayout({
