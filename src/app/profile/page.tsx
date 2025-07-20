@@ -45,7 +45,7 @@ export default function ProfilePage() {
       return;
     }
 
-    const userProfile = { name, age, country, gender, avatar, coins: 10000000 };
+    const userProfile = { name, age, country, gender, avatar, coins: 10000000, level: 1 };
     localStorage.setItem('userProfile', JSON.stringify(userProfile));
     toast({
       title: "Profile Created!",

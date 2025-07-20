@@ -6,14 +6,17 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Power, Share, Users, Crown, Gift, Smile, MessageSquare } from 'lucide-react';
+import { Power, Share, Users, Crown, Gift, Smile, MessageSquare, ChevronRight, User, Settings, ShieldCheck, Star, Wallet, HelpCircle, LogOut, Trash2, FileText, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
 
 interface UserProfile {
   name: string;
   avatar: string;
   coins: number;
+  level: number;
 }
 
 const SeatIcon = () => (
@@ -37,6 +40,15 @@ const BOTS = Array.from({ length: 4 }, (_, i) => ({
   isBot: true,
 }));
 
+const RECHARGE_OPTIONS = [
+    { amount: 10000, price: '$1' },
+    { amount: 55000, price: '$5' },
+    { amount: 110000, price: '$10' },
+    { amount: 600000, price: '$50' },
+    { amount: 1250000, price: '$100' },
+    { amount: 7000000, price: '$500' },
+];
+
 export default function ModernRoomPage() {
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -51,7 +63,11 @@ export default function ModernRoomPage() {
     if (!profileData) {
       router.push('/');
     } else {
-      setUserProfile(JSON.parse(profileData));
+      let profile = JSON.parse(profileData);
+      if (!profile.level) {
+          profile.level = 1; // Add level if it doesn't exist
+      }
+      setUserProfile(profile);
       setChatMessages([{ user: 'System', text: `مرحبا بك في YoSo. يرجى احترام بعضكم البعض والتحدث بأدب.`}]);
     }
   }, [router]);
@@ -81,6 +97,12 @@ export default function ModernRoomPage() {
       
       setGiftAnimation({ src: gift.image, key: Date.now() });
       setTimeout(() => setGiftAnimation(null), 3000);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userProfile');
+    router.push('/');
   };
 
   if (!userProfile) {
@@ -118,10 +140,123 @@ export default function ModernRoomPage() {
                 <span className="text-sm font-bold">0</span>
                 <Crown className="w-4 h-4 text-yellow-400" />
             </div>
-            <Avatar className="w-8 h-8 ring-1 ring-yellow-400">
-                <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
-            </Avatar>
+             <Sheet>
+              <SheetTrigger asChild>
+                <Avatar className="w-8 h-8 ring-1 ring-yellow-400 cursor-pointer">
+                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
+                    <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </SheetTrigger>
+              <SheetContent className="bg-card border-l-yellow-600/50 p-0 text-foreground">
+                <SheetHeader className="p-4 bg-secondary/30">
+                  <SheetTitle className="flex flex-col items-center gap-2 text-primary">
+                    <Avatar className="w-20 h-20 ring-2 ring-primary">
+                        <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
+                        <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xl font-bold">{userProfile.name}</span>
+                    <span className="text-sm font-normal bg-primary/20 text-primary px-3 py-1 rounded-full">المستوى {userProfile.level}</span>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="p-4 space-y-6">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="flex-col h-auto bg-secondary border-yellow-700/50">
+                                    <Wallet className="w-6 h-6 mb-1 text-primary"/>
+                                    <span>الشحن</span>
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>شحن الرصيد</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid grid-cols-2 gap-4 py-4">
+                                    {RECHARGE_OPTIONS.map(opt => (
+                                        <div key={opt.price} className="p-4 rounded-lg bg-secondary text-center cursor-pointer hover:bg-primary/20">
+                                            <p className="text-lg font-bold text-primary">{opt.amount.toLocaleString()} Coins</p>
+                                            <p className="text-muted-foreground">{opt.price}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                         <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="flex-col h-auto bg-secondary border-yellow-700/50">
+                                    <Star className="w-6 h-6 mb-1 text-primary"/>
+                                    <span>السحب</span>
+                                </Button>
+                            </DialogTrigger>
+                             <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>سحب الأرباح</DialogTitle>
+                                </DialogHeader>
+                                <div className="py-4 space-y-4">
+                                    <Input placeholder="أدخل مبلغ السحب" type="number" />
+                                    <Button className="w-full bg-primary/80 hover:bg-primary">تأكيد السحب</Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                        <Button variant="outline" className="flex-col h-auto bg-secondary border-yellow-700/50" disabled>
+                            <Bell className="w-6 h-6 mb-1 text-muted-foreground"/>
+                            <span className="text-muted-foreground">...</span>
+                        </Button>
+                    </div>
+
+                    <Separator className="bg-yellow-600/30" />
+
+                    <div className="space-y-2">
+                       <Button variant="ghost" className="w-full justify-between">
+                            <div className="flex items-center gap-3">
+                                <Users className="text-primary"/> <span>دعوة الأصدقاء</span>
+                            </div>
+                           <ChevronRight />
+                       </Button>
+                        <a href="https://t.me" target="_blank" rel="noopener noreferrer">
+                           <Button variant="ghost" className="w-full justify-between">
+                                <div className="flex items-center gap-3">
+                                    <HelpCircle className="text-primary"/> <span>خدمة العملاء</span>
+                                </div>
+                               <ChevronRight />
+                           </Button>
+                        </a>
+                       <Button variant="ghost" className="w-full justify-between" disabled>
+                            <div className="flex items-center gap-3">
+                                <ShieldCheck className="text-muted-foreground"/> <span className="text-muted-foreground">...</span>
+                            </div>
+                           <ChevronRight />
+                       </Button>
+                       <Dialog>
+                            <DialogTrigger asChild>
+                               <Button variant="ghost" className="w-full justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <Settings className="text-primary"/> <span>الإعدادات</span>
+                                    </div>
+                                   <ChevronRight />
+                               </Button>
+                            </DialogTrigger>
+                             <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>الإعدادات</DialogTitle>
+                                </DialogHeader>
+                                <div className="py-4 space-y-2">
+                                     <Button variant="ghost" className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                        <Trash2/> حذف الحساب
+                                    </Button>
+                                    <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
+                                        <LogOut/> تسجيل الخروج
+                                    </Button>
+                                    <Button variant="ghost" className="w-full justify-start gap-2">
+                                        <FileText/> سياسة الخصوصية
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                       </Dialog>
+                    </div>
+                </div>
+              </SheetContent>
+            </Sheet>
         </div>
       </header>
 
@@ -134,41 +269,41 @@ export default function ModernRoomPage() {
                 </Avatar>
                 <span className="text-xs text-yellow-200/70">{userProfile.name}</span>
             </div>
-            {Array.from({ length: 4 }).map((_, i) => (
+            {BOTS.map((bot, i) => (
                  <Dialog key={i}>
-                    <DialogTrigger asChild onClick={() => setSelectedBot(BOTS[i] ?? null)}>
+                    <DialogTrigger asChild onClick={() => setSelectedBot(bot)}>
                         <div className="flex flex-col items-center gap-1 cursor-pointer">
                             <div className="w-16 h-16 rounded-full border-2 border-yellow-600/70 bg-black/20 flex items-center justify-center">
-                               {BOTS[i] ? (
+                               {bot ? (
                                     <Avatar className="w-full h-full">
-                                        <AvatarImage src={BOTS[i].avatar} />
-                                        <AvatarFallback>{BOTS[i].name.charAt(0)}</AvatarFallback>
+                                        <AvatarImage src={bot.avatar} />
+                                        <AvatarFallback>{bot.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                 ) : (
                                     <SeatIcon />
                                 )}
                             </div>
-                            <span className="text-xs text-yellow-200/70">{BOTS[i] ? BOTS[i].name : `no.${i + 2}`}</span>
+                            <span className="text-xs text-yellow-200/70">{bot ? bot.name : `no.${i + 2}`}</span>
                         </div>
                     </DialogTrigger>
-                    {BOTS[i] && (
+                    {bot && (
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle className="text-center">{BOTS[i].name}'s Profile</DialogTitle>
+                                <DialogTitle className="text-center">{bot.name}'s Profile</DialogTitle>
                             </DialogHeader>
                             <div className="flex flex-col items-center gap-4 py-4">
                                 <Avatar className="w-24 h-24">
-                                    <AvatarImage src={BOTS[i].avatar} />
-                                    <AvatarFallback>{BOTS[i].name.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={bot.avatar} />
+                                    <AvatarFallback>{bot.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                <p>Say hi to {BOTS[i].name}!</p>
+                                <p>Say hi to {bot.name}!</p>
                                 <Dialog>
                                     <DialogTrigger asChild>
                                         <Button className="bg-primary/80 hover:bg-primary"><Gift className="mr-2"/> Send Gift</Button>
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Send a Gift to {BOTS[i].name}</DialogTitle>
+                                            <DialogTitle>Send a Gift to {bot.name}</DialogTitle>
                                         </DialogHeader>
                                         <div className="grid grid-cols-3 gap-4 py-4">
                                             {GIFTS.map(gift => (
@@ -198,7 +333,7 @@ export default function ModernRoomPage() {
                     'w-fit max-w-[85%] rounded-lg px-2 py-1',
                     msg.user === 'System' && 'text-yellow-400/80 text-center w-full',
                     msg.user === 'Gift' && 'text-pink-400 text-center w-full',
-                    msg.user === userProfile.name ? 'bg-blue-800/50 text-blue-100 self-end' : 'bg-gray-700/50 text-gray-200'
+                    msg.user === userProfile.name ? 'bg-blue-800/50 text-blue-100 ml-auto' : 'bg-gray-700/50 text-gray-200'
                 )}>
                     {msg.user !== 'System' && msg.user !== 'Gift' && <strong className="font-bold block">{msg.user}:</strong>}
                     <span>{msg.text}</span>
