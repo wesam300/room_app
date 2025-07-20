@@ -79,6 +79,7 @@ export default function FruityFortunePage() {
   }, [bets]);
 
   const startNewRound = useCallback(() => {
+    console.log("Starting new round");
     setResult(null);
     setBets({});
     setGameState('betting');
@@ -127,41 +128,39 @@ export default function FruityFortunePage() {
   }, [startNewRound, highlightedIndex]);
 
   useEffect(() => {
-    if (gameState === 'betting') {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
-        timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerRef.current!);
-                    setGameState('waiting');
-                    setTimeLeft(PRE_SPIN_DELAY_S);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-    } else if (gameState === 'waiting') {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
-        timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerRef.current!);
-                    runSpinner();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
-    
+  
+    if (gameState === 'betting') {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            setGameState('waiting');
+            setTimeLeft(PRE_SPIN_DELAY_S);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else if (gameState === 'waiting') {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timerRef.current!);
+            runSpinner();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+  
     return () => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     };
   }, [gameState, runSpinner]);
 
@@ -279,11 +278,11 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
             <style jsx>{`
                 @keyframes blink-red {
                     0%, 100% { background-color: #f87171; box-shadow: 0 0 2px #f87171, 0 0 5px #f87171; }
-                    50% { background-color: #dc2626; box-shadow: 0 0 5px #dc2626, 0 0 10px #dc2626; }
+                    50% { background-color: transparent; box-shadow: none; }
                 }
                 @keyframes blink-white {
                     0%, 100% { background-color: #fefefe; box-shadow: 0 0 2px #fefefe, 0 0 5px #fefefe; }
-                    50% { background-color: #d1d5db; box-shadow: 0 0 5px #d1d5db, 0 0 10px #d1d5db; }
+                    50% { background-color: transparent; box-shadow: none; }
                 }
                 .dot {
                     position: absolute;
@@ -291,27 +290,31 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
                     height: 6px;
                     border-radius: 50%;
                 }
-                .dot-red { animation: blink-red 1.2s infinite steps(1, end); }
-                .dot-white { animation: blink-white 1.2s infinite steps(1, end) 0.6s; }
+                .dot-red { animation: blink-red 1s infinite steps(1, end); }
+                .dot-white { animation: blink-white 1s infinite steps(1, end) 0.5s; }
             `}</style>
             {[...Array(10)].map((_, i) => (
-                <React.Fragment key={i}>
-                    {/* Top lights */}
+                <React.Fragment key={`top-${i}`}>
                     <div className="dot dot-red" style={{top: '4px', left: `${8 + i * 8.5}%`}}/>
                     <div className="dot dot-white" style={{top: '12px', left: `${8 + i * 8.5}%`}}/>
-                     {/* Bottom lights */}
-                    <div className="dot dot-red" style={{bottom: '12px', left: `${8 + i * 8.5}%`}}/>
+                </React.Fragment>
+            ))}
+             {[...Array(10)].map((_, i) => (
+                <React.Fragment key={`bottom-${i}`}>
                     <div className="dot dot-white" style={{bottom: '4px', left: `${8 + i * 8.5}%`}}/>
+                    <div className="dot dot-red" style={{bottom: '12px', left: `${8 + i * 8.5}%`}}/>
                 </React.Fragment>
             ))}
              {[...Array(6)].map((_, i) => (
-                <React.Fragment key={i}>
-                    {/* Left lights */}
+                <React.Fragment key={`left-${i}`}>
                     <div className="dot dot-red" style={{left: '4px', top: `${18 + i * 11}%`}}/>
                     <div className="dot dot-white" style={{left: '12px', top: `${18 + i * 11}%`}}/>
-                     {/* Right lights */}
-                    <div className="dot dot-red" style={{right: '12px', top: `${18 + i * 11}%`}}/>
+                </React.Fragment>
+            ))}
+            {[...Array(6)].map((_, i) => (
+                <React.Fragment key={`right-${i}`}>
                     <div className="dot dot-white" style={{right: '4px', top: `${18 + i * 11}%`}}/>
+                    <div className="dot dot-red" style={{right: '12px', top: `${18 + i * 11}%`}}/>
                 </React.Fragment>
             ))}
         </>
