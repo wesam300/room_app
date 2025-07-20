@@ -52,12 +52,8 @@ const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
 );
 
 const formatBetAmount = (amount: number) => {
-    if (amount >= 1000000) {
-        return `${(amount / 1000000)}M`;
-    }
-    if (amount >= 1000) {
-        return `${(amount / 1000)}k`;
-    }
+    if (amount >= 1000000) return `${(amount / 1000000)}M`;
+    if (amount >= 1000) return `${(amount / 1000)}k`;
     return amount.toString();
 }
 
@@ -82,9 +78,10 @@ export default function FruityFortunePage() {
     setResult(null);
     setBets({});
     setGameState('betting');
+    setTimeLeft(ROUND_DURATION_S);
     setHighlightedIndex(-1);
   }, []);
-  
+
   const runSpinner = useCallback(() => {
     const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
     const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
@@ -123,14 +120,10 @@ export default function FruityFortunePage() {
     }, SPIN_ANIMATION_MS);
   }, [startNewRound, highlightedIndex]);
 
-
   useEffect(() => {
-    if (timerRef.current) {
-        clearInterval(timerRef.current);
-    }
-    
+    if (timerRef.current) clearInterval(timerRef.current);
+
     if (gameState === 'betting') {
-        setTimeLeft(ROUND_DURATION_S);
         timerRef.current = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
@@ -158,12 +151,9 @@ export default function FruityFortunePage() {
     }
 
     return () => {
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-        }
+        if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [gameState, runSpinner]);
-
 
   const handleBet = (fruit: Fruit) => {
     if (gameState !== 'betting') return;
@@ -254,13 +244,13 @@ const FruitButton = ({ fruit, betAmount, onSelect, disabled, isHighlighted }: { 
     onClick={onSelect}
     disabled={disabled}
     className={cn(
-      "bg-gradient-to-br from-purple-500/40 to-purple-800/30 rounded-xl p-2 flex flex-col items-center justify-center w-24 h-28 sm:w-28 sm:h-32 aspect-square transition-all duration-100 transform hover:bg-purple-500/50 relative overflow-hidden border-2 border-purple-400/50",
+      "rounded-xl p-2 flex flex-col items-center justify-center w-24 h-28 sm:w-28 sm:h-32 aspect-square transition-all duration-100 transform hover:bg-purple-500/50 relative overflow-hidden border-2 border-purple-400/50",
       "bg-gradient-to-br from-purple-600/50 to-purple-900/40",
       isHighlighted && "ring-4 ring-yellow-400 scale-105 bg-yellow-500/20 shadow-2xl shadow-yellow-400/50 border-yellow-400",
       disabled && "opacity-70 cursor-not-allowed"
     )}
   >
-    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-purple-900/20 -z-10"></div>
+    <div className="absolute inset-0 bg-gradient-to-b from-purple-400/20 to-purple-800/20 -z-10"></div>
     <FruitImage fruit={fruit} size={56} />
     <span className="text-sm font-semibold mt-1 text-white">{fruit.multiplier} مرة</span>
     {betAmount > 0 && (
@@ -327,11 +317,11 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
         );
     }
     
-    let displayText = timeLeft.toString().padStart(2, '0');
-    if (gameState === 'spinning') {
+    let displayText = timeLeft.toString();
+    if (gameState === 'betting') {
+        displayText = timeLeft.toString().padStart(2, '0');
+    } else if (gameState === 'spinning') {
         displayText = '...';
-    } else if (gameState === 'waiting') {
-        displayText = timeLeft.toString();
     }
 
     return (
@@ -347,3 +337,5 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
         </div>
     );
 };
+
+    
