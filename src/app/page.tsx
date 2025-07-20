@@ -2,39 +2,44 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
-const FRUITS = [
-  { name: '🍉', multiplier: 5, emoji: '🍉', image: '/watermelon.png' },
-  { name: '🍒', multiplier: 45, emoji: '🍒', image: '/cherry.png' },
-  { name: '🍊', multiplier: 25, emoji: '🍊', image: '/orange.png' },
-  { name: '🍐', multiplier: 5, emoji: '🍐', image: '/pear.png' },
-  { name: '🍋', multiplier: 15, emoji: '🍋', image: '/lemon.png' },
-  { name: '🍓', multiplier: 5, emoji: '🍓', image: '/strawberry.png' },
-  { name: '🍎', multiplier: 5, emoji: '🍎', image: '/apple.png' },
-  { name: '🍇', multiplier: 10, emoji: '🍇', image: '/grapes.png' },
+type Fruit = {
+  name: string;
+  multiplier: number;
+  emoji: string;
+};
+
+const FRUITS: Fruit[] = [
+  { name: 'watermelon', multiplier: 5, emoji: '🍉' },
+  { name: 'cherry', multiplier: 45, emoji: '🍒' },
+  { name: 'orange', multiplier: 25, emoji: '🍊' },
+  { name: 'pear', multiplier: 5, emoji: '🍐' },
+  { name: 'lemon', multiplier: 15, emoji: '🍋' },
+  { name: 'strawberry', multiplier: 5, emoji: '🍓' },
+  { name: 'apple', multiplier: 5, emoji: '🍎' },
+  { name: 'grapes', multiplier: 10, emoji: '🍇' },
 ];
 
 const BET_AMOUNTS = [10, 50, 100, 500];
 const SPIN_DURATION_S = 20;
 
-const FruitImage = ({ src, alt }: { src: string; alt: string }) => (
-  <div className="relative w-16 h-16">
-    <Image src={src} alt={alt} width={64} height={64} className="object-contain" data-ai-hint={`${alt.toLowerCase()}`}/>
+const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
+  <div className="relative" style={{ width: size, height: size }}>
+    <span style={{ fontSize: `${size * 0.8}px` }} role="img" aria-label={fruit.name}>{fruit.emoji}</span>
   </div>
 );
 
 
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState(1000);
-  const [selectedFruit, setSelectedFruit] = useState<typeof FRUITS[0] | null>(null);
+  const [selectedFruit, setSelectedFruit] = useState<Fruit | null>(null);
   const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
-  const [result, setResult] = useState<{ fruit: typeof FRUITS[0]; won: boolean } | null>(null);
+  const [result, setResult] = useState<{ fruit: Fruit; won: boolean } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(SPIN_DURATION_S);
-  const [history, setHistory] = useState<typeof FRUITS[number][]>([]);
+  const [history, setHistory] = useState<Fruit[]>([]);
 
   const finishGame = useCallback(() => {
     if (!selectedFruit) return;
@@ -66,7 +71,6 @@ export default function FruityFortunePage() {
         });
       }, 1000);
     } else if (result) {
-        // After showing result for a few seconds, reset
         const resetTimer = setTimeout(() => {
             resetGame();
         }, 4000);
@@ -92,31 +96,28 @@ export default function FruityFortunePage() {
   const canPlay = !isSpinning && selectedFruit !== null && balance >= betAmount && !result;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-purple-900 p-4 font-headline text-white">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#3a1a52] p-4 font-headline text-white">
       <main className="w-full max-w-sm mx-auto text-center space-y-4">
         
-        <div className="bg-purple-800/50 p-2 rounded-lg">
-          <p className="text-lg">رصيد الكوينزة</p>
+        <div className="bg-black/20 p-2 rounded-lg">
+          <p className="text-lg text-yellow-300">رصيد الكوينزة</p>
           <p className="text-3xl font-bold tracking-wider">{balance.toLocaleString()}</p>
         </div>
 
-        <div className="bg-gradient-to-b from-purple-800 to-purple-900 border-4 border-yellow-500 rounded-3xl p-4 shadow-2xl space-y-4">
+        <div className="bg-gradient-to-b from-[#4c2a6c] to-[#3a1a52] border-4 border-yellow-500 rounded-3xl p-4 shadow-2xl space-y-4">
           
-          <div className="grid grid-cols-3 gap-2">
-            {FRUITS.slice(0, 4).map((fruit, index) => (
-              index === 2 ? 
-              <div key="placeholder-1" /> :
-              <FruitButton key={fruit.name} fruit={fruit} isSelected={selectedFruit?.name === fruit.name} onSelect={() => setSelectedFruit(fruit)} disabled={isSpinning || !!result} />
-            ))}
-            
-            <FruitButton fruit={FRUITS[4]} isSelected={selectedFruit?.name === FRUITS[4].name} onSelect={() => setSelectedFruit(FRUITS[4])} disabled={isSpinning || !!result} />
-            <TimerDisplay timeLeft={timeLeft} isSpinning={isSpinning} result={result} />
-            <FruitButton fruit={FRUITS[5]} isSelected={selectedFruit?.name === FRUITS[5].name} onSelect={() => setSelectedFruit(FRUITS[5])} disabled={isSpinning || !!result} />
+          <div className="grid grid-cols-3 gap-2 justify-items-center">
+            <FruitButton fruit={FRUITS[0]} isSelected={selectedFruit?.name === FRUITS[0].name} onSelect={() => setSelectedFruit(FRUITS[0])} disabled={isSpinning || !!result} />
+            <FruitButton fruit={FRUITS[1]} isSelected={selectedFruit?.name === FRUITS[1].name} onSelect={() => setSelectedFruit(FRUITS[1])} disabled={isSpinning || !!result} />
+            <FruitButton fruit={FRUITS[2]} isSelected={selectedFruit?.name === FRUITS[2].name} onSelect={() => setSelectedFruit(FRUITS[2])} disabled={isSpinning || !!result} />
 
-            {FRUITS.slice(6).map((fruit) => (
-              <FruitButton key={fruit.name} fruit={fruit} isSelected={selectedFruit?.name === fruit.name} onSelect={() => setSelectedFruit(fruit)} disabled={isSpinning || !!result} />
-            ))}
-             <div key="placeholder-2" />
+            <FruitButton fruit={FRUITS[7]} isSelected={selectedFruit?.name === FRUITS[7].name} onSelect={() => setSelectedFruit(FRUITS[7])} disabled={isSpinning || !!result} />
+            <TimerDisplay timeLeft={timeLeft} isSpinning={isSpinning} result={result} />
+            <FruitButton fruit={FRUITS[3]} isSelected={selectedFruit?.name === FRUITS[3].name} onSelect={() => setSelectedFruit(FRUITS[3])} disabled={isSpinning || !!result} />
+
+            <FruitButton fruit={FRUITS[6]} isSelected={selectedFruit?.name === FRUITS[6].name} onSelect={() => setSelectedFruit(FRUITS[6])} disabled={isSpinning || !!result} />
+            <FruitButton fruit={FRUITS[5]} isSelected={selectedFruit?.name === FRUITS[5].name} onSelect={() => setSelectedFruit(FRUITS[5])} disabled={isSpinning || !!result} />
+            <FruitButton fruit={FRUITS[4]} isSelected={selectedFruit?.name === FRUITS[4].name} onSelect={() => setSelectedFruit(FRUITS[4])} disabled={isSpinning || !!result} />
           </div>
 
           <div className="grid grid-cols-4 gap-2">
@@ -127,7 +128,7 @@ export default function FruityFortunePage() {
                 disabled={isSpinning || !!result}
                 className={cn(
                   "bg-yellow-500 text-purple-900 font-bold rounded-full hover:bg-yellow-400 transition-transform hover:scale-105",
-                  betAmount === amount && "ring-2 ring-white",
+                  betAmount === amount && "ring-2 ring-white shadow-lg",
                   (isSpinning || !!result) && "opacity-50 cursor-not-allowed"
                 )}
               >
@@ -138,19 +139,21 @@ export default function FruityFortunePage() {
 
         </div>
 
-        <Button onClick={startGame} disabled={!canPlay} size="lg" className="w-full bg-yellow-500 hover:bg-yellow-400 text-purple-900 font-bold text-lg shadow-xl h-14 rounded-full transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+        <Button onClick={startGame} disabled={!canPlay} size="lg" className="w-full bg-yellow-500 hover:bg-yellow-400 text-purple-900 font-bold text-xl shadow-xl h-14 rounded-full transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
             {isSpinning ? `...بدء...` : 'راهن'}
         </Button>
 
 
-        <div className="bg-purple-800/50 p-2 rounded-lg mt-4">
-            <h3 className="text-md mb-2">التاريخ</h3>
+        <div className="bg-black/20 p-2 rounded-lg mt-4">
+            <h3 className="text-md mb-2 text-yellow-300">التاريخ</h3>
             <div className="flex justify-center items-center gap-3 h-12">
                 {history.length > 0 ? history.map((fruit, i) => (
-                    <div key={i} className="relative">
-                        <FruitImage src={fruit.image} alt={fruit.name} />
-                        {i === 0 && result && (
-                            <span className="absolute -top-1 -right-2 bg-yellow-400 text-black text-xs font-bold px-1 rounded-full">New</span>
+                    <div key={i} className={cn("relative transition-all", i === 0 && "scale-110")}>
+                        <FruitImage fruit={fruit} size={32} />
+                         {i === 0 && result && (
+                            <span className="absolute -top-1 -right-2 text-[10px] bg-yellow-400 text-black font-bold px-1.5 py-0.5 rounded-full animate-bounce">
+                                NEW
+                            </span>
                         )}
                     </div>
                 )) : <p className="text-sm text-white/60">لم يتم لعب أي جولة بعد.</p>}
@@ -161,29 +164,32 @@ export default function FruityFortunePage() {
   );
 }
 
-const FruitButton = ({ fruit, isSelected, onSelect, disabled }: { fruit: typeof FRUITS[0], isSelected: boolean, onSelect: () => void, disabled: boolean }) => (
+const FruitButton = ({ fruit, isSelected, onSelect, disabled }: { fruit: Fruit, isSelected: boolean, onSelect: () => void, disabled: boolean }) => (
   <button
     onClick={onSelect}
     disabled={disabled}
     className={cn(
-      "bg-purple-600/50 rounded-lg p-2 flex flex-col items-center justify-center aspect-square transition-all duration-200 transform hover:bg-purple-600/80",
-      isSelected && "ring-2 ring-yellow-400 scale-105",
+      "bg-black/20 rounded-lg p-2 flex flex-col items-center justify-center aspect-square transition-all duration-200 transform hover:bg-black/40",
+      isSelected && "ring-2 ring-yellow-400 scale-105 bg-black/50",
       disabled && "opacity-50 cursor-not-allowed"
     )}
   >
-    <FruitImage src={fruit.image} alt={fruit.name} />
-    <span className="text-xs font-semibold mt-1">{fruit.multiplier} مرة</span>
+    <FruitImage fruit={fruit} size={40} />
+    <span className="text-xs font-semibold mt-1 text-yellow-300">{fruit.multiplier}x</span>
   </button>
 );
 
 
-const TimerDisplay = ({ timeLeft, isSpinning, result }: { timeLeft: number, isSpinning: boolean, result: { fruit: typeof FRUITS[0]; won: boolean } | null }) => {
-    const displayClasses = "flex items-center justify-center text-5xl font-mono bg-black/50 border-4 border-yellow-600 rounded-lg aspect-square";
+const TimerDisplay = ({ timeLeft, isSpinning, result }: { timeLeft: number, isSpinning: boolean, result: { fruit: Fruit; won: boolean } | null }) => {
+    const displayClasses = "flex items-center justify-center text-5xl font-mono bg-black/30 border-4 border-yellow-600 rounded-lg aspect-square";
 
     if (result) {
         return (
             <div className={cn(displayClasses, "animate-pulse")}>
-                 <FruitImage src={result.fruit.image} alt={result.fruit.name} />
+                 <div className="flex flex-col items-center">
+                    <FruitImage fruit={result.fruit} size={56} />
+                    {result.won && <span className="text-sm text-yellow-300 font-bold animate-pulse">WIN!</span>}
+                 </div>
             </div>
         );
     }
@@ -191,11 +197,11 @@ const TimerDisplay = ({ timeLeft, isSpinning, result }: { timeLeft: number, isSp
     return (
         <div className={displayClasses}>
             {isSpinning ? (
-                <span className={timeLeft <= 5 ? "text-red-500 animate-ping" : ""}>
+                <span className={cn("transition-colors", timeLeft <= 5 ? "text-red-500 animate-ping" : "text-white")}>
                     {timeLeft.toString().padStart(2, '0')}
                 </span>
             ) : (
-                 <span className="text-yellow-400 text-3xl">بدء</span>
+                 <span className="text-yellow-400 text-3xl font-bold">بدء</span>
             )}
         </div>
     );
