@@ -28,7 +28,7 @@ const FRUIT_GRID_ORDER = [
     FRUITS[6], FRUITS[5], FRUITS[4],
 ];
 
-const SPINNER_ORDER = [0, 1, 2, 5, 8, 7, 6, 3]; // Indexes in FRUIT_GRID_ORDER
+const SPINNER_ORDER = [0, 1, 2, 5, 8, 7, 6, 3];
 
 const BET_AMOUNTS = [
     { value: 10000, label: '10K' },
@@ -37,6 +37,7 @@ const BET_AMOUNTS = [
     { value: 500000, label: '500K' },
     { value: 1000000, label: '1M' },
 ];
+
 const ROUND_DURATION_S = 30;
 const PRE_SPIN_DELAY_S = 5;
 const SPIN_ANIMATION_MS = 100;
@@ -61,11 +62,21 @@ export default function FruityFortunePage() {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const gameStateRef = useRef(gameState);
+  const betsRef = useRef(bets);
+  
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
+
+  useEffect(() => {
+    betsRef.current = bets;
+  }, [bets]);
 
   const startNewRound = useCallback(() => {
-    setGameState('betting');
     setResult(null);
     setBets({});
+    setGameState('betting');
     setTimeLeft(ROUND_DURATION_S);
     setHighlightedIndex(-1);
   }, []);
@@ -76,13 +87,21 @@ export default function FruityFortunePage() {
     if (typeof window === 'undefined') return;
 
     const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+    const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
     
     let spinCycles = 0;
     const totalSpins = Math.floor(TOTAL_SPIN_DURATION_MS / (SPINNER_ORDER.length * SPIN_ANIMATION_MS));
-    const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
-
-    let currentSpinnerIndex = highlightedIndex === -1 ? 0 : SPINNER_ORDER.findIndex(gridIndex => gridIndex === highlightedIndex);
+    
+    let currentSpinnerIndex = -1;
+    const lastHighlighted = highlightedIndex;
+    if (lastHighlighted !== -1) {
+        const startIndex = SPINNER_ORDER.indexOf(lastHighlighted);
+        if(startIndex !== -1) {
+            currentSpinnerIndex = startIndex;
+        }
+    }
     if(currentSpinnerIndex === -1) currentSpinnerIndex = 0;
+
 
     const spinInterval = setInterval(() => {
         currentSpinnerIndex = (currentSpinnerIndex + 1) % SPINNER_ORDER.length;
@@ -93,7 +112,8 @@ export default function FruityFortunePage() {
         if (spinCycles >= totalSpins && SPINNER_ORDER[currentSpinnerIndex] === finalStopGridIndex) {
             clearInterval(spinInterval);
             setTimeout(() => { 
-                const winnings = (bets[randomFruit.name] || 0) * randomFruit.multiplier;
+                const finalBets = betsRef.current;
+                const winnings = (finalBets[randomFruit.name] || 0) * randomFruit.multiplier;
                 setResult({ fruit: randomFruit, winnings });
                 setHistory(prev => [randomFruit, ...prev].slice(0, 5));
                 setBalance(prev => prev + winnings);
@@ -102,34 +122,37 @@ export default function FruityFortunePage() {
             }, 1000);
         }
     }, SPIN_ANIMATION_MS);
-  }, [bets, startNewRound, highlightedIndex]);
-
+  }, [startNewRound, highlightedIndex]);
 
   useEffect(() => {
-    if (gameState === 'betting' || gameState === 'waiting') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            if (gameState === 'betting') {
-              setGameState('waiting');
-              return PRE_SPIN_DELAY_S;
-            } else { // gameState === 'waiting'
-              runSpinner();
-              return 0;
-            }
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (timerRef.current) {
+        clearInterval(timerRef.current);
     }
 
+    if (gameState === 'betting' || gameState === 'waiting') {
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    if (timerRef.current) clearInterval(timerRef.current);
+                    
+                    if (gameStateRef.current === 'betting') {
+                        setGameState('waiting');
+                        setTimeLeft(PRE_SPIN_DELAY_S);
+                    } else { // gameState === 'waiting'
+                        runSpinner();
+                        return 0;
+                    }
+                    return PRE_SPIN_DELAY_S;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    }
+    
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+        if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [gameState, runSpinner]);
+}, [gameState, runSpinner]);
 
 
   const handleBet = (fruit: Fruit) => {
@@ -142,7 +165,6 @@ export default function FruityFortunePage() {
             [fruit.name]: (prev[fruit.name] || 0) + activeBetAmount
         }));
     } else {
-        // You can add a toast notification here
         console.log("Not enough balance");
     }
   };
@@ -153,9 +175,9 @@ export default function FruityFortunePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#3a1a52] to-[#2c1440] p-4 font-headline text-white">
       <div className="relative w-full max-w-md mx-auto bg-gradient-to-b from-[#4c2a6c] to-[#3a1a52] border-4 border-yellow-500/80 rounded-3xl p-4 shadow-2xl shadow-black/50">
         
-        <div className="absolute top-2 left-4 bg-black/40 px-2 py-0.5 rounded-md text-center shadow-md">
-            <p className="text-xs text-yellow-300" style={{fontSize: '0.6rem'}}>رصيد الكوينزة</p>
-            <p className="text-xs font-bold tracking-tighter">{balance.toLocaleString()}</p>
+        <div className="absolute top-2 left-4 bg-black/40 px-2 py-0.5 rounded-md text-center shadow-md" style={{fontSize: '0.75rem'}}>
+            <p className="text-xs text-yellow-300">رصيد الكوينزة</p>
+            <p className="font-bold tracking-tighter">{balance.toLocaleString()}</p>
         </div>
 
         <main className="w-full text-center space-y-4 pt-8">
@@ -165,7 +187,7 @@ export default function FruityFortunePage() {
                 if (!fruit) {
                     return <TimerDisplay key={index} timeLeft={timeLeft} gameState={gameState} result={result} />;
                 }
-                const isHighlighted = gameState === 'spinning' && highlightedIndex === index;
+                const isHighlighted = (gameState === 'spinning' || (gameState === 'result' && result?.fruit.name === fruit.name)) && highlightedIndex === index;
                 return (
                     <FruitButton
                         key={fruit.name}
@@ -231,12 +253,11 @@ const FruitButton = ({ fruit, betAmount, onSelect, disabled, isHighlighted }: { 
     <span className="text-sm font-semibold mt-1 text-white">{fruit.multiplier} مرة</span>
     {betAmount > 0 && (
         <div className="absolute top-0 right-0 bg-yellow-500 text-purple-900 text-xs font-bold px-2 py-0.5 rounded-bl-lg rounded-tr-md">
-            {betAmount.toLocaleString()}
+            {betAmount > 1000 ? `${(betAmount/1000).toFixed(0)}k` : betAmount}
         </div>
     )}
   </button>
 );
-
 
 const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameState: GameState, result: { fruit: Fruit; winnings: number } | null }) => {
     const displayClasses = "flex items-center justify-center w-24 h-28 sm:w-28 sm:h-32 text-6xl font-mono bg-black/40 border-4 border-yellow-500 rounded-xl aspect-square p-2 shadow-inner shadow-black/50";
@@ -270,7 +291,7 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
     return (
         <div className={cn(displayClasses, "border-yellow-500/80")}>
              <span className={cn("transition-colors", 
-                gameState === 'betting' && timeLeft <= 5 && timeLeft > 0 ? "animate-ping text-red-500" : "text-white",
+                gameState === 'betting' && timeLeft <= 5 && timeLeft > 0 && "animate-ping text-red-500",
                 gameState === 'waiting' && "text-yellow-400 animate-pulse",
                 gameState === 'spinning' && "text-white"
             )}>
