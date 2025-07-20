@@ -82,13 +82,10 @@ export default function FruityFortunePage() {
     setResult(null);
     setBets({});
     setGameState('betting');
-    setTimeLeft(ROUND_DURATION_S);
     setHighlightedIndex(-1);
   }, []);
   
   const runSpinner = useCallback(() => {
-    setGameState('spinning');
-    
     const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
     const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
     
@@ -131,7 +128,7 @@ export default function FruityFortunePage() {
     if (timerRef.current) {
         clearInterval(timerRef.current);
     }
-
+    
     if (gameState === 'betting') {
         setTimeLeft(ROUND_DURATION_S);
         timerRef.current = setInterval(() => {
@@ -150,12 +147,14 @@ export default function FruityFortunePage() {
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     clearInterval(timerRef.current!);
-                    runSpinner();
+                    setGameState('spinning');
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
+    } else if (gameState === 'spinning') {
+        runSpinner();
     }
 
     return () => {
