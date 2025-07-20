@@ -24,8 +24,8 @@ const FRUITS: Fruit[] = [
 
 const FRUIT_GRID_ORDER = [
     FRUITS[0], FRUITS[1], FRUITS[2],
-    FRUITS[3], null,      FRUITS[4],
-    FRUITS[5], FRUITS[6], FRUITS[7],
+    FRUITS[7], null,      FRUITS[3],
+    FRUITS[6], FRUITS[5], FRUITS[4],
 ];
 
 const SPINNER_ORDER = [0, 1, 2, 5, 8, 7, 6, 3]; // Indexes in FRUIT_GRID_ORDER
@@ -71,75 +71,65 @@ export default function FruityFortunePage() {
   }, []);
 
   const runSpinner = useCallback(() => {
-      setGameState('spinning');
-      
-      if (typeof window === 'undefined') return;
+    setGameState('spinning');
+    
+    if (typeof window === 'undefined') return;
 
-      const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
-      
-      let spinCycles = 0;
-      const totalSpins = Math.floor(TOTAL_SPIN_DURATION_MS / (SPINNER_ORDER.length * SPIN_ANIMATION_MS));
-      const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
+    const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+    
+    let spinCycles = 0;
+    const totalSpins = Math.floor(TOTAL_SPIN_DURATION_MS / (SPINNER_ORDER.length * SPIN_ANIMATION_MS));
+    const finalStopGridIndex = FRUIT_GRID_ORDER.findIndex(f => f?.name === randomFruit.name);
 
-      let currentSpinnerIndex = highlightedIndex === -1 ? 0 : SPINNER_ORDER.findIndex(gridIndex => gridIndex === highlightedIndex);
-      if(currentSpinnerIndex === -1) currentSpinnerIndex = 0;
+    let currentSpinnerIndex = highlightedIndex === -1 ? 0 : SPINNER_ORDER.findIndex(gridIndex => gridIndex === highlightedIndex);
+    if(currentSpinnerIndex === -1) currentSpinnerIndex = 0;
 
-      const spinInterval = setInterval(() => {
-          currentSpinnerIndex = (currentSpinnerIndex + 1) % SPINNER_ORDER.length;
-          setHighlightedIndex(SPINNER_ORDER[currentSpinnerIndex]);
+    const spinInterval = setInterval(() => {
+        currentSpinnerIndex = (currentSpinnerIndex + 1) % SPINNER_ORDER.length;
+        setHighlightedIndex(SPINNER_ORDER[currentSpinnerIndex]);
 
-          if (currentSpinnerIndex === 0) spinCycles++;
+        if (currentSpinnerIndex === 0) spinCycles++;
 
-          if (spinCycles >= totalSpins && SPINNER_ORDER[currentSpinnerIndex] === finalStopGridIndex) {
-              clearInterval(spinInterval);
-              setTimeout(() => { 
-                  const winnings = (bets[randomFruit.name] || 0) * randomFruit.multiplier;
-                  setResult({ fruit: randomFruit, winnings });
-                  setHistory(prev => [randomFruit, ...prev].slice(0, 5));
-                  setBalance(prev => prev + winnings);
-                  setGameState('result');
-                  setTimeout(startNewRound, 4000); 
-              }, 1000);
-          }
-      }, SPIN_ANIMATION_MS);
-
+        if (spinCycles >= totalSpins && SPINNER_ORDER[currentSpinnerIndex] === finalStopGridIndex) {
+            clearInterval(spinInterval);
+            setTimeout(() => { 
+                const winnings = (bets[randomFruit.name] || 0) * randomFruit.multiplier;
+                setResult({ fruit: randomFruit, winnings });
+                setHistory(prev => [randomFruit, ...prev].slice(0, 5));
+                setBalance(prev => prev + winnings);
+                setGameState('result');
+                setTimeout(startNewRound, 4000); 
+            }, 1000);
+        }
+    }, SPIN_ANIMATION_MS);
   }, [bets, startNewRound, highlightedIndex]);
 
-  useEffect(() => {
-    const tick = () => {
-        setTimeLeft(prev => {
-            if (prev <= 1) {
-                if (gameState === 'betting') {
-                    setGameState('waiting');
-                    return PRE_SPIN_DELAY_S;
-                }
-                if (gameState === 'waiting') {
-                    if (timerRef.current) clearTimeout(timerRef.current);
-                    runSpinner();
-                    return 0;
-                }
-                return 0;
-            }
-            return prev - 1;
-        });
-    };
 
+  useEffect(() => {
     if (gameState === 'betting' || gameState === 'waiting') {
-        if (timerRef.current) clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(tick, 1000);
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (gameState === 'betting') {
+              setGameState('waiting');
+              return PRE_SPIN_DELAY_S;
+            } else { // gameState === 'waiting'
+              runSpinner();
+              return 0;
+            }
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
     }
 
     return () => {
-        if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [gameState, runSpinner, timeLeft]);
-
-
-  useEffect(() => {
-    if (gameState === 'betting') {
-        setTimeLeft(ROUND_DURATION_S);
-    }
-  }, [gameState === 'betting']);
+  }, [gameState, runSpinner]);
 
 
   const handleBet = (fruit: Fruit) => {
@@ -152,6 +142,7 @@ export default function FruityFortunePage() {
             [fruit.name]: (prev[fruit.name] || 0) + activeBetAmount
         }));
     } else {
+        // You can add a toast notification here
         console.log("Not enough balance");
     }
   };
@@ -162,12 +153,12 @@ export default function FruityFortunePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#3a1a52] to-[#2c1440] p-4 font-headline text-white">
       <div className="relative w-full max-w-md mx-auto bg-gradient-to-b from-[#4c2a6c] to-[#3a1a52] border-4 border-yellow-500/80 rounded-3xl p-4 shadow-2xl shadow-black/50">
         
-        <div className="absolute top-2 left-4 bg-black/40 px-3 py-1 rounded-lg text-center shadow-md">
-            <p className="text-xs text-yellow-300">رصيد الكوينزة</p>
-            <p className="text-sm font-bold tracking-tight">{balance.toLocaleString()}</p>
+        <div className="absolute top-2 left-4 bg-black/40 px-2 py-0.5 rounded-md text-center shadow-md">
+            <p className="text-xs text-yellow-300" style={{fontSize: '0.6rem'}}>رصيد الكوينزة</p>
+            <p className="text-xs font-bold tracking-tighter">{balance.toLocaleString()}</p>
         </div>
 
-        <main className="w-full text-center space-y-4 pt-12">
+        <main className="w-full text-center space-y-4 pt-8">
           
           <div className="grid grid-cols-3 gap-2 sm:gap-4 justify-items-center">
             {FRUIT_GRID_ORDER.map((fruit, index) => {
