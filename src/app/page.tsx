@@ -49,7 +49,7 @@ const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
 
 
 export default function FruityFortunePage() {
-  const [balance, setBalance] = useState(1000);
+  const [balance, setBalance] = useState(100000000);
   const [bets, setBets] = useState<{[key: string]: number}>({});
   const [activeBetAmount, setActiveBetAmount] = useState(BET_AMOUNTS[0].value);
   const [result, setResult] = useState<{ fruit: Fruit; winnings: number } | null>(null);
@@ -134,14 +134,14 @@ export default function FruityFortunePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#3a1a52] to-[#2c1440] p-4 font-headline text-white">
       <div className="relative w-full max-w-md mx-auto bg-gradient-to-b from-[#4c2a6c] to-[#3a1a52] border-4 border-yellow-500/80 rounded-3xl p-4 shadow-2xl shadow-black/50">
+        
+        <div className="absolute top-2 left-4 bg-black/30 p-2 rounded-xl text-center">
+            <p className="text-sm text-yellow-300">رصيد الكوينزة</p>
+            <p className="text-xl font-bold tracking-wider">{balance.toLocaleString()}</p>
+        </div>
 
-        <main className="w-full text-center space-y-4">
+        <main className="w-full text-center space-y-4 pt-12">
           
-          <div className="bg-black/20 p-2 rounded-xl">
-            <p className="text-lg text-yellow-300">رصيد الكوينزة</p>
-            <p className="text-3xl font-bold tracking-wider">{balance.toLocaleString()}</p>
-          </div>
-
           <div className="grid grid-cols-3 gap-2 sm:gap-4 justify-items-center">
             {FRUIT_GRID_ORDER.map((fruit, index) => {
                 if (!fruit) {
