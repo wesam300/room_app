@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +60,8 @@ export default function FruityFortunePage() {
   const [history, setHistory] = useState<Fruit[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   const startNewRound = useCallback(() => {
     setGameState('betting');
     setResult(null);
@@ -71,7 +73,6 @@ export default function FruityFortunePage() {
   const runSpinner = useCallback(() => {
       setGameState('spinning');
       
-      // Ensure Math.random is only called on the client side after hydration
       if (typeof window === 'undefined') return;
 
       const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
@@ -105,23 +106,41 @@ export default function FruityFortunePage() {
   }, [bets, startNewRound, highlightedIndex]);
 
   useEffect(() => {
-    if (gameState === 'betting' && timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setTimeLeft(timeLeft - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (gameState === 'betting' && timeLeft === 0) {
-        setGameState('waiting');
-        setTimeLeft(PRE_SPIN_DELAY_S);
-    } else if (gameState === 'waiting' && timeLeft > 0) {
-        const timer = setTimeout(() => {
-            setTimeLeft(timeLeft - 1);
-        }, 1000);
-        return () => clearTimeout(timer);
-    } else if (gameState === 'waiting' && timeLeft === 0) {
-        runSpinner();
+    const tick = () => {
+        setTimeLeft(prev => {
+            if (prev <= 1) {
+                if (gameState === 'betting') {
+                    setGameState('waiting');
+                    return PRE_SPIN_DELAY_S;
+                }
+                if (gameState === 'waiting') {
+                    if (timerRef.current) clearTimeout(timerRef.current);
+                    runSpinner();
+                    return 0;
+                }
+                return 0;
+            }
+            return prev - 1;
+        });
+    };
+
+    if (gameState === 'betting' || gameState === 'waiting') {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(tick, 1000);
     }
-  }, [timeLeft, gameState, runSpinner]);
+
+    return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [gameState, runSpinner, timeLeft]);
+
+
+  useEffect(() => {
+    if (gameState === 'betting') {
+        setTimeLeft(ROUND_DURATION_S);
+    }
+  }, [gameState === 'betting']);
+
 
   const handleBet = (fruit: Fruit) => {
     if (gameState !== 'betting') return;
@@ -145,7 +164,7 @@ export default function FruityFortunePage() {
         
         <div className="absolute top-2 left-4 bg-black/40 px-3 py-1 rounded-lg text-center shadow-md">
             <p className="text-xs text-yellow-300">رصيد الكوينزة</p>
-            <p className="text-base font-bold tracking-tight">{balance.toLocaleString()}</p>
+            <p className="text-sm font-bold tracking-tight">{balance.toLocaleString()}</p>
         </div>
 
         <main className="w-full text-center space-y-4 pt-12">
