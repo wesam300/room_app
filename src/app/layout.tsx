@@ -9,7 +9,7 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Fruity Fortune',
+  title: 'Voice Chat Room',
   description: 'Built with Firebase Studio',
 };
 
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${poppins.className} antialiased`}>
+      <body className={`${poppins.className} antialiased bg-background`}>
         {children}
         <Toaster />
       </body>
