@@ -130,23 +130,30 @@ export default function FruityFortunePage() {
     if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-
-    if (gameState === 'betting' || gameState === 'waiting') {
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            if (gameState === 'betting') {
-              setGameState('waiting');
-              setTimeLeft(PRE_SPIN_DELAY_S); 
-            } else if (gameState === 'waiting') {
-              runSpinner();
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    
+    if (gameState === 'betting') {
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current!);
+                    setGameState('waiting');
+                    setTimeLeft(PRE_SPIN_DELAY_S);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    } else if (gameState === 'waiting') {
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current!);
+                    runSpinner();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
     }
   
     return () => {
@@ -286,28 +293,28 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
                 .dot-white { animation: blink-white 1s infinite steps(1, end) 0.5s; }
             `}</style>
             {[...Array(10)].map((_, i) => (
-                <React.Fragment key={`top-${i}`}>
-                    <div className="dot dot-red" style={{top: '4px', left: `${8 + i * 8.5}%`}}/>
-                    <div className="dot dot-white" style={{top: '12px', left: `${8 + i * 8.5}%`}}/>
-                </React.Fragment>
+                <div key={`top-red-${i}`} className="dot dot-red" style={{top: '4px', left: `${8 + i * 8.5}%`}}/>
+            ))}
+            {[...Array(10)].map((_, i) => (
+                 <div key={`top-white-${i}`} className="dot dot-white" style={{top: '12px', left: `${8 + i * 8.5}%`}}/>
             ))}
              {[...Array(10)].map((_, i) => (
-                <React.Fragment key={`bottom-${i}`}>
-                    <div className="dot dot-white" style={{bottom: '4px', left: `${8 + i * 8.5}%`}}/>
-                    <div className="dot dot-red" style={{bottom: '12px', left: `${8 + i * 8.5}%`}}/>
-                </React.Fragment>
+                <div key={`bottom-white-${i}`} className="dot dot-white" style={{bottom: '4px', left: `${8 + i * 8.5}%`}}/>
+            ))}
+            {[...Array(10)].map((_, i) => (
+                <div key={`bottom-red-${i}`} className="dot dot-red" style={{bottom: '12px', left: `${8 + i * 8.5}%`}}/>
             ))}
              {[...Array(6)].map((_, i) => (
-                <React.Fragment key={`left-${i}`}>
-                    <div className="dot dot-red" style={{left: '4px', top: `${18 + i * 11}%`}}/>
-                    <div className="dot dot-white" style={{left: '12px', top: `${18 + i * 11}%`}}/>
-                </React.Fragment>
+                <div key={`left-red-${i}`} className="dot dot-red" style={{left: '4px', top: `${18 + i * 11}%`}}/>
             ))}
             {[...Array(6)].map((_, i) => (
-                <React.Fragment key={`right-${i}`}>
-                    <div className="dot dot-white" style={{right: '4px', top: `${18 + i * 11}%`}}/>
-                    <div className="dot dot-red" style={{right: '12px', top: `${18 + i * 11}%`}}/>
-                </React.Fragment>
+                <div key={`left-white-${i}`} className="dot dot-white" style={{left: '12px', top: `${18 + i * 11}%`}}/>
+            ))}
+            {[...Array(6)].map((_, i) => (
+                <div key={`right-white-${i}`} className="dot dot-white" style={{right: '4px', top: `${18 + i * 11}%`}}/>
+            ))}
+            {[...Array(6)].map((_, i) => (
+                <div key={`right-red-${i}`} className="dot dot-red" style={{right: '12px', top: `${18 + i * 11}%`}}/>
             ))}
         </>
     );
