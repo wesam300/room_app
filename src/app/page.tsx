@@ -337,5 +337,3 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
         </div>
     );
 };
-
-    
