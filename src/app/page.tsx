@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const FRUITS = ['🍉', '🍋', '🍒', '🍎'];
 const BET_AMOUNT = 10;
 const WIN_MULTIPLIER = 5;
-const SPIN_DURATION_S = 3;
+const SPIN_DURATION_S = 30;
 
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState(1000);
@@ -18,31 +18,7 @@ export default function FruityFortunePage() {
   const [spinningFruit, setSpinningFruit] = useState(FRUITS[0]);
   const [timeLeft, setTimeLeft] = useState(0);
 
-  useEffect(() => {
-    if (!isSpinning) return;
-
-    const spinInterval = setInterval(() => {
-      setSpinningFruit(FRUITS[Math.floor(Math.random() * FRUITS.length)]);
-    }, 100);
-
-    const countdownInterval = setInterval(() => {
-      setTimeLeft(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    const gameEndTimeout = setTimeout(() => {
-      clearInterval(spinInterval);
-      clearInterval(countdownInterval);
-      handleGameEnd();
-    }, SPIN_DURATION_S * 1000);
-
-    return () => {
-      clearInterval(spinInterval);
-      clearInterval(countdownInterval);
-      clearTimeout(gameEndTimeout);
-    };
-  }, [isSpinning]);
-
-  const handleGameEnd = useCallback(() => {
+  const finishGame = useCallback(() => {
     if (!selectedFruit) return;
 
     const randomFruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
@@ -57,6 +33,23 @@ export default function FruityFortunePage() {
     setIsSpinning(false);
   }, [selectedFruit]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (isSpinning) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            finishGame();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isSpinning, finishGame]);
+
   const startGame = () => {
     if (selectedFruit && balance >= BET_AMOUNT) {
       setBalance(prev => prev - BET_AMOUNT);
@@ -70,45 +63,44 @@ export default function FruityFortunePage() {
     setSelectedFruit(null);
     setResult(null);
   };
-
+  
   const canPlay = !isSpinning && selectedFruit !== null && balance >= BET_AMOUNT;
 
   const gameMessage = useMemo(() => {
     if (result) {
       if (result.won) {
-        return `You Won ${BET_AMOUNT * WIN_MULTIPLIER}!`;
+        return `ربحت ${BET_AMOUNT * WIN_MULTIPLIER}!`;
       }
-      return 'Better luck next time!';
+      return 'حظ أوفر في المرة القادمة!';
     }
     if (isSpinning) {
-      return 'Spinning...';
+      return `الوقت المتبقي: ${timeLeft} ثانية`;
     }
     if (!selectedFruit) {
-        return 'Select a Fruit';
+        return 'اختر فاكهة';
     }
-    return 'Ready to bet!';
-  }, [result, isSpinning, selectedFruit]);
+    return 'جاهز للمراهنة!';
+  }, [result, isSpinning, selectedFruit, timeLeft]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-background to-primary p-4 font-headline text-primary-foreground selection:bg-accent selection:text-accent-foreground">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-background to-primary p-4 font-headline text-foreground selection:bg-accent selection:text-accent-foreground animate-[background-pan_10s_ease-in-out_infinite]">
       <main className="w-full max-w-sm mx-auto text-center space-y-6">
         <header className="space-y-2">
-          <h1 className="text-5xl font-bold drop-shadow-lg">Fruity Fortune</h1>
+          <h1 className="text-5xl font-bold drop-shadow-lg">ثروة الفواكه</h1>
           <p className="text-2xl font-semibold bg-black/20 px-4 py-1.5 rounded-lg tabular-nums">
-            Balance: <span className="font-bold">{balance}</span>
+            رصيدك: <span className="font-bold">{balance}</span>
           </p>
         </header>
 
-        <Card className="bg-card/20 backdrop-blur-sm border-2 border-white/20 shadow-lg rounded-2xl">
+        <Card className="bg-white/10 backdrop-blur-sm border-2 border-white/20 shadow-lg rounded-2xl">
           <CardContent className="p-6 min-h-[280px] flex flex-col justify-center items-center gap-4">
             {isSpinning ? (
               <>
-                <div className="text-8xl animate-bounce">{spinningFruit}</div>
-                <p className="text-xl font-semibold animate-pulse tabular-nums">{timeLeft}s remaining</p>
+                <div className="text-8xl animate-spin">{FRUITS[timeLeft % FRUITS.length]}</div>
               </>
             ) : result ? (
               <div className="space-y-2 flex flex-col items-center">
-                 <p className="text-sm text-primary-foreground/80">The winning fruit is...</p>
+                 <p className="text-sm text-primary-foreground/80">الفاكهة الفائزة هي...</p>
                 <div className="text-8xl transition-transform duration-500 ease-out scale-110">{result.fruit}</div>
               </div>
             ) : (
@@ -116,13 +108,15 @@ export default function FruityFortunePage() {
                 {FRUITS.map(fruit => (
                   <button
                     key={fruit}
-                    onClick={() => setSelectedFruit(fruit)}
+                    onClick={() => !isSpinning && setSelectedFruit(fruit)}
                     aria-label={`Select ${fruit}`}
                     className={cn(
                       'text-6xl p-4 rounded-xl transition-all transform duration-300 ease-out',
                       'bg-white/10 hover:bg-white/20 hover:scale-105 aspect-square flex justify-center items-center',
-                      selectedFruit === fruit && 'ring-4 ring-accent scale-110 bg-white/25'
+                      selectedFruit === fruit && 'ring-4 ring-yellow-400 scale-110 bg-white/25',
+                      isSpinning && 'cursor-not-allowed'
                     )}
+                    disabled={isSpinning}
                   >
                     {fruit}
                   </button>
@@ -134,20 +128,20 @@ export default function FruityFortunePage() {
 
         <div className="space-y-3">
           <p className={cn(
-            "text-xl font-semibold h-7 transition-all duration-300", 
-            result?.won && "text-accent scale-110",
-            result?.won === false && "text-destructive-foreground/70"
+            "text-xl font-semibold h-7 transition-all duration-300 text-white", 
+            result?.won && "text-yellow-400 scale-110",
+            result?.won === false && "text-white/70"
             )}>
             {gameMessage}
           </p>
 
           {result ? (
-            <Button onClick={resetGame} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg shadow-xl transition-transform hover:scale-105">
-              Play Again
+            <Button onClick={resetGame} size="lg" className="w-full bg-white hover:bg-white/90 text-background font-bold text-lg shadow-xl transition-transform hover:scale-105">
+              العب مرة أخرى
             </Button>
           ) : (
-            <Button onClick={startGame} disabled={!canPlay} size="lg" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-bold text-lg shadow-xl transition-transform hover:scale-105 disabled:bg-gray-500/50 disabled:shadow-none disabled:scale-100 disabled:cursor-not-allowed">
-              {isSpinning ? `Spinning...` : `Bet ${BET_AMOUNT}`}
+            <Button onClick={startGame} disabled={!canPlay} size="lg" className="w-full bg-white hover:bg-white/90 text-background font-bold text-lg shadow-xl transition-transform hover:scale-105 disabled:bg-gray-500/50 disabled:shadow-none disabled:scale-100 disabled:cursor-not-allowed">
+              {isSpinning ? `...` : `راهن بـ ${BET_AMOUNT}`}
             </Button>
           )}
         </div>
