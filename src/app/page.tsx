@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -12,20 +12,20 @@ type Fruit = {
 };
 
 const FRUITS: Fruit[] = [
-  { name: 'watermelon', multiplier: 5, emoji: '🍉' }, // 0
-  { name: 'cherry', multiplier: 45, emoji: '🍒' },    // 1
-  { name: 'orange', multiplier: 25, emoji: '🍊' },   // 2
-  { name: 'pear', multiplier: 5, emoji: '🍐' },      // 3
-  { name: 'lemon', multiplier: 15, emoji: '🍋' },    // 4
-  { name: 'strawberry', multiplier: 5, emoji: '🍓' },// 5
-  { name: 'apple', multiplier: 5, emoji: '🍎' },      // 6
-  { name: 'grapes', multiplier: 10, emoji: '🍇' },   // 7
+  { name: 'watermelon', multiplier: 5, emoji: '🍉' },
+  { name: 'cherry', multiplier: 45, emoji: '🍒' },
+  { name: 'orange', multiplier: 25, emoji: '🍊' },
+  { name: 'pear', multiplier: 5, emoji: '🍐' },
+  { name: 'lemon', multiplier: 15, emoji: '🍋' },
+  { name: 'strawberry', multiplier: 5, emoji: '🍓' },
+  { name: 'apple', multiplier: 5, emoji: '🍎' },
+  { name: 'grapes', multiplier: 10, emoji: '🍇' },
 ];
 
 const FRUIT_GRID_ORDER = [
     FRUITS[0], FRUITS[1], FRUITS[2],
-    FRUITS[3], null,      FRUITS[4],
-    FRUITS[5], FRUITS[6], FRUITS[7],
+    FRUITS[7], null,      FRUITS[3],
+    FRUITS[6], FRUITS[5], FRUITS[4],
 ];
 
 const SPINNER_ORDER = [0, 1, 2, 5, 8, 7, 6, 3];
@@ -53,10 +53,10 @@ const FruitImage = ({ fruit, size = 64 }: { fruit: Fruit, size?: number }) => (
 
 const formatBetAmount = (amount: number) => {
     if (amount >= 1000000) {
-        return `${(amount / 1000000).toFixed(0)}M`;
+        return `${(amount / 1000000)}M`;
     }
     if (amount >= 1000) {
-        return `${(amount / 1000).toFixed(0)}k`;
+        return `${(amount / 1000)}k`;
     }
     return amount.toString();
 }
@@ -85,7 +85,7 @@ export default function FruityFortunePage() {
     setTimeLeft(ROUND_DURATION_S);
     setHighlightedIndex(-1);
   }, []);
-
+  
   const runSpinner = useCallback(() => {
     setGameState('spinning');
     
@@ -127,33 +127,41 @@ export default function FruityFortunePage() {
   }, [startNewRound, highlightedIndex]);
 
   useEffect(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-  
-    const tick = () => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current!);
-          if (gameState === 'betting') {
-            setGameState('waiting');
-            setTimeLeft(PRE_SPIN_DELAY_S);
-          } else {
-            runSpinner();
-            return 0;
-          }
-          return PRE_SPIN_DELAY_S;
+    if (gameState === 'betting') {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
         }
-        return prev - 1;
-      });
-    };
-  
-    if (gameState === 'betting' || gameState === 'waiting') {
-      timerRef.current = setInterval(tick, 1000);
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current!);
+                    setGameState('waiting');
+                    setTimeLeft(PRE_SPIN_DELAY_S);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    } else if (gameState === 'waiting') {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
+        timerRef.current = setInterval(() => {
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerRef.current!);
+                    runSpinner();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
     }
-  
+    
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+        }
     };
   }, [gameState, runSpinner]);
 
@@ -177,7 +185,7 @@ export default function FruityFortunePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#3a1a52] to-[#2c1440] p-4 font-headline text-white">
       <div className="relative w-full max-w-md mx-auto bg-gradient-to-b from-[#4c2a6c] to-[#3a1a52] border-4 border-yellow-500/80 rounded-3xl p-4 shadow-2xl shadow-black/50">
         
-        <div className="absolute top-2 left-4 bg-black/40 px-2 py-0.5 rounded-md text-center shadow-md" style={{fontSize: '0.7rem'}}>
+        <div className="absolute top-2 left-4 bg-black/40 px-2 py-0.5 rounded-md text-center shadow-md z-20" style={{fontSize: '0.7rem'}}>
             <p className="text-xs text-yellow-300">رصيد الكوينزة</p>
             <p className="font-bold tracking-tighter text-sm">{balance.toLocaleString()}</p>
         </div>
@@ -247,10 +255,12 @@ const FruitButton = ({ fruit, betAmount, onSelect, disabled, isHighlighted }: { 
     disabled={disabled}
     className={cn(
       "bg-gradient-to-br from-purple-500/40 to-purple-800/30 rounded-xl p-2 flex flex-col items-center justify-center w-24 h-28 sm:w-28 sm:h-32 aspect-square transition-all duration-100 transform hover:bg-purple-500/50 relative overflow-hidden border-2 border-purple-400/50",
+      "bg-gradient-to-br from-purple-600/50 to-purple-900/40",
       isHighlighted && "ring-4 ring-yellow-400 scale-105 bg-yellow-500/20 shadow-2xl shadow-yellow-400/50 border-yellow-400",
       disabled && "opacity-70 cursor-not-allowed"
     )}
   >
+    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-purple-900/20 -z-10"></div>
     <FruitImage fruit={fruit} size={56} />
     <span className="text-sm font-semibold mt-1 text-white">{fruit.multiplier} مرة</span>
     {betAmount > 0 && (
@@ -281,20 +291,28 @@ const TimerDisplay = ({ timeLeft, gameState, result }: { timeLeft: number, gameS
                     height: 6px;
                     border-radius: 50%;
                 }
-                .dot-red { animation: blink-red 1.5s infinite; }
-                .dot-white { animation: blink-white 1.5s infinite 0.75s; }
+                .dot-red { animation: blink-red 1.2s infinite steps(1, end); }
+                .dot-white { animation: blink-white 1.2s infinite steps(1, end) 0.6s; }
             `}</style>
             {[...Array(10)].map((_, i) => (
-                <div key={`t-${i}`} className={cn("dot", (i+1) % 2 === 0 ? 'dot-red' : 'dot-white')} style={{top: '4px', left: `${10 + i * 9}%`}}/>
+                <React.Fragment key={i}>
+                    {/* Top lights */}
+                    <div className="dot dot-red" style={{top: '4px', left: `${8 + i * 8.5}%`}}/>
+                    <div className="dot dot-white" style={{top: '12px', left: `${8 + i * 8.5}%`}}/>
+                     {/* Bottom lights */}
+                    <div className="dot dot-red" style={{bottom: '12px', left: `${8 + i * 8.5}%`}}/>
+                    <div className="dot dot-white" style={{bottom: '4px', left: `${8 + i * 8.5}%`}}/>
+                </React.Fragment>
             ))}
-             {[...Array(10)].map((_, i) => (
-                <div key={`b-${i}`} className={cn("dot", i % 2 === 0 ? 'dot-red' : 'dot-white')} style={{bottom: '4px', left: `${10 + i * 9}%`}}/>
-            ))}
-            {[...Array(6)].map((_, i) => (
-                <div key={`l-${i}`} className={cn("dot", (i+1) % 2 === 0 ? 'dot-red' : 'dot-white')} style={{left: '4px', top: `${15 + i * 14}%`}}/>
-            ))}
-            {[...Array(6)].map((_, i) => (
-                <div key={`r-${i}`} className={cn("dot", i % 2 === 0 ? 'dot-red' : 'dot-white')} style={{right: '4px', top: `${15 + i * 14}%`}}/>
+             {[...Array(6)].map((_, i) => (
+                <React.Fragment key={i}>
+                    {/* Left lights */}
+                    <div className="dot dot-red" style={{left: '4px', top: `${18 + i * 11}%`}}/>
+                    <div className="dot dot-white" style={{left: '12px', top: `${18 + i * 11}%`}}/>
+                     {/* Right lights */}
+                    <div className="dot dot-red" style={{right: '12px', top: `${18 + i * 11}%`}}/>
+                    <div className="dot dot-white" style={{right: '4px', top: `${18 + i * 11}%`}}/>
+                </React.Fragment>
             ))}
         </>
     );
