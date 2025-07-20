@@ -9,8 +9,8 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Voice Chat Room',
-  description: 'Built with Firebase Studio',
+  title: 'Fruit Casino Game',
+  description: 'A fun betting game with fruits!',
 };
 
 export default function RootLayout({
