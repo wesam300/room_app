@@ -1,113 +1,167 @@
+
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Coins, Crown, Info, Sparkles } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Coins, Flame, Rocket, CircleDashed, X } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
-type Fruit = {
-  name: string;
-  emoji: string;
-  multiplier: number;
-};
+type GameState = 'BETTING' | 'WAITING' | 'LAUNCHED' | 'CRASHED';
 
-const FRUITS: Fruit[] = [
-  { name: 'Cherry', emoji: '🍒', multiplier: 5 },
-  { name: 'Lemon', emoji: '🍋', multiplier: 5 },
-  { name: 'Apple', emoji: '🍎', multiplier: 5 },
-  { name: 'Watermelon', emoji: '🍉', multiplier: 5 },
-  { name: 'Grapes', emoji: '🍇', multiplier: 10 },
-  { name: 'Kiwi', emoji: '🥝', multiplier: 15 },
-  { name: 'Pineapple', emoji: '🍍', multiplier: 25 },
-  { name: 'Mango', emoji: '🥭', multiplier: 45 },
-];
+const BETTING_TIME = 10; // 10 seconds for betting
 
-const BET_AMOUNTS = [10, 50, 100, 500, 1000];
-
-type GameState = 'idle' | 'betting' | 'result';
-
-export default function FruitGamePage() {
+export default function CrashGamePage() {
+  const { toast } = useToast();
   const [balance, setBalance] = useState(10000);
-  const [selectedFruit, setSelectedFruit] = useState<Fruit | null>(null);
-  const [selectedBet, setSelectedBet] = useState<number | null>(null);
-  const [gameState, setGameState] = useState<GameState>('idle');
-  const [timer, setTimer] = useState(30);
-  const [winningFruit, setWinningFruit] = useState<Fruit | null>(null);
-  const [resultMessage, setResultMessage] = useState('');
+  const [betAmount, setBetAmount] = useState<number | string>(100);
+  const [gameState, setGameState] = useState<GameState>('BETTING');
+  const [multiplier, setMultiplier] = useState(1.00);
+  const [countdown, setCountdown] = useState(BETTING_TIME);
+  const [hasBet, setHasBet] = useState(false);
+  const [crashPoint, setCrashPoint] = useState(0);
+  const [history, setHistory] = useState<number[]>([]);
+  const [rocketPosition, setRocketPosition] = useState(0);
 
-  const handleStartBetting = () => {
-    if (!selectedFruit || !selectedBet) {
-      setResultMessage('اختر فاكهة ومبلغ الرهان أولاً!');
-      setTimeout(() => setResultMessage(''), 2000);
-      return;
-    }
-    if (balance < selectedBet) {
-      setResultMessage('رصيدك غير كافٍ!');
-      setTimeout(() => setResultMessage(''), 2000);
-      return;
-    }
+  const intervalRef = useRef<NodeJS.Timeout>();
+  const gameLogicRef = useRef<NodeJS.Timeout>();
 
-    setBalance(prev => prev - selectedBet!);
-    setGameState('betting');
-    setResultMessage('');
-  };
-  
   const resetGame = useCallback(() => {
-    setGameState('idle');
-    setWinningFruit(null);
-    setSelectedFruit(null);
-    setSelectedBet(null);
-    setTimer(30);
-  }, []);
+    if (gameState === 'CRASHED' && history[history.length - 1] !== crashPoint) {
+      setHistory(prev => [...prev.slice(-9), crashPoint].filter(p => p > 0));
+    }
+    setGameState('BETTING');
+    setCountdown(BETTING_TIME);
+    setHasBet(false);
+    setMultiplier(1.00);
+    setRocketPosition(0);
+  }, [crashPoint, gameState, history]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (gameState === 'betting') {
-      interval = setInterval(() => {
-        setTimer(prev => {
+    if (gameState === 'BETTING') {
+      intervalRef.current = setInterval(() => {
+        setCountdown(prev => {
           if (prev <= 1) {
-            clearInterval(interval);
-            setGameState('result');
+            clearInterval(intervalRef.current);
+            setGameState('WAITING');
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
     }
-    return () => clearInterval(interval);
+    return () => clearInterval(intervalRef.current);
   }, [gameState]);
 
+  const calculateCrashPoint = () => {
+      const e = 2 ** 32;
+      const h = crypto.getRandomValues(new Uint32Array(1))[0];
+      return Math.floor((100 * e - h) / (e-h)) / 100;
+  }
+
   useEffect(() => {
-    if (gameState === 'result') {
-      const randomIndex = Math.floor(Math.random() * FRUITS.length);
-      const winner = FRUITS[randomIndex];
-      setWinningFruit(winner);
-
-      if (winner.name === selectedFruit?.name) {
-        const winnings = selectedBet! * winner.multiplier;
-        setBalance(prev => prev + winnings);
-        setResultMessage(`🎉 فوز! لقد ربحت ${winnings.toLocaleString()} نقطة!`);
-      } else {
-        setResultMessage('😔 خسارة! حظ أوفر في المرة القادمة.');
-      }
-      
+    if (gameState === 'WAITING') {
+      const newCrashPoint = calculateCrashPoint();
+      setCrashPoint(newCrashPoint);
       setTimeout(() => {
-          resetGame();
-      }, 5000);
+        setGameState('LAUNCHED');
+      }, 1000); // 1s pause before launch
     }
-  }, [gameState, selectedBet, selectedFruit, resetGame]);
+  }, [gameState]);
 
-  const isButtonDisabled = gameState !== 'idle';
+
+  useEffect(() => {
+    if (gameState === 'LAUNCHED') {
+        const startTime = Date.now();
+        gameLogicRef.current = setInterval(() => {
+            const elapsedTime = (Date.now() - startTime) / 1000;
+            const currentMultiplier = Math.max(1, parseFloat(Math.pow(1.05, elapsedTime).toFixed(2)));
+            setMultiplier(currentMultiplier);
+            setRocketPosition(elapsedTime);
+
+            if (currentMultiplier >= crashPoint) {
+                clearInterval(gameLogicRef.current);
+                setGameState('CRASHED');
+                if(hasBet){
+                  toast({
+                      title: "💥 تحطم!",
+                      description: `لقد تحطم الصاروخ عند x${crashPoint.toFixed(2)}. حظ أوفر في المرة القادمة.`,
+                      variant: "destructive",
+                  });
+                }
+            }
+        }, 100);
+    }
+    return () => clearInterval(gameLogicRef.current);
+  }, [gameState, crashPoint, hasBet, toast]);
+  
+  useEffect(() => {
+    if (gameState === 'CRASHED') {
+      setTimeout(resetGame, 3000);
+    }
+  }, [gameState, resetGame]);
+
+  const handlePlaceBet = () => {
+    const amount = Number(betAmount);
+    if (amount <= 0 || amount > balance) {
+      toast({ title: "خطأ", description: "مبلغ رهان غير صالح.", variant: "destructive" });
+      return;
+    }
+    setBalance(prev => prev - amount);
+    setHasBet(true);
+    toast({ title: "تم وضع الرهان!", description: `لقد راهنت بـ ${amount.toLocaleString()} كوينز.` });
+  };
+  
+  const handleCancelBet = () => {
+    const amount = Number(betAmount);
+    setBalance(prev => prev + amount);
+    setHasBet(false);
+    toast({ title: "تم إلغاء الرهان", variant: "default" });
+  };
+
+  const handleCashOut = () => {
+    const amount = Number(betAmount);
+    const winnings = amount * multiplier;
+    setBalance(prev => prev + winnings);
+    setHasBet(false);
+    toast({
+        title: "🎉 نجاح!",
+        description: `لقد سحبت ${winnings.toLocaleString()} كوينز عند x${multiplier.toFixed(2)}!`,
+        className: "bg-green-600 border-green-600 text-white"
+    });
+    // Keep the game running, just disable cashout for this user
+  };
+
+  const renderButton = () => {
+    if (gameState === 'BETTING') {
+      if (hasBet) {
+        return <Button onClick={handleCancelBet} variant="destructive" size="lg" className="w-full text-lg font-bold"><X className="mr-2"/>إلغاء</Button>;
+      }
+      return <Button onClick={handlePlaceBet} disabled={countdown === 0} size="lg" className="w-full text-lg font-bold bg-primary hover:bg-primary/90"><Coins className="mr-2"/>ضع الرهان</Button>;
+    }
+    if (gameState === 'LAUNCHED' && hasBet) {
+      return <Button onClick={handleCashOut} size="lg" className="w-full text-lg font-bold bg-green-500 hover:bg-green-600 text-black">اسحب {(Number(betAmount) * multiplier).toLocaleString(undefined, {maximumFractionDigits: 0})} الآن</Button>;
+    }
+    return <Button size="lg" disabled className="w-full text-lg font-bold">{gameState === 'WAITING' ? "استعد للإطلاق..." : "انتظر الجولة التالية..."}</Button>
+  };
+
+  const rocketY = useMemo(() => {
+      const power = 1.8;
+      return Math.min(80, rocketPosition * power);
+  }, [rocketPosition])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-900 via-indigo-900 to-gray-900 text-white font-sans animate-background-pan overflow-hidden">
-      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+    <div className="relative flex flex-col items-center justify-center w-full min-h-screen p-4 overflow-hidden select-none gradient-background">
+        <div className="star"></div>
+        <div className="star"></div>
+        <div className="star"></div>
+        <div className="star"></div>
       
-      <header className="absolute top-4 left-4 w-auto z-10">
-        <Card className="bg-black/30 backdrop-blur-sm border-purple-400/50">
+      <div className="absolute top-4 left-4 z-20">
+        <Card className="bg-black/30 backdrop-blur-sm border-white/20">
           <CardContent className="p-3">
             <div className="flex items-center gap-3">
               <Coins className="text-yellow-400" />
@@ -118,93 +172,108 @@ export default function FruitGamePage() {
             </div>
           </CardContent>
         </Card>
-      </header>
+      </div>
 
-      <div className="relative z-10 flex flex-col items-center">
-        
+      <div className="absolute top-4 right-4 z-20 w-full max-w-md">
+         <Card className="bg-black/30 backdrop-blur-sm border-white/20">
+            <CardContent className="p-2">
+                <p className="text-xs text-muted-foreground mb-1 text-center">الجولات السابقة</p>
+                <div className="flex justify-end items-center gap-2">
+                    {history.map((h, i) => (
+                        <span key={i} className={cn("font-mono text-sm", h < 2 ? "text-red-400" : "text-green-400")}>
+                           x{h.toFixed(2)}
+                        </span>
+                    ))}
+                </div>
+            </CardContent>
+         </Card>
+      </div>
+
+
+      <div className="relative w-full h-[50vh] flex items-center justify-center">
         <AnimatePresence>
-          {gameState === 'betting' && (
+          {gameState === 'BETTING' && (
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              className="absolute -top-24 text-6xl font-bold text-yellow-300 drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]"
+              exit={{ opacity: 0, scale: 1.5 }}
+              className="absolute z-10 flex flex-col items-center"
             >
-              {timer}
+              <div className="text-6xl font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
+                {countdown}
+              </div>
+              <p className="text-lg text-muted-foreground">تبدأ الجولة التالية...</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <AnimatePresence>
+            {(gameState === 'LAUNCHED' || (gameState === 'CRASHED' && multiplier > 1)) && (
+                 <motion.div
+                    key="multiplier"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{duration: 0.2}}
+                    className="absolute z-10 flex flex-col items-center"
+                 >
+                    <div className={cn("text-7xl font-bold drop-shadow-lg", gameState === 'CRASHED' ? 'text-red-500' : 'text-white')}>
+                        x{multiplier.toFixed(2)}
+                    </div>
+                 </motion.div>
+            )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {(gameState === 'LAUNCHED' || gameState === 'WAITING' || (gameState === 'CRASHED' && rocketPosition > 0)) && (
+            <motion.div
+              key="rocket"
+              initial={{ y: 100, x: "-50%", opacity: 0, scale: 0.5, rotate: -45 }}
+              animate={{ y: `-${rocketY}vh`, opacity: 1, scale: 1, rotate: -45 }}
+              exit={{ opacity: 0, scale: 2, transition: {duration: 0.5}}}
+              className="absolute bottom-0 left-1/2"
+            >
+              {gameState !== 'CRASHED' ? (
+                <div className="relative animate-float">
+                  <Rocket size={80} className="text-white -rotate-45 rocket-shadow" />
+                  <Flame size={40} className="absolute -bottom-2 -right-2 text-orange-400 rocket-shadow" />
+                </div>
+              ) : (
+                 <motion.div
+                    initial={{ scale: 0, opacity: 0}}
+                    animate={{ scale: 1, opacity: 1}}
+                    transition={{duration: 0.3}}
+                 >
+                    <div className="text-8xl">💥</div>
+                 </motion.div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
 
-        <Card className="w-full max-w-2xl bg-black/30 backdrop-blur-sm border-purple-400/50 shadow-2xl shadow-purple-500/20">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-4 gap-3">
-              {FRUITS.map(fruit => (
-                <motion.div
-                  key={fruit.name}
-                  whileHover={{ scale: isButtonDisabled ? 1 : 1.05 }}
-                  whileTap={{ scale: isButtonDisabled ? 1 : 0.95 }}
-                  onClick={() => !isButtonDisabled && setSelectedFruit(fruit)}
-                  className={cn(
-                    "relative aspect-square flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer transition-all duration-300",
-                    "bg-black/20 border-2",
-                    selectedFruit?.name === fruit.name ? "border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.5)]" : "border-purple-600/50",
-                    winningFruit?.name === fruit.name && "animate-pulse border-green-400 shadow-[0_0_20px_rgba(74,222,128,0.8)] scale-110",
-                    isButtonDisabled && "cursor-not-allowed opacity-60"
-                  )}
-                >
-                  <div className="text-4xl">{fruit.emoji}</div>
-                  <Badge variant="secondary" className="absolute top-1 right-1 bg-purple-800/80 text-white text-xs">
-                    x{fruit.multiplier}
-                  </Badge>
-                </motion.div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="w-full max-w-2xl mt-4 flex flex-col items-center gap-3">
-            <div className="flex gap-2">
-                {BET_AMOUNTS.map(amount => (
-                    <Button
-                    key={amount}
-                    variant={selectedBet === amount ? 'default' : 'secondary'}
-                    onClick={() => !isButtonDisabled && setSelectedBet(amount)}
-                    disabled={isButtonDisabled}
-                    className={cn(
-                        "bg-black/30 border-purple-400/50 border text-white hover:bg-purple-600/50",
-                        selectedBet === amount && "bg-purple-600"
-                    )}
-                    >
-                        {amount.toLocaleString()}
-                    </Button>
-                ))}
-            </div>
-            
-            <AnimatePresence>
-            {resultMessage && (
-                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="text-center font-bold text-yellow-300 p-2 rounded-lg bg-black/30"
-                 >
-                    {resultMessage}
-                </motion.div>
-            )}
-            </AnimatePresence>
-
-
-            <Button 
-                size="lg" 
-                onClick={handleStartBetting}
-                disabled={isButtonDisabled || !selectedFruit || !selectedBet}
-                className="w-full max-w-xs text-lg font-bold bg-gradient-to-r from-yellow-400 to-amber-500 text-black hover:from-yellow-500 hover:to-amber-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
-            >
-                <Sparkles className="mr-2" />
-                ابدأ المراهنة
-            </Button>
-        </div>
       </div>
-    </main>
+
+      <Card className="w-full max-w-lg bg-black/30 backdrop-blur-sm border-white/20 z-20">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+                <label className="text-sm text-muted-foreground">مبلغ الرهان</label>
+                <Input
+                    type="number"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(e.target.value)}
+                    disabled={hasBet || gameState !== 'BETTING'}
+                    className="text-center text-lg h-12"
+                    placeholder="100"
+                />
+            </div>
+            <div className="flex flex-col gap-2 justify-end">
+                {renderButton()}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+    </div>
   );
 }

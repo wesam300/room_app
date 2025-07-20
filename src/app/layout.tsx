@@ -9,8 +9,8 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Fruit Casino Game',
-  description: 'A fun betting game with fruits!',
+  title: 'Rocket Crash Game',
+  description: 'An exciting rocket crash betting game.',
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${poppins.className} antialiased bg-background`}>
+      <body className={`${poppins.className} antialiased`}>
         {children}
         <Toaster />
       </body>
