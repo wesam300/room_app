@@ -27,42 +27,51 @@ export default function FruityFortunePage() {
   const [lastWin, setLastWin] = useState<{ fruit: FruitKey; amount: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
+  // This effect runs only once on the client-side after the component mounts.
   useEffect(() => {
     setIsClient(true);
+    
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
     if (savedBalance) {
         setBalance(parseInt(savedBalance, 10));
     }
+    
+    // Generate initial history safely on the client
     const initialHistory = Array.from({ length: 5 }, () => ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)]);
     setHistory(initialHistory);
+
+    setActiveBet(BET_AMOUNTS[0]);
   }, []);
 
+  // Effect to save balance to localStorage whenever it changes
   useEffect(() => {
     if (isClient) {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
     }
   }, [balance, isClient]);
-
+  
   const handleRoundEnd = useCallback(() => {
     setIsSpinning(true);
     setLastWin(null);
 
     setTimeout(() => {
-      const winningFruit = ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)];
-      const payout = (bets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
+        // This logic is now guaranteed to run on the client
+        const winningFruit = ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)];
+        const payout = (bets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
 
-      if (payout > 0) {
-        setBalance(prev => prev + payout);
-        setLastWin({ fruit: winningFruit, amount: payout });
-      }
+        if (payout > 0) {
+            setBalance(prev => prev + payout);
+            setLastWin({ fruit: winningFruit, amount: payout });
+        }
 
-      setHistory(prev => [winningFruit, ...prev.slice(0, 4)]);
-      setBets({} as Record<FruitKey, number>);
-      setIsSpinning(false);
-      setTimer(20);
+        setHistory(prev => [winningFruit, ...prev.slice(0, 4)]);
+        setBets({} as Record<FruitKey, number>);
+        setIsSpinning(false);
+        setTimer(20);
     }, 3000);
   }, [bets]);
 
+  // Timer effect, runs only on the client
   useEffect(() => {
     if (!isClient) return;
 
