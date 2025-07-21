@@ -60,23 +60,20 @@ export default function FruityFortunePage() {
   useEffect(() => {
     setIsClient(true);
     
+    let currentBalance = INITIAL_BALANCE;
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
         const parsedBalance = JSON.parse(savedBalance);
         if (typeof parsedBalance === 'number') {
-           setBalance(parsedBalance);
-        } else {
-           localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
+           currentBalance = parsedBalance;
         }
-      } else {
-        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       }
     } catch (error) {
       console.error("Failed to process balance from localStorage", error);
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
-      setBalance(INITIAL_BALANCE);
     }
+    setBalance(currentBalance);
+    localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(currentBalance));
 
     const { roundId } = getRoundInfo(Date.now());
     const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
@@ -320,3 +317,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
