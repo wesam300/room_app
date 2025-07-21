@@ -8,7 +8,7 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'cherry', 'apple', 'apple',
+  'cherry', 'apple', 'lemon',
   'grapes', 'timer', 'watermelon',
   'mango', 'pineapple', 'kiwi'
 ];
