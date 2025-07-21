@@ -167,7 +167,7 @@ export default function FruityFortunePage() {
       </main>
 
       <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
-        <div className="flex justify-center gap-1 mb-16 w-full">
+        <div className="flex justify-center gap-1 mb-4 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
               key={amount}
