@@ -147,6 +147,7 @@ export default function FruitGamePage() {
                   onClick={() => placeBet(fruit.id)}
                   className={cn(
                     'relative flex flex-col items-center justify-center w-28 h-28 md:w-36 md:h-36 rounded-2xl cursor-pointer fruit-slot',
+                    { 'selected': !!bets[fruit.id] },
                     { 'winner': isWinner, 'opacity-70': winner && !isWinner }
                   )}
                 >
