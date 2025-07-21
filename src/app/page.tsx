@@ -239,8 +239,8 @@ export default function FruityFortunePage() {
             }
             const fruitKey = item as FruitKey;
             const fruit = FRUITS[fruitKey];
-            const isWinning = winningFruit === fruitKey;
-            const isHighlighted = highlightedFruit === fruitKey;
+            const isWinning = !isBettingPhase && winningFruit === fruitKey;
+            const isHighlighted = isSpinning && highlightedFruit === fruitKey;
             
             return (
               <div
