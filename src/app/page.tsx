@@ -9,9 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'orange',   'cherry',     'watermelon',
-  'lemon',    'timer',      'pear',
-  'grapes',   'apple',      'strawberry'
+  'watermelon', 'cherry',     'orange',
+  'pear',       'timer',      'lemon',
+  'strawberry', 'apple',      'grapes'
 ];
 
 // To create the spinning effect
@@ -113,6 +113,7 @@ export default function FruityFortunePage() {
       setHighlightedFruit(null);
       setBets({});
       setTimer(20);
+      setLastWinnings(0);
   }
 
   const placeBet = (fruitId: FruitKey) => {
@@ -232,5 +233,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
