@@ -15,7 +15,7 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
 
 // To create the spinning effect
 const SPIN_SEQUENCE: FruitKey[] = [
-    'watermelon', 'cherry', 'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear'
+    'watermelon', 'pear', 'strawberry', 'apple', 'grapes', 'lemon', 'orange', 'cherry'
 ];
 
 export default function FruityFortunePage() {
