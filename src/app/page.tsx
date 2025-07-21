@@ -44,7 +44,7 @@ interface UserProfile {
 
 export default function FruityFortunePage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
+  const [balance, setBalance] = useState<number>(0);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
@@ -69,6 +69,7 @@ export default function FruityFortunePage() {
 
   // Load balance and profile from localStorage on initial mount
   useEffect(() => {
+    // This effect should only run once on the client.
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
@@ -81,36 +82,34 @@ export default function FruityFortunePage() {
       if (savedProfile) {
         setUserProfile(JSON.parse(savedProfile));
       } else {
-        setIsProfileModalOpen(true);
+        setIsProfileModalOpen(true); // No profile found, open modal.
       }
     } catch (error) {
-      console.error("Could not load from localStorage", error);
+      console.error("Could not load from localStorage, resetting.", error);
+      // If there's any error, reset to a clean state.
       setBalance(INITIAL_BALANCE);
-      setIsProfileModalOpen(true); // Fallback to creating a profile
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
+      setUserProfile(null);
+      localStorage.removeItem(PROFILE_STORAGE_KEY);
+      setIsProfileModalOpen(true);
     } finally {
+      // Loading is finished, whether successful or not.
       setIsLoading(false);
     }
   }, []);
 
   // Save balance to localStorage whenever it changes
   useEffect(() => {
+    // Don't save during the initial loading phase.
     if (!isLoading) {
-      try {
-        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-      } catch (error) {
-        console.error("Could not save balance to localStorage", error);
-      }
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
   }, [balance, isLoading]);
 
   // Save profile to localStorage whenever it changes
    useEffect(() => {
     if (userProfile) {
-      try {
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
-      } catch (error) {
-        console.error("Could not save profile to localStorage", error);
-      }
+      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
     }
   }, [userProfile]);
 
@@ -300,9 +299,9 @@ export default function FruityFortunePage() {
     );
   }
 
-  if (!userProfile) {
+  if (isProfileModalOpen || !userProfile) {
     return (
-      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+      <Dialog open={true} onOpenChange={() => {}}>
         <DialogContent className="sm:max-w-[425px] bg-gray-900 text-white border-yellow-400" dir="rtl">
             <DialogHeader>
                 <DialogTitle>إنشاء ملفك الشخصي</DialogTitle>
@@ -495,5 +494,3 @@ export default function FruityFortunePage() {
   );
 }
     
-
-  
