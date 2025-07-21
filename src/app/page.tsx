@@ -43,8 +43,8 @@ const determineWinnerForRound = (roundId: number): FruitKey => {
 };
 
 export default function FruityFortunePage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [balance, setBalance] = useState<number>(0);
+  const [isClient, setIsClient] = useState(false);
+  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
   
@@ -58,44 +58,38 @@ export default function FruityFortunePage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsClient(true);
+    
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
-        setBalance(JSON.parse(savedBalance));
+        const parsedBalance = JSON.parse(savedBalance);
+        if (typeof parsedBalance === 'number') {
+           setBalance(parsedBalance);
+        }
       } else {
-        const newBalance = INITIAL_BALANCE;
-        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(newBalance));
-        setBalance(newBalance);
+        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       }
     } catch (error) {
       console.error("Failed to process balance from localStorage", error);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       setBalance(INITIAL_BALANCE);
     }
-    setIsLoading(false);
+
+    const { roundId } = getRoundInfo(Date.now());
+    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
+    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    setHistory(pastWinners.reverse());
   }, []);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!isClient) return;
     try {
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     } catch (error) {
       console.error("Failed to save balance to localStorage", error);
     }
-  }, [balance, isLoading]);
-  
-  const initializeHistory = useCallback(() => {
-    const { roundId } = getRoundInfo(Date.now());
-    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
-    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
-    setHistory(pastWinners);
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      initializeHistory();
-    }
-  }, [isLoading, initializeHistory]);
+  }, [balance, isClient]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -146,7 +140,7 @@ export default function FruityFortunePage() {
   }, [bets]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!isClient) return;
 
     const interval = setInterval(() => {
         const now = Date.now();
@@ -183,7 +177,7 @@ export default function FruityFortunePage() {
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isLoading, isBettingPhase, winningFruit, handleRoundEnd]);
+  }, [isClient, isBettingPhase, winningFruit, handleRoundEnd]);
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -191,7 +185,7 @@ export default function FruityFortunePage() {
     return num.toString();
   };
   
-  if (isLoading) {
+  if (!isClient) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
         <div className="text-2xl font-bold">...تحميل اللعبة</div>
@@ -324,5 +318,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
