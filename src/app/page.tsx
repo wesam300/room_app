@@ -18,11 +18,11 @@ const FRUITS: Fruit[] = [
   { id: 'watermelon', name: 'بطيخ', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'watermelon slice' },
   { id: 'cherry', name: 'كرز', multiplier: 45, image: 'https://placehold.co/128x128.png', hint: 'cherries' },
   { id: 'orange', name: 'برتقال', multiplier: 25, image: 'https://placehold.co/128x128.png', hint: 'orange fruit' },
-  { id: 'pear', name: 'كمثرى', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'pear' },
   { id: 'lemon', name: 'ليمون', multiplier: 15, image: 'https://placehold.co/128x128.png', hint: 'lemon' },
-  { id: 'strawberry', name: 'فراولة', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'strawberry' },
   { id: 'apple', name: 'تفاح', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'red apple' },
   { id: 'grapes', name: 'عنب', multiplier: 10, image: 'https://placehold.co/128x128.png', hint: 'grapes' },
+  { id: 'strawberry', name: 'فراولة', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'strawberry' },
+  { id: 'pear', name: 'كمثرى', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'pear' },
 ];
 
 const FRUIT_GRID_ORDER: (Fruit | null)[] = [
