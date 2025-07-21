@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
 const BETTING_DURATION = 20;
-const INITIAL_BALANCE = 10000000;
+const INITIAL_BALANCE = 100000000; // Increased initial balance
 const BALANCE_STORAGE_KEY = 'fruityFortuneBalance';
 
 
@@ -105,6 +105,7 @@ export default function FruityFortunePage() {
   const startSpinning = useCallback((roundId: number) => {
     setIsSpinning(true);
     setWinningFruit(null);
+    setHighlightedFruit(null);
     setLastWinnings(0);
 
     const winner = determineWinnerForRound(roundId);
@@ -178,6 +179,16 @@ export default function FruityFortunePage() {
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
+
+    if (Object.keys(bets).length >= 6 && !bets[fruitId]) {
+        toast({
+          title: "حد الرهان",
+          description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
+          variant: "destructive",
+          duration: 2000,
+        });
+        return;
+    }
     
     // Check if balance is sufficient for this single bet
     if ((balance ?? 0) < selectedBetAmount) {
