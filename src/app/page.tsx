@@ -11,7 +11,7 @@ const ROUND_DURATION_S = 25;
 const BETTING_DURATION_S = 20;
 
 const INITIAL_BALANCE = 100000000;
-const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v10_stable';
+const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v11_rebuild';
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'orange', 'lemon', 'grapes', 'cherry', 'timer', 'apple', 'watermelon', 'pear', 'strawberry'
@@ -21,7 +21,7 @@ const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
 ];
 
-// Simple, deterministic pseudo-random number generator for consistent results across clients.
+// Simple, deterministic pseudo-random number generator.
 const pseudoRandom = (seed: number) => {
   let x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
@@ -32,12 +32,11 @@ const getRoundInfo = (time: number) => {
     const roundId = Math.floor(time / (ROUND_DURATION_S * 1000));
     const roundStartTime = roundId * ROUND_DURATION_S * 1000;
     const bettingEndTime = roundStartTime + BETTING_DURATION_S * 1000;
-    const spinStartTime = bettingEndTime;
     const roundEndTime = roundStartTime + ROUND_DURATION_S * 1000;
-    return { roundId, roundStartTime, bettingEndTime, spinStartTime, roundEndTime };
+    return { roundId, roundStartTime, bettingEndTime, roundEndTime };
 };
 
-// Determines the winner for a given round ID, making it consistent for everyone.
+// Determines the winner for a given round ID.
 const determineWinnerForRound = (roundId: number): FruitKey => {
     const fruitKeys = Object.keys(FRUITS) as FruitKey[];
     const winnerIndex = Math.floor(pseudoRandom(roundId) * fruitKeys.length);
@@ -46,10 +45,10 @@ const determineWinnerForRound = (roundId: number): FruitKey => {
 
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
-  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
+  const [balance, setBalance] = useState(INITIAL_BALANCE);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
-  const [timer, setTimer] = useState(BETTING_DURATION_S);
+  const [timeLeft, setTimeLeft] = useState(BETTING_DURATION_S);
   const [isBettingPhase, setIsBettingPhase] = useState(true);
   const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
   const [winningFruit, setWinningFruit] = useState<FruitKey | null>(null);
@@ -57,11 +56,11 @@ export default function FruityFortunePage() {
   const [lastWinnings, setLastWinnings] = useState(0);
 
   const { toast } = useToast();
-  const roundEndHandled = useRef<number | null>(null);
+  const roundIdRef = useRef<number | null>(null);
 
-  // This useEffect runs only once on the client to safely initialize the game state.
+  // This useEffect runs only once on component mount on the client.
   useEffect(() => {
-    // Load balance from localStorage
+    // Safely load balance from localStorage
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
@@ -71,15 +70,16 @@ export default function FruityFortunePage() {
       }
     } catch (error) {
       console.error("Failed to load balance, resetting.", error);
+      setBalance(INITIAL_BALANCE);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
     
     // Set initial history
-    const { roundId } = getRoundInfo(Date.now());
-    const pastWinners = Array.from({ length: 5 }, (_, i) => determineWinnerForRound(roundId - 1 - i));
-    setHistory(pastWinners.reverse());
+    const { roundId: currentRoundId } = getRoundInfo(Date.now());
+    const pastWinners = Array.from({ length: 5 }, (_, i) => determineWinnerForRound(currentRoundId - 5 + i));
+    setHistory(pastWinners);
 
-    // Signal that the client is ready to render the full UI.
+    // Signal that the client is ready to render.
     setIsClient(true);
   }, []);
 
@@ -96,47 +96,43 @@ export default function FruityFortunePage() {
 
     const gameLoop = setInterval(() => {
         const now = Date.now();
-        const { roundId, bettingEndTime, spinStartTime, roundEndTime } = getRoundInfo(now);
+        const { roundId, bettingEndTime, roundEndTime } = getRoundInfo(now);
 
-        // Phase 1: Betting
-        if (now < bettingEndTime) {
-            setIsBettingPhase(true);
-            setTimer(Math.floor((bettingEndTime - now) / 1000));
+        const currentlyBetting = now < bettingEndTime;
+        setIsBettingPhase(currentlyBetting);
+
+        if (currentlyBetting) {
+            setTimeLeft(Math.max(0, Math.floor((bettingEndTime - now) / 1000)));
             if (winningFruit) setWinningFruit(null);
-            roundEndHandled.current = null; // Reset for next round
-        } 
-        // Phase 2: Spinning
-        else if (now < roundEndTime - 1000) { 
-            setIsBettingPhase(false);
-            setTimer(0);
-            const spinCount = Math.floor((now - spinStartTime) / 100);
-            setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
-        } 
-        // Phase 3: Winner revealed
-        else {
-            setIsBettingPhase(false);
-            const winner = determineWinnerForRound(roundId);
-            setHighlightedFruit(winner);
-            setWinningFruit(winner);
+            if (roundId !== roundIdRef.current) {
+                // New round started, clear bets and winnings
+                setBets({});
+                setLastWinnings(0);
+                roundIdRef.current = roundId;
+            }
+        } else { // Spinning and winner phase
+            setTimeLeft(0);
+            const spinDuration = roundEndTime - bettingEndTime;
+            const timeIntoSpin = now - bettingEndTime;
+            
+            // Reveal winner in the last second
+            if (timeIntoSpin >= spinDuration - 1000) {
+                const winner = determineWinnerForRound(roundId);
+                if (winningFruit !== winner) { // Process winner only once
+                    setWinningFruit(winner);
+                    setHighlightedFruit(winner);
 
-            // Handle payouts and state reset only once per round
-            if (roundEndHandled.current !== roundId) {
-                let totalWinnings = 0;
-                if (bets[winner]) {
-                    totalWinnings = bets[winner] * FRUITS[winner].multiplier;
-                    setBalance(prev => prev + totalWinnings);
+                    let totalWinnings = 0;
+                    if (bets[winner]) {
+                        totalWinnings = bets[winner] * FRUITS[winner].multiplier;
+                        setBalance(prev => prev + totalWinnings);
+                    }
+                    setLastWinnings(totalWinnings);
+                    setHistory(prev => [winner, ...prev.slice(0, 4)]);
                 }
-                setLastWinnings(totalWinnings);
-                
-                // Prepare for next round after a delay
-                setTimeout(() => {
-                    setBets({});
-                    setWinningFruit(null);
-                    setHighlightedFruit(null);
-                    setHistory(prev => [winner, ...prev].slice(0, 5));
-                }, 4000);
-                
-                roundEndHandled.current = roundId;
+            } else { // Spinning animation
+                const spinCount = Math.floor(timeIntoSpin / 100);
+                setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
             }
         }
     }, 100);
@@ -219,9 +215,9 @@ export default function FruityFortunePage() {
                    )}
                   </AnimatePresence>
                   <AnimatePresence>
-                    {!winningFruit && isBettingPhase && (
+                    {isBettingPhase && (
                        <motion.div key="timer-display" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center">
-                          <div className="text-5xl font-bold text-white z-0">{timer}</div>
+                          <div className="text-5xl font-bold text-white z-0">{timeLeft}</div>
                           <div className="text-sm text-yellow-300 mt-1">وقت الرهان</div>
                        </motion.div>
                     )}
@@ -273,3 +269,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
