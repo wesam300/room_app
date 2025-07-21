@@ -32,7 +32,7 @@
     --border: 48 93% 58%; /* Gold/Yellow border */
     --input: 240 3.7% 15.9%;
     --ring: 48 93% 58%; /* Gold/Yellow ring */
-    --radius: 0.75rem; /* More rounded corners */
+    --radius: 1rem; /* More rounded corners */
   }
 }
 

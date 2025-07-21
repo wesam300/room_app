@@ -30,18 +30,18 @@ export const FruitDisplay: React.FC<FruitDisplayProps> = ({ fruitType, size = 'm
   const fruit = FRUITS[fruitType];
   
   const sizeClasses = {
-    small: 'text-lg',
-    medium: 'text-4xl',
-    large: 'text-6xl'
+    small: 'text-2xl',
+    medium: 'text-5xl',
+    large: 'text-7xl'
   };
   
   return (
-    <div className="flex flex-col items-center justify-center">
-      <div className={`${sizeClasses[size]} mb-1`}>
+    <div className="flex flex-col items-center justify-center text-center">
+      <div className={`${sizeClasses[size]} drop-shadow-lg`}>
         {fruit.emoji}
       </div>
       {showMultiplier && (
-        <div className="text-xs text-white opacity-90 font-bold">
+        <div className="text-sm text-white opacity-90 font-bold mt-1">
           x{fruit.multiplier}
         </div>
       )}
