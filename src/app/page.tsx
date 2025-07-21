@@ -167,12 +167,12 @@ export default function FruityFortunePage() {
       </main>
 
       <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
-        <div className="flex justify-center gap-2 mb-16 w-full">
+        <div className="flex justify-center gap-1 mb-16 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
               key={amount}
               onClick={() => !isGameRunning && setSelectedBetAmount(amount)}
-              className={`px-4 py-2 text-sm md:text-base font-bold rounded-full transition-all duration-300 border-2
+              className={`px-3 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2
                 ${selectedBetAmount === amount ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]' : 'bg-black/30 text-white border-yellow-400/50 hover:bg-black/50'}
                 ${isGameRunning ? 'opacity-50 cursor-not-allowed' : ''}
               `}
