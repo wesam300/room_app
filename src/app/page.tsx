@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
+import { useToast } from "@/hooks/use-toast";
 
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
@@ -29,6 +30,7 @@ export default function FruityFortunePage() {
   const [winningFruit, setWinningFruit] = useState<FruitKey | null>(null);
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [lastWinnings, setLastWinnings] = useState(0);
+  const { toast } = useToast();
 
   // Timer for the betting phase
   useEffect(() => {
@@ -52,7 +54,11 @@ export default function FruityFortunePage() {
       return;
     }
     if (totalBet > balance) {
-       // Maybe show a toast message here in the future
+       toast({
+         title: "رصيد غير كاف",
+         description: "إجمالي رهانك يتجاوز رصيدك الحالي.",
+         variant: "destructive",
+       });
        resetRound();
        return;
     }
@@ -196,7 +202,7 @@ export default function FruityFortunePage() {
         </div>
       </main>
 
-      <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
+      <footer className="w-full max-w-sm mt-2 flex flex-col items-center">
         <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
@@ -212,10 +218,10 @@ export default function FruityFortunePage() {
           ))}
         </div>
         
-        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
+        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
           <div className="flex gap-2 overflow-hidden flex-row-reverse">
-            {history.map((fruitKey, index) => (
+            {history.slice(0, 10).map((fruitKey, index) => (
               <div key={index} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
                  <FruitDisplay fruitType={fruitKey} size="small" />
               </div>
