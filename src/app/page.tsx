@@ -9,9 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'watermelon', 'cherry', 'orange',
-  'pear',       'timer',  'lemon',
-  'strawberry', 'apple',  'grapes'
+  'watermelon', 'cherry',     'orange',
+  'pear',       'timer',      'lemon',
+  'strawberry', 'apple',      'grapes'
 ];
 
 // To create the spinning effect
@@ -202,7 +202,7 @@ export default function FruityFortunePage() {
         </div>
       </main>
 
-      <footer className="w-full max-w-sm mt-2 flex flex-col items-center">
+      <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
         <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
@@ -232,5 +232,7 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
 
     
