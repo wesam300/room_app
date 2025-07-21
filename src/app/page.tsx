@@ -185,6 +185,7 @@ export default function FruityFortunePage() {
           title: "رصيد غير كاف",
           description: "لا يمكنك وضع هذا الرهان.",
           variant: "destructive",
+          duration: 1000,
         });
         return;
     }
@@ -328,3 +329,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
