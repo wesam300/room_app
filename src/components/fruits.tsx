@@ -19,8 +19,8 @@ export const FRUITS: Record<FruitKey, Fruit> = {
   apple:      { id: 'apple',     name: 'تفاح',      emoji: '🍎', multiplier: 5  },
   watermelon: { id: 'watermelon',name: 'بطيخ',     emoji: '🍉', multiplier: 5  },
   grapes:     { id: 'grapes',    name: 'عنب',      emoji: '🍇', multiplier: 10 },
-  kiwi:       { id: 'kiwi',      name: 'كيوي',      emoji: '🥝', multiplier: 15 },
-  pineapple:  { id: 'pineapple', name: 'أناناس',    emoji: '🍍', multiplier: 25 },
+  kiwi:       { id: 'kiwi',      name: 'كيوي',      emoji: '🥝', multiplier: 5 },
+  pineapple:  { id: 'pineapple', name: 'أناناس',    emoji: '🍍', multiplier: 5 },
   mango:      { id: 'mango',     name: 'مانجو',     emoji: '🥭', multiplier: 45 },
 };
 
