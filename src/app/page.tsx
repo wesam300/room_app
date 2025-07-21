@@ -29,6 +29,7 @@ const pseudoRandom = (seed: number) => {
 
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
+  const [isClient, setIsClient] = useState(false);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const betsRef = useRef<Record<string, number>>({});
   const [bets, setBets] = useState<Record<string, number>>({});
@@ -45,6 +46,7 @@ export default function FruityFortunePage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    setIsClient(true);
     const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
     if (savedBalance !== null) {
       setBalance(JSON.parse(savedBalance));
@@ -54,8 +56,10 @@ export default function FruityFortunePage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-  }, [balance]);
+    if (isClient) {
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
+    }
+  }, [balance, isClient]);
 
 
   const getRoundInfo = useCallback(() => {
@@ -119,7 +123,7 @@ export default function FruityFortunePage() {
         }
     }, animationDuration);
 
-  }, [determineWinnerForRound, updateHistory, balance]);
+  }, [determineWinnerForRound, updateHistory]);
 
   useEffect(() => {
     const mainLoop = setInterval(() => {
@@ -193,6 +197,10 @@ export default function FruityFortunePage() {
     return num.toString();
   };
   
+  if (!isClient) {
+    return null; // Or a loading spinner
+  }
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
       
@@ -313,3 +321,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
