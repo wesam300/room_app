@@ -8,14 +8,14 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'orange', 'cherry', 'strawberry',
-  'pear', 'timer', 'watermelon',
-  'lemon', 'apple', 'grapes'
+  'strawberry', 'cherry', 'orange',
+  'pear',       'timer',  'lemon',
+  'watermelon', 'apple',  'grapes'
 ];
 
 // To create the spinning effect
 const SPIN_SEQUENCE: FruitKey[] = [
-    'orange', 'strawberry', 'watermelon', 'grapes', 'apple', 'pear', 'lemon', 'cherry'
+    'strawberry', 'cherry', 'orange', 'lemon', 'grapes', 'apple', 'watermelon', 'pear'
 ];
 
 export default function FruityFortunePage() {
