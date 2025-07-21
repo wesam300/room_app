@@ -21,20 +21,19 @@ const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
 ];
 
-// This is a simple, deterministic pseudo-random number generator.
+// Simple, deterministic pseudo-random number generator for consistent results across clients.
 const pseudoRandom = (seed: number) => {
   let x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
 };
 
-// Gets round information based on a stable timestamp
+// Gets round information based on a stable timestamp.
 const getRoundInfo = (time: number) => {
     const roundId = Math.floor(time / (ROUND_DURATION_S * 1000));
     const roundStartTime = roundId * ROUND_DURATION_S * 1000;
     const bettingEndTime = roundStartTime + BETTING_DURATION_S * 1000;
     const spinStartTime = bettingEndTime;
     const roundEndTime = roundStartTime + ROUND_DURATION_S * 1000;
-    
     return { roundId, roundStartTime, bettingEndTime, spinStartTime, roundEndTime };
 };
 
@@ -46,15 +45,10 @@ const determineWinnerForRound = (roundId: number): FruitKey => {
 };
 
 export default function FruityFortunePage() {
-  // State for client-side rendering readiness
   const [isClient, setIsClient] = useState(false);
-  
-  // Game state
   const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
-  
-  // Round and UI state
   const [timer, setTimer] = useState(BETTING_DURATION_S);
   const [isBettingPhase, setIsBettingPhase] = useState(true);
   const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
@@ -62,78 +56,104 @@ export default function FruityFortunePage() {
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [lastWinnings, setLastWinnings] = useState(0);
 
-  // Toast for notifications
   const { toast } = useToast();
-  
-  // Ref to track if the initial load is done to prevent multiple executions
-  const initialLoadDone = useRef(false);
+  const roundEndHandled = useRef<number | null>(null);
 
-  // This useEffect runs only once on the client after the component mounts.
-  // It handles all initial setup that requires browser APIs like localStorage.
+  // This useEffect runs only once on the client to safely initialize the game state.
   useEffect(() => {
-    if (initialLoadDone.current) return;
-    initialLoadDone.current = true;
-
     // Load balance from localStorage
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
-        const parsedBalance = JSON.parse(savedBalance);
-        if (typeof parsedBalance === 'number' && !isNaN(parsedBalance)) {
-           setBalance(parsedBalance);
-        } else {
-           localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
-        }
+        setBalance(JSON.parse(savedBalance));
       } else {
         localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       }
     } catch (error) {
-      console.error("Failed to process balance from localStorage", error);
+      console.error("Failed to load balance, resetting.", error);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
-
+    
     // Set initial history
     const { roundId } = getRoundInfo(Date.now());
-    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
-    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    const pastWinners = Array.from({ length: 5 }, (_, i) => determineWinnerForRound(roundId - 1 - i));
     setHistory(pastWinners.reverse());
-    
-    // Signal that the client is ready to render the full UI
+
+    // Signal that the client is ready to render the full UI.
     setIsClient(true);
   }, []);
 
   // Save balance to localStorage whenever it changes
   useEffect(() => {
     if (isClient) {
-      try {
-        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-      } catch (error) {
-        console.error("Failed to save balance to localStorage", error);
-      }
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
   }, [balance, isClient]);
   
-  // Place a bet on a fruit
+  // Main game loop
+  useEffect(() => {
+    if (!isClient) return;
+
+    const gameLoop = setInterval(() => {
+        const now = Date.now();
+        const { roundId, bettingEndTime, spinStartTime, roundEndTime } = getRoundInfo(now);
+
+        // Phase 1: Betting
+        if (now < bettingEndTime) {
+            setIsBettingPhase(true);
+            setTimer(Math.floor((bettingEndTime - now) / 1000));
+            if (winningFruit) setWinningFruit(null);
+            roundEndHandled.current = null; // Reset for next round
+        } 
+        // Phase 2: Spinning
+        else if (now < roundEndTime - 1000) { 
+            setIsBettingPhase(false);
+            setTimer(0);
+            const spinCount = Math.floor((now - spinStartTime) / 100);
+            setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
+        } 
+        // Phase 3: Winner revealed
+        else {
+            setIsBettingPhase(false);
+            const winner = determineWinnerForRound(roundId);
+            setHighlightedFruit(winner);
+            setWinningFruit(winner);
+
+            // Handle payouts and state reset only once per round
+            if (roundEndHandled.current !== roundId) {
+                let totalWinnings = 0;
+                if (bets[winner]) {
+                    totalWinnings = bets[winner] * FRUITS[winner].multiplier;
+                    setBalance(prev => prev + totalWinnings);
+                }
+                setLastWinnings(totalWinnings);
+                
+                // Prepare for next round after a delay
+                setTimeout(() => {
+                    setBets({});
+                    setWinningFruit(null);
+                    setHighlightedFruit(null);
+                    setHistory(prev => [winner, ...prev].slice(0, 5));
+                }, 4000);
+                
+                roundEndHandled.current = roundId;
+            }
+        }
+    }, 100);
+
+    return () => clearInterval(gameLoop);
+  }, [isClient, bets, winningFruit]);
+
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
 
     if (balance < selectedBetAmount) {
-         toast({
-          title: "رصيد غير كاف",
-          description: "لا يمكنك وضع هذا الرهان.",
-          variant: "destructive",
-          duration: 1000,
-        });
-        return;
+         toast({ title: "رصيد غير كاف", description: "لا يمكنك وضع هذا الرهان.", variant: "destructive", duration: 1000 });
+         return;
     }
     
     if (Object.keys(bets).length >= 6 && !bets[fruitId]) {
-        toast({
-          title: "حد الرهان",
-          description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
-          variant: "destructive",
-          duration: 2000,
-        });
+        toast({ title: "حد الرهان", description: "لا يمكنك الرهان على اكثر من 6 خيارات.", variant: "destructive", duration: 2000 });
         return;
     }
     
@@ -144,73 +164,12 @@ export default function FruityFortunePage() {
     }));
   };
 
-  // Memoized round end handler
-  const handleRoundEnd = useCallback((winner: FruitKey) => {
-    let totalWinnings = 0;
-    if (bets[winner]) {
-        totalWinnings = bets[winner] * FRUITS[winner].multiplier;
-        setBalance(prev => prev + totalWinnings);
-    }
-    setLastWinnings(totalWinnings);
-    
-    // Reset for the next round after a delay
-    setTimeout(() => {
-        setBets({});
-        setWinningFruit(null);
-        setHighlightedFruit(null);
-        setHistory(prev => [winner, ...prev].slice(0, 5));
-    }, 4000);
-  }, [bets]);
-
-  // Main game loop effect
-  useEffect(() => {
-    if (!isClient) return;
-
-    const interval = setInterval(() => {
-        const now = Date.now();
-        const { roundId, bettingEndTime, spinStartTime } = getRoundInfo(now);
-        
-        const currentPhaseIsBetting = now < bettingEndTime;
-        
-        if (isBettingPhase !== currentPhaseIsBetting) {
-          setIsBettingPhase(currentPhaseIsBetting);
-        }
-
-        if (currentPhaseIsBetting) {
-            const timeLeft = Math.max(0, Math.floor((bettingEndTime - now) / 1000));
-            setTimer(timeLeft);
-            if (winningFruit) setWinningFruit(null);
-        } else {
-            setTimer(0);
-            const winner = determineWinnerForRound(roundId);
-            const timeIntoSpin = now - spinStartTime;
-            const spinDuration = (ROUND_DURATION_S - BETTING_DURATION_S - 1) * 1000;
-
-            if (timeIntoSpin < spinDuration) {
-                 const spinCount = Math.floor(timeIntoSpin / 100);
-                 setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
-                 if (winningFruit) setWinningFruit(null);
-            } else {
-                setHighlightedFruit(winner);
-                if (!winningFruit) {
-                    setWinningFruit(winner);
-                    handleRoundEnd(winner);
-                }
-            }
-        }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [isClient, isBettingPhase, winningFruit, handleRoundEnd]);
-
-  // Number formatting utility
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${Math.floor(num / 1000)}K`;
     return num.toString();
   };
   
-  // Show a loading screen until the client is fully ready
   if (!isClient) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
@@ -219,7 +178,6 @@ export default function FruityFortunePage() {
     );
   }
 
-  // Main component render
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
@@ -253,33 +211,21 @@ export default function FruityFortunePage() {
                        </motion.div>
                     )}
                   </AnimatePresence>
-                   <AnimatePresence>
+                  <AnimatePresence>
                    {winningFruit && lastWinnings === 0 && Object.keys(bets).length > 0 && (
-                      <motion.div
-                        key="no-win"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        className="flex flex-col items-center justify-center"
-                      >
+                      <motion.div key="no-win" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="flex flex-col items-center justify-center">
                          <div className="text-sm text-yellow-300 mt-1">حظاً موفقاً</div>
                       </motion.div>
                    )}
-                   </AnimatePresence>
-                   <AnimatePresence>
-                    {isBettingPhase && !winningFruit && (
-                       <motion.div
-                         key="timer-display"
-                         initial={{ opacity: 0 }}
-                         animate={{ opacity: 1 }}
-                         exit={{ opacity: 0 }}
-                         className="flex flex-col items-center justify-center"
-                       >
+                  </AnimatePresence>
+                  <AnimatePresence>
+                    {!winningFruit && isBettingPhase && (
+                       <motion.div key="timer-display" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center justify-center">
                           <div className="text-5xl font-bold text-white z-0">{timer}</div>
                           <div className="text-sm text-yellow-300 mt-1">وقت الرهان</div>
                        </motion.div>
                     )}
-                   </AnimatePresence>
+                  </AnimatePresence>
                 </div>
               );
             }
@@ -289,21 +235,10 @@ export default function FruityFortunePage() {
             const isHighlighted = !isBettingPhase && highlightedFruit === fruitKey;
             
             return (
-              <div
-                key={`${fruit.id}-${index}`}
-                onClick={() => placeBet(fruitKey)}
-                className={`relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square
-                  ${isWinning ? 'bg-yellow-400 scale-110 shadow-[0_0_25px_#facc15]' : isHighlighted ? 'bg-purple-600 scale-105 shadow-[0_0_15px_#a855f7]' : 'bg-black/30'}
-                  ${!isBettingPhase ? 'cursor-not-allowed opacity-70' : 'hover:bg-purple-700/80'}`}
-              >
+              <div key={`${fruit.id}-${index}`} onClick={() => placeBet(fruitKey)} className={`relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square ${isWinning ? 'bg-yellow-400 scale-110 shadow-[0_0_25px_#facc15]' : isHighlighted ? 'bg-purple-600 scale-105 shadow-[0_0_15px_#a855f7]' : 'bg-black/30'} ${!isBettingPhase ? 'cursor-not-allowed opacity-70' : 'hover:bg-purple-700/80'}`}>
                 <AnimatePresence>
                 {bets[fruit.id] && (
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute top-1 right-1 bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded-full"
-                  >
+                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute top-1 right-1 bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">
                     {formatNumber(bets[fruit.id])}
                   </motion.div>
                 )}
@@ -318,14 +253,7 @@ export default function FruityFortunePage() {
       <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
         <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map(amount => (
-            <button
-              key={amount}
-              onClick={() => isBettingPhase && setSelectedBetAmount(amount)}
-              className={`px-3 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2
-                ${selectedBetAmount === amount ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]' : 'bg-black/30 text-white border-yellow-400/50 hover:bg-black/50'}
-                ${!isBettingPhase ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-            >
+            <button key={amount} onClick={() => isBettingPhase && setSelectedBetAmount(amount)} className={`px-3 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2 ${selectedBetAmount === amount ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]' : 'bg-black/30 text-white border-yellow-400/50 hover:bg-black/50'} ${!isBettingPhase ? 'opacity-50 cursor-not-allowed' : ''}`}>
               {formatNumber(amount)}
             </button>
           ))}
