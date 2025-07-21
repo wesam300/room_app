@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { User } from 'lucide-react';
 
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25;
@@ -198,7 +197,7 @@ export default function FruityFortunePage() {
   };
   
   if (!isClient) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
@@ -321,5 +320,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
