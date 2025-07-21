@@ -8,14 +8,14 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'cherry', 'watermelon', 'strawberry',
-  'orange', 'timer', 'pear',
-  'lemon', 'grapes', 'apple'
+  'orange', 'cherry', 'watermelon',
+  'lemon', 'timer', 'strawberry',
+  'pear', 'apple', 'grapes'
 ];
 
 // To create the spinning effect
 const SPIN_SEQUENCE: FruitKey[] = [
-    'cherry', 'orange', 'lemon', 'grapes', 'apple', 'pear', 'strawberry', 'watermelon'
+    'orange', 'lemon', 'pear', 'apple', 'grapes', 'strawberry', 'watermelon', 'cherry'
 ];
 
 export default function FruityFortunePage() {
@@ -196,7 +196,7 @@ export default function FruityFortunePage() {
         </div>
       </main>
 
-      <footer className="w-full max-w-sm mt-1 flex flex-col items-center">
+      <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
         <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
@@ -212,7 +212,7 @@ export default function FruityFortunePage() {
           ))}
         </div>
         
-        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
+        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
           <div className="flex gap-2 overflow-hidden flex-row-reverse">
             {history.map((fruitKey, index) => (
