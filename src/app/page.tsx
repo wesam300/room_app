@@ -44,7 +44,7 @@ const determineWinnerForRound = (roundId: number): FruitKey => {
 
 export default function FruityFortunePage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
+  const [balance, setBalance] = useState<number>(0);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
   
@@ -63,25 +63,17 @@ export default function FruityFortunePage() {
       if (savedBalance !== null) {
         setBalance(JSON.parse(savedBalance));
       } else {
-        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
-        setBalance(INITIAL_BALANCE);
+        const newBalance = INITIAL_BALANCE;
+        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(newBalance));
+        setBalance(newBalance);
       }
     } catch (error) {
-      console.error("Failed to load balance from localStorage", error);
+      console.error("Failed to process balance from localStorage", error);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       setBalance(INITIAL_BALANCE);
     }
     setIsLoading(false);
   }, []);
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    const { roundId } = getRoundInfo(Date.now());
-    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
-    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
-    setHistory(pastWinners);
-  }, [isLoading]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -91,6 +83,19 @@ export default function FruityFortunePage() {
       console.error("Failed to save balance to localStorage", error);
     }
   }, [balance, isLoading]);
+  
+  const initializeHistory = useCallback(() => {
+    const { roundId } = getRoundInfo(Date.now());
+    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
+    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    setHistory(pastWinners);
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      initializeHistory();
+    }
+  }, [isLoading, initializeHistory]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -145,7 +150,7 @@ export default function FruityFortunePage() {
 
     const interval = setInterval(() => {
         const now = Date.now();
-        const { roundId, bettingEndTime, spinStartTime, roundEndTime } = getRoundInfo(now);
+        const { roundId, bettingEndTime, spinStartTime } = getRoundInfo(now);
         
         const newIsBettingPhase = now < bettingEndTime;
         
@@ -161,8 +166,9 @@ export default function FruityFortunePage() {
             setTimer(0);
             const winner = determineWinnerForRound(roundId);
             const timeIntoSpin = now - spinStartTime;
-            
-            if (timeIntoSpin < (ROUND_DURATION_S - BETTING_DURATION_S - 4) * 1000) {
+            const spinDuration = (ROUND_DURATION_S - BETTING_DURATION_S - 1) * 1000;
+
+            if (timeIntoSpin < spinDuration) {
                  const spinCount = Math.floor(timeIntoSpin / 100);
                  setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
                  if (winningFruit) setWinningFruit(null);
@@ -174,7 +180,7 @@ export default function FruityFortunePage() {
                 }
             }
         }
-    }, 500);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [isLoading, isBettingPhase, winningFruit, handleRoundEnd]);
@@ -240,9 +246,9 @@ export default function FruityFortunePage() {
                    )}
                    </AnimatePresence>
                    <AnimatePresence>
-                    {isBettingPhase && (
+                    {isBettingPhase && !winningFruit && (
                        <motion.div
-                         key="timer"
+                         key="timer-display"
                          initial={{ opacity: 0 }}
                          animate={{ opacity: 1 }}
                          exit={{ opacity: 0 }}
@@ -309,7 +315,7 @@ export default function FruityFortunePage() {
           <div className="flex flex-grow justify-around items-center">
             {history.map((fruitKey, index) => (
               <div key={`${fruitKey}-${index}`} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
-                 <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} isNew={index === 0 && history.length > 1} />
+                 <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} />
               </div>
             ))}
           </div>
@@ -318,3 +324,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
