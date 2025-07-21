@@ -8,9 +8,9 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'lemon', 'cherry', 'apple',
-  'grapes', 'timer', 'watermelon',
-  'mango', 'pineapple', 'kiwi'
+  'cherry', 'lemon', 'apple',
+  'mango', 'timer', 'watermelon',
+  'grapes', 'pineapple', 'kiwi'
 ];
 
 export default function FruityFortunePage() {
@@ -167,7 +167,7 @@ export default function FruityFortunePage() {
       </main>
 
       <footer className="w-full max-w-sm mt-16 flex flex-col items-center">
-        <div className="flex justify-center gap-1 mb-3 w-full">
+        <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
               key={amount}
