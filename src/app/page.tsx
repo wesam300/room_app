@@ -8,9 +8,9 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'cherry', 'lemon', 'apple',
-  'mango', 'timer', 'watermelon',
-  'grapes', 'pineapple', 'kiwi'
+  'cherry', 'apple', 'lemon',
+  'grapes', 'timer', 'watermelon',
+  'mango', 'pineapple', 'kiwi'
 ];
 
 export default function FruityFortunePage() {
