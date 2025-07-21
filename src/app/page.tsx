@@ -9,9 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'orange', 'cherry',     'watermelon',
-  'lemon',  'timer',      'pear',
-  'grapes', 'apple',      'strawberry'
+  'watermelon', 'cherry',     'orange',
+  'pear',       'timer',      'lemon',
+  'strawberry', 'apple',      'grapes'
 ];
 
 // To create the spinning effect
@@ -136,8 +136,8 @@ export default function FruityFortunePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
       
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
-        <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
-          <span className="text-white font-bold">لعبة الفواكه</span>
+        <div className="bg-black/40 px-4 py-1 rounded-full border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]">
+            <span className="text-yellow-300 font-bold text-sm">كروب وائل</span>
         </div>
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
           <span className="text-yellow-300 font-bold">الرصيد: {formatNumber(balance)}</span>
