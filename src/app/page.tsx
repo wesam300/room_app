@@ -8,7 +8,7 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'cherry', 'apple', 'lemon',
+  'cherry', 'apple', 'apple',
   'grapes', 'timer', 'watermelon',
   'mango', 'pineapple', 'kiwi'
 ];
@@ -141,7 +141,7 @@ export default function FruityFortunePage() {
             const isWinning = winningFruit === fruitKey;
             return (
               <div
-                key={fruit.id}
+                key={`${fruit.id}-${index}`}
                 onClick={() => placeBet(fruitKey)}
                 className={`relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-300 aspect-square
                   ${isWinning ? 'bg-yellow-400 scale-110 shadow-[0_0_25px_#facc15]' : 'bg-black/30'}
@@ -182,7 +182,7 @@ export default function FruityFortunePage() {
           ))}
         </div>
         
-        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between">
+        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
           <div className="flex gap-2 overflow-hidden flex-row-reverse">
             {history.map((fruitKey, index) => (
