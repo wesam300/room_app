@@ -5,13 +5,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { useToast } from "@/hooks/use-toast";
-import { Button } from '@/components/ui/button';
 
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
-const ROUND_DURATION = 25;
+const ROUND_DURATION = 25; 
 const BETTING_DURATION = 20;
 const INITIAL_BALANCE = 100000000;
-const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v3';
+const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v4_stable';
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'orange', 'lemon', 'grapes', 'cherry', 'timer', 'apple', 'watermelon', 'pear', 'strawberry'
@@ -27,13 +26,12 @@ const pseudoRandom = (seed: number) => {
 };
 
 export default function FruityFortunePage() {
-  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
+  const [balance, setBalance] = useState<number>(0);
   const [isClient, setIsClient] = useState(false);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
-  const betsRef = useRef<Record<string, number>>({});
   const [bets, setBets] = useState<Record<string, number>>({});
-  const [currentRoundId, setCurrentRoundId] = useState(0);
   
+  const [currentRoundId, setCurrentRoundId] = useState(0);
   const [timer, setTimer] = useState(BETTING_DURATION);
   const [isBettingPhase, setIsBettingPhase] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -45,21 +43,23 @@ export default function FruityFortunePage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsClient(true);
+    // This effect runs only once on the client to initialize the state from localStorage
     const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
     if (savedBalance !== null) {
       setBalance(JSON.parse(savedBalance));
     } else {
+      setBalance(INITIAL_BALANCE);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
+    setIsClient(true);
   }, []);
-
+  
   useEffect(() => {
+    // This effect syncs the balance to localStorage whenever it changes
     if (isClient) {
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
   }, [balance, isClient]);
-
 
   const getRoundInfo = useCallback(() => {
     const now = Date.now();
@@ -74,7 +74,7 @@ export default function FruityFortunePage() {
       const winnerIndex = Math.floor(pseudoRandom(roundId) * fruitKeys.length);
       return fruitKeys[winnerIndex];
   }, []);
-
+  
   const updateHistory = useCallback((roundIdForHistory: number) => {
       const pastRounds = Array.from({ length: 5 }, (_, i) => roundIdForHistory - 1 - i);
       const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
@@ -82,10 +82,13 @@ export default function FruityFortunePage() {
   }, [determineWinnerForRound]);
 
   useEffect(() => {
-    const { roundId } = getRoundInfo();
-    setCurrentRoundId(roundId);
-    updateHistory(roundId);
-  }, [getRoundInfo, updateHistory]);
+    // Initialize history on first client-side load
+    if (isClient) {
+        const { roundId } = getRoundInfo();
+        setCurrentRoundId(roundId);
+        updateHistory(roundId);
+    }
+  }, [isClient, getRoundInfo, updateHistory]);
 
   const startSpinning = useCallback((roundId: number) => {
     setIsSpinning(true);
@@ -97,7 +100,7 @@ export default function FruityFortunePage() {
     
     const totalSpins = SPIN_SEQUENCE.length * 4; 
     const finalWinnerIndex = SPIN_SEQUENCE.indexOf(winner);
-    const animationDuration = 100;
+    const animationDuration = 100; // ms per highlight change
     let spinCount = 0;
 
     const spinInterval = setInterval(() => {
@@ -110,9 +113,8 @@ export default function FruityFortunePage() {
             setHighlightedFruit(winner);
 
             let winnings = 0;
-            const currentBets = betsRef.current;
-            if (currentBets[winner]) { 
-              winnings = currentBets[winner] * FRUITS[winner].multiplier;
+            if (bets[winner]) { 
+              winnings = bets[winner] * FRUITS[winner].multiplier;
               setBalance(prev => prev + winnings);
             }
             setLastWinnings(winnings);
@@ -121,22 +123,22 @@ export default function FruityFortunePage() {
             updateHistory(roundId + 1);
         }
     }, animationDuration);
-
-  }, [determineWinnerForRound, updateHistory]);
+  }, [bets, determineWinnerForRound, updateHistory]);
 
   useEffect(() => {
+    if (!isClient) return;
+
     const mainLoop = setInterval(() => {
       const { roundId, bettingEndTime } = getRoundInfo();
       const newIsBettingPhase = Date.now() < bettingEndTime;
 
       if (currentRoundId !== roundId) {
         setCurrentRoundId(roundId);
-        betsRef.current = {};
         setBets({});
         setLastWinnings(0); 
         setWinningFruit(null);
         setHighlightedFruit(null);
-        setIsSpinning(false);
+        if (isSpinning) setIsSpinning(false);
         updateHistory(roundId);
       }
       
@@ -156,7 +158,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
+  }, [isClient, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -171,8 +173,7 @@ export default function FruityFortunePage() {
         return;
     }
     
-    const currentBets = betsRef.current;
-    if (Object.keys(currentBets).length >= 6 && !currentBets[fruitId]) {
+    if (Object.keys(bets).length >= 6 && !bets[fruitId]) {
         toast({
           title: "حد الرهان",
           description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
@@ -184,10 +185,11 @@ export default function FruityFortunePage() {
     
     setBalance(prevBalance => prevBalance - selectedBetAmount);
 
-    const newBets = { ...currentBets };
-    newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
-    betsRef.current = newBets;
-    setBets(newBets);
+    setBets(prevBets => {
+        const newBets = { ...prevBets };
+        newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
+        return newBets;
+    });
   };
 
   const formatNumber = (num: number) => {
@@ -197,12 +199,12 @@ export default function FruityFortunePage() {
   };
   
   if (!isClient) {
-    return null;
+    // Render nothing or a loading spinner on the server and during the initial client render
+    return null; 
   }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
-      
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
          <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-2 bg-black/40 px-4 py-1 rounded-full border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]">
@@ -320,3 +322,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
