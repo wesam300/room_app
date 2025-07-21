@@ -10,7 +10,7 @@ const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25; 
 const BETTING_DURATION = 20;
 const INITIAL_BALANCE = 100000000;
-const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v5_stable';
+const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v5_stable_working';
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'orange', 'lemon', 'grapes', 'cherry', 'timer', 'apple', 'watermelon', 'pear', 'strawberry'
@@ -64,7 +64,6 @@ export default function FruityFortunePage() {
   }, [determineWinnerForRound]);
 
   useEffect(() => {
-    // This effect runs only once on the client to initialize the state
     const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
     if (savedBalance !== null) {
       setBalance(JSON.parse(savedBalance));
@@ -81,18 +80,18 @@ export default function FruityFortunePage() {
   }, [getRoundInfo, updateHistory]);
   
   useEffect(() => {
-    // This effect syncs the balance to localStorage whenever it changes
     if (!isLoading) {
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
   }, [balance, isLoading]);
 
-  const startSpinning = useCallback((roundId: number) => {
+  const startSpinning = useCallback(() => {
     setIsSpinning(true);
     setWinningFruit(null);
     setHighlightedFruit(null);
     setLastWinnings(0);
 
+    const { roundId } = getRoundInfo();
     const winner = determineWinnerForRound(roundId);
     
     const totalSpins = SPIN_SEQUENCE.length * 4; 
@@ -109,9 +108,8 @@ export default function FruityFortunePage() {
             setWinningFruit(winner);
             setHighlightedFruit(winner);
 
-            // Calculate winnings and update balance
             let totalWinnings = 0;
-            const currentBets = {...bets}; // Use a snapshot of bets
+            const currentBets = bets; 
             if (currentBets[winner]) { 
               totalWinnings = currentBets[winner] * FRUITS[winner].multiplier;
               setBalance(prev => prev + totalWinnings);
@@ -120,7 +118,6 @@ export default function FruityFortunePage() {
             
             setIsSpinning(false);
             
-            // Wait a moment before starting next round's history update and clearing bets
             setTimeout(() => {
                 const nextRoundId = roundId + 1;
                 updateHistory(nextRoundId);
@@ -129,10 +126,10 @@ export default function FruityFortunePage() {
                 setLastWinnings(0); 
                 setWinningFruit(null);
                 setHighlightedFruit(null);
-            }, 3000); // Wait 3 seconds before next round truly begins
+            }, 3000);
         }
     }, animationDuration);
-  }, [bets, determineWinnerForRound, updateHistory]);
+  }, [getRoundInfo, determineWinnerForRound, updateHistory, bets]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -142,7 +139,6 @@ export default function FruityFortunePage() {
       const newIsBettingPhase = Date.now() < bettingEndTime;
 
       if (currentRoundId !== roundId && !isSpinning) {
-        // A new round has started naturally (time elapsed)
         setCurrentRoundId(roundId);
         setBets({});
         setLastWinnings(0);
@@ -152,8 +148,7 @@ export default function FruityFortunePage() {
       }
       
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
-        // Betting time is over, start spinning
-        startSpinning(roundId);
+        startSpinning();
       }
 
       setIsBettingPhase(newIsBettingPhase);
@@ -341,3 +336,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
