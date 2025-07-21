@@ -103,21 +103,6 @@ export default function FruityFortunePage() {
 
 
   const startSpinning = useCallback((roundId: number) => {
-    const totalBet = Object.values(bets).reduce((sum, amount) => sum + amount, 0);
-    
-    if (totalBet > 0) {
-      if (totalBet > (balance ?? 0)) {
-        toast({
-          title: "رصيد غير كاف",
-          description: "إجمالي رهانك يتجاوز رصيدك الحالي.",
-          variant: "destructive",
-        });
-        // Note: We don't return here, allowing the spin but balance won't be deducted if insufficient
-        // Let's adjust this to deduct only if balance is sufficient.
-      }
-      setBalance(prev => (prev ?? 0) - totalBet);
-    }
-    
     setIsSpinning(true);
     setWinningFruit(null);
     setLastWinnings(0);
@@ -149,15 +134,17 @@ export default function FruityFortunePage() {
         }
     }, animationDuration);
 
-  }, [bets, balance, toast, determineWinnerForRound]);
+  }, [bets, determineWinnerForRound]);
 
 
   useEffect(() => {
     const mainLoop = setInterval(() => {
       const { roundId, bettingEndTime } = getRoundInfo();
+      const newIsBettingPhase = Date.now() < bettingEndTime;
 
       if (currentRoundId !== roundId) {
         // New round has started
+        const oldWinner = determineWinnerForRound(currentRoundId);
         setCurrentRoundId(roundId);
         setBets({});
         setLastWinnings(0); 
@@ -166,12 +153,9 @@ export default function FruityFortunePage() {
         setIsSpinning(false);
         
         // Update history for the new round, showing the winner of the *previous* round as the newest.
-        const newHistory = [determineWinnerForRound(roundId - 1), ...history.slice(0, 4)];
-        setHistory(newHistory);
+        setHistory(prevHistory => [oldWinner, ...prevHistory.slice(0, 4)]);
       }
       
-      const newIsBettingPhase = Date.now() < bettingEndTime;
-
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
         // Betting phase just ended, start spinning
         startSpinning(roundId);
@@ -189,20 +173,26 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound, history]);
+  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound]);
 
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
-    const totalBetAfter = Object.values(bets).reduce((s, a) => s + a, 0) + selectedBetAmount;
-    if (totalBetAfter > (balance ?? 0)) {
+    
+    // Check if balance is sufficient for this single bet
+    if ((balance ?? 0) < selectedBetAmount) {
          toast({
           title: "رصيد غير كاف",
-          description: "لا يمكنك وضع رهان يتجاوز رصيدك.",
+          description: "لا يمكنك وضع هذا الرهان.",
           variant: "destructive",
         });
         return;
     }
+
+    // Deduct from balance immediately
+    setBalance(prev => (prev ?? 0) - selectedBetAmount);
+
+    // Add to bets state
     setBets(prev => {
       const newBets = { ...prev };
       newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
@@ -225,11 +215,7 @@ export default function FruityFortunePage() {
       
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
          <div className="flex items-center gap-2 bg-black/40 px-4 py-1 rounded-full border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="gold" stroke="orange" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="filter drop-shadow-[0_0_3px_gold]">
-                <path d="M12 2L9 9h6l-3-7z"/>
-                <path d="M5 22s1.5-2 5-2 5 2 5 2H5z"/>
-                <path d="M12 12a5 5 0 0 0-5 5h10a5 5 0 0 0-5-5z"/>
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="gold" stroke="orange" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="filter drop-shadow-[0_0_3px_gold]"><path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/><path d="M12 15a3 3 0 0 0-3 3c0 .62.18 1.48 1.21 2.52a4 4 0 0 0 3.58 0c1.03-1.04 1.21-1.9 1.21-2.52a3 3 0 0 0-3-3z"/><path d="M12 2v10m-4.5 3.5.07-.07A4.5 4.5 0 0 1 12 13a4.5 4.5 0 0 1 4.43 2.43l.07.07"/></svg>
             <span className="text-yellow-300 font-bold text-sm">كـروب وائـل🤐</span>
         </div>
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
