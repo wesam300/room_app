@@ -66,6 +66,8 @@ export default function FruityFortunePage() {
         const parsedBalance = JSON.parse(savedBalance);
         if (typeof parsedBalance === 'number') {
            setBalance(parsedBalance);
+        } else {
+           localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
         }
       } else {
         localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
