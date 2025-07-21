@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { useToast } from "@/hooks/use-toast";
@@ -21,11 +21,13 @@ const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
 ];
 
+// This is a simple, deterministic pseudo-random number generator.
 const pseudoRandom = (seed: number) => {
   let x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
 };
 
+// Gets round information based on a stable timestamp
 const getRoundInfo = (time: number) => {
     const roundId = Math.floor(time / (ROUND_DURATION_S * 1000));
     const roundStartTime = roundId * ROUND_DURATION_S * 1000;
@@ -36,6 +38,7 @@ const getRoundInfo = (time: number) => {
     return { roundId, roundStartTime, bettingEndTime, spinStartTime, roundEndTime };
 };
 
+// Determines the winner for a given round ID, making it consistent for everyone.
 const determineWinnerForRound = (roundId: number): FruitKey => {
     const fruitKeys = Object.keys(FRUITS) as FruitKey[];
     const winnerIndex = Math.floor(pseudoRandom(roundId) * fruitKeys.length);
@@ -43,53 +46,74 @@ const determineWinnerForRound = (roundId: number): FruitKey => {
 };
 
 export default function FruityFortunePage() {
+  // State for client-side rendering readiness
   const [isClient, setIsClient] = useState(false);
+  
+  // Game state
   const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
   
+  // Round and UI state
   const [timer, setTimer] = useState(BETTING_DURATION_S);
   const [isBettingPhase, setIsBettingPhase] = useState(true);
-  
   const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
   const [winningFruit, setWinningFruit] = useState<FruitKey | null>(null);
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [lastWinnings, setLastWinnings] = useState(0);
-  const { toast } = useToast();
 
+  // Toast for notifications
+  const { toast } = useToast();
+  
+  // Ref to track if the initial load is done to prevent multiple executions
+  const initialLoadDone = useRef(false);
+
+  // This useEffect runs only once on the client after the component mounts.
+  // It handles all initial setup that requires browser APIs like localStorage.
   useEffect(() => {
-    setIsClient(true);
-    
-    let currentBalance = INITIAL_BALANCE;
+    if (initialLoadDone.current) return;
+    initialLoadDone.current = true;
+
+    // Load balance from localStorage
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
         const parsedBalance = JSON.parse(savedBalance);
-        if (typeof parsedBalance === 'number') {
-           currentBalance = parsedBalance;
+        if (typeof parsedBalance === 'number' && !isNaN(parsedBalance)) {
+           setBalance(parsedBalance);
+        } else {
+           localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
         }
+      } else {
+        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       }
     } catch (error) {
       console.error("Failed to process balance from localStorage", error);
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
-    setBalance(currentBalance);
-    localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(currentBalance));
 
+    // Set initial history
     const { roundId } = getRoundInfo(Date.now());
     const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i).filter(id => id >= 0);
     const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
     setHistory(pastWinners.reverse());
+    
+    // Signal that the client is ready to render the full UI
+    setIsClient(true);
   }, []);
 
+  // Save balance to localStorage whenever it changes
   useEffect(() => {
-    if (!isClient) return;
-    try {
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-    } catch (error) {
-      console.error("Failed to save balance to localStorage", error);
+    if (isClient) {
+      try {
+        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
+      } catch (error) {
+        console.error("Failed to save balance to localStorage", error);
+      }
     }
   }, [balance, isClient]);
-
+  
+  // Place a bet on a fruit
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
 
@@ -114,14 +138,13 @@ export default function FruityFortunePage() {
     }
     
     setBalance(prevBalance => prevBalance - selectedBetAmount);
-
-    setBets(prevBets => {
-        const newBets = { ...prevBets };
-        newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
-        return newBets;
-    });
+    setBets(prevBets => ({
+        ...prevBets,
+        [fruitId]: (prevBets[fruitId] || 0) + selectedBetAmount,
+    }));
   };
 
+  // Memoized round end handler
   const handleRoundEnd = useCallback((winner: FruitKey) => {
     let totalWinnings = 0;
     if (bets[winner]) {
@@ -129,7 +152,8 @@ export default function FruityFortunePage() {
         setBalance(prev => prev + totalWinnings);
     }
     setLastWinnings(totalWinnings);
-
+    
+    // Reset for the next round after a delay
     setTimeout(() => {
         setBets({});
         setWinningFruit(null);
@@ -138,6 +162,7 @@ export default function FruityFortunePage() {
     }, 4000);
   }, [bets]);
 
+  // Main game loop effect
   useEffect(() => {
     if (!isClient) return;
 
@@ -145,13 +170,13 @@ export default function FruityFortunePage() {
         const now = Date.now();
         const { roundId, bettingEndTime, spinStartTime } = getRoundInfo(now);
         
-        const newIsBettingPhase = now < bettingEndTime;
+        const currentPhaseIsBetting = now < bettingEndTime;
         
-        if (isBettingPhase !== newIsBettingPhase) {
-          setIsBettingPhase(newIsBettingPhase);
+        if (isBettingPhase !== currentPhaseIsBetting) {
+          setIsBettingPhase(currentPhaseIsBetting);
         }
 
-        if (newIsBettingPhase) {
+        if (currentPhaseIsBetting) {
             const timeLeft = Math.max(0, Math.floor((bettingEndTime - now) / 1000));
             setTimer(timeLeft);
             if (winningFruit) setWinningFruit(null);
@@ -178,12 +203,14 @@ export default function FruityFortunePage() {
     return () => clearInterval(interval);
   }, [isClient, isBettingPhase, winningFruit, handleRoundEnd]);
 
+  // Number formatting utility
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${Math.floor(num / 1000)}K`;
     return num.toString();
   };
   
+  // Show a loading screen until the client is fully ready
   if (!isClient) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
@@ -192,6 +219,7 @@ export default function FruityFortunePage() {
     );
   }
 
+  // Main component render
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
@@ -317,5 +345,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
