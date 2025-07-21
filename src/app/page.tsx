@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Edit } from 'lucide-react';
 
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
-const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
+const ROUND_DURATION = 25;
 const BETTING_DURATION = 20;
 const INITIAL_BALANCE = 100000000;
 const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v3';
@@ -30,7 +30,6 @@ const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
 ];
 
-// A predictable "random" function based on a seed
 const pseudoRandom = (seed: number) => {
   let x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
@@ -39,11 +38,11 @@ const pseudoRandom = (seed: number) => {
 interface UserProfile {
     id: string;
     name: string;
-    avatar: string; // as Data URL
+    avatar: string;
 }
 
 export default function FruityFortunePage() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [clientLoaded, setClientLoaded] = useState(false);
   const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -67,15 +66,14 @@ export default function FruityFortunePage() {
   const [tempProfileAvatar, setTempProfileAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load balance and profile from localStorage on initial mount
   useEffect(() => {
-    // This effect runs only on the client side.
     try {
-      const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
-
       if (savedProfile) {
-        setUserProfile(JSON.parse(savedProfile));
+        const profile = JSON.parse(savedProfile);
+        setUserProfile(profile);
+        
+        const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
         if (savedBalance !== null) {
           setBalance(JSON.parse(savedBalance));
         } else {
@@ -83,44 +81,37 @@ export default function FruityFortunePage() {
           localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
         }
       } else {
-        // No profile, needs setup. Don't set balance yet.
         setIsProfileModalOpen(true);
       }
     } catch (error) {
       console.error("Error loading from localStorage, resetting state.", error);
-      // If there's an error, reset to a clean state.
       localStorage.removeItem(BALANCE_STORAGE_KEY);
       localStorage.removeItem(PROFILE_STORAGE_KEY);
       setBalance(INITIAL_BALANCE);
       setUserProfile(null);
       setIsProfileModalOpen(true);
     } finally {
-      setIsLoading(false);
+      setClientLoaded(true);
     }
   }, []);
 
-  // Save balance to localStorage whenever it changes
   useEffect(() => {
-    // Don't save during the initial loading phase or if profile isn't set
-    if (!isLoading && userProfile) {
+    if (clientLoaded && userProfile) {
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
-  }, [balance, isLoading, userProfile]);
+  }, [balance, clientLoaded, userProfile]);
 
-  // Save profile to localStorage whenever it changes
-   useEffect(() => {
-    if (userProfile && !isLoading) {
+  useEffect(() => {
+    if (clientLoaded && userProfile) {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
     }
-  }, [userProfile, isLoading]);
-
+  }, [userProfile, clientLoaded]);
 
   const getRoundInfo = useCallback(() => {
     const now = Date.now();
     const roundId = Math.floor(now / (ROUND_DURATION * 1000));
     const roundStartTime = roundId * ROUND_DURATION * 1000;
     const bettingEndTime = roundStartTime + BETTING_DURATION * 1000;
-    
     return { roundId, roundStartTime, bettingEndTime };
   }, []);
   
@@ -136,14 +127,11 @@ export default function FruityFortunePage() {
       setHistory(pastWinners);
   }, [determineWinnerForRound]);
 
-
-  // Initialize component state
   useEffect(() => {
     const { roundId } = getRoundInfo();
     setCurrentRoundId(roundId);
     updateHistory(roundId);
   }, [getRoundInfo, updateHistory]);
-
 
   const startSpinning = useCallback((roundId: number) => {
     setIsSpinning(true);
@@ -155,7 +143,7 @@ export default function FruityFortunePage() {
     
     const totalSpins = SPIN_SEQUENCE.length * 4; 
     const finalWinnerIndex = SPIN_SEQUENCE.indexOf(winner);
-    const animationDuration = 100; // 100ms per highlight
+    const animationDuration = 100;
     let spinCount = 0;
 
     const spinInterval = setInterval(() => {
@@ -176,24 +164,20 @@ export default function FruityFortunePage() {
             setLastWinnings(winnings);
             
             setIsSpinning(false);
-            
-            // Update history for the *next* round, showing this one as the latest.
             updateHistory(roundId + 1);
         }
     }, animationDuration);
 
   }, [determineWinnerForRound, updateHistory]);
 
-
   useEffect(() => {
-    if (isLoading) return; // Don't run the main loop until everything is loaded
+    if (!clientLoaded) return;
 
     const mainLoop = setInterval(() => {
       const { roundId, bettingEndTime } = getRoundInfo();
       const newIsBettingPhase = Date.now() < bettingEndTime;
 
       if (currentRoundId !== roundId) {
-        // New round has started
         setCurrentRoundId(roundId);
         betsRef.current = {};
         setBets({});
@@ -201,13 +185,10 @@ export default function FruityFortunePage() {
         setWinningFruit(null);
         setHighlightedFruit(null);
         setIsSpinning(false);
-        
-        // Update history to reflect the new set of past rounds
         updateHistory(roundId);
       }
       
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
-        // Betting phase just ended, start spinning
         startSpinning(roundId);
       }
 
@@ -223,8 +204,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [isLoading, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
-
+  }, [clientLoaded, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -285,7 +265,6 @@ export default function FruityFortunePage() {
       avatar: tempProfileAvatar,
     };
     setUserProfile(newProfile);
-    // Set initial balance for the new user
     setBalance(INITIAL_BALANCE);
     setIsProfileModalOpen(false);
   };
@@ -296,7 +275,7 @@ export default function FruityFortunePage() {
     return num.toString();
   };
   
-  if (isLoading) {
+  if (!clientLoaded) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white">
             تحميل...
@@ -498,4 +477,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
     
