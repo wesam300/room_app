@@ -61,13 +61,17 @@ export default function FruityFortunePage() {
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
       if (savedBalance !== null) {
-        setBalance(JSON.parse(savedBalance));
+        const parsedBalance = JSON.parse(savedBalance);
+        if (typeof parsedBalance === 'number') {
+            setBalance(parsedBalance);
+        }
       } else {
         localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
       }
     } catch (error) {
       console.error("Failed to load balance, resetting.", error);
       setBalance(INITIAL_BALANCE);
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
     
     const { roundId: currentRoundId } = getRoundInfo(Date.now());
@@ -127,7 +131,7 @@ export default function FruityFortunePage() {
     }, 100);
 
     return () => clearInterval(gameLoop);
-  }, [isClient, bets, winningFruit, balance]); // Added balance to dependencies
+  }, [isClient, bets, winningFruit, balance]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -257,3 +261,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
