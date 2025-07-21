@@ -11,9 +11,9 @@ const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
 const BETTING_DURATION = 20;
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'watermelon', 'cherry',     'orange',
-    'pear',       'timer',      'lemon',
-    'strawberry', 'apple',      'grapes',
+    'orange',     'cherry',     'watermelon',
+    'lemon',      'timer',      'pear',
+    'grapes',     'apple',      'strawberry',
 ];
 
 const SPIN_SEQUENCE: FruitKey[] = [
@@ -137,7 +137,8 @@ export default function FruityFortunePage() {
         setIsSpinning(false);
         
         // Update history for the new round, showing the winner of the *previous* round as the newest.
-        updateHistory(roundId);
+        const newHistory = [determineWinnerForRound(roundId - 1), ...history.slice(0, 4)];
+        setHistory(newHistory);
       }
       
       const newIsBettingPhase = Date.now() < bettingEndTime;
@@ -159,7 +160,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, updateHistory]);
+  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound, history]);
 
 
   const placeBet = (fruitId: FruitKey) => {
