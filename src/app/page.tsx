@@ -22,10 +22,9 @@ const PROFILE_STORAGE_KEY = 'fruityFortuneProfile_v1';
 
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'orange',     'lemon',      'grapes',
-    'cherry',     'timer',      'apple',
-    'watermelon', 'pear',       'strawberry',
+    'orange', 'lemon', 'grapes', 'cherry', 'timer', 'apple', 'watermelon', 'pear', 'strawberry'
 ];
+
 
 const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
@@ -44,11 +43,13 @@ interface UserProfile {
 }
 
 export default function FruityFortunePage() {
-  const [balance, setBalance] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
+  const betsRef = useRef<Record<string, number>>({});
   const [bets, setBets] = useState<Record<string, number>>({});
   const [currentRoundId, setCurrentRoundId] = useState(0);
   
@@ -85,20 +86,22 @@ export default function FruityFortunePage() {
     } catch (error) {
       console.error("Could not load from localStorage", error);
       setBalance(INITIAL_BALANCE);
-      setIsProfileModalOpen(true);
+      setIsProfileModalOpen(true); // Fallback to creating a profile
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
   // Save balance to localStorage whenever it changes
   useEffect(() => {
-    if (balance !== null) {
+    if (!isLoading) {
       try {
         localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
       } catch (error) {
         console.error("Could not save balance to localStorage", error);
       }
     }
-  }, [balance]);
+  }, [balance, isLoading]);
 
   // Save profile to localStorage whenever it changes
    useEffect(() => {
@@ -142,7 +145,7 @@ export default function FruityFortunePage() {
   }, [getRoundInfo, updateHistory]);
 
 
-  const startSpinning = useCallback((roundId: number, currentBets: Record<string, number>) => {
+  const startSpinning = useCallback((roundId: number) => {
     setIsSpinning(true);
     setWinningFruit(null);
     setHighlightedFruit(null);
@@ -165,9 +168,10 @@ export default function FruityFortunePage() {
             setHighlightedFruit(winner);
 
             let winnings = 0;
+            const currentBets = betsRef.current;
             if (currentBets[winner]) { 
               winnings = currentBets[winner] * FRUITS[winner].multiplier;
-              setBalance(prev => (prev ?? 0) + winnings);
+              setBalance(prev => prev + winnings);
             }
             setLastWinnings(winnings);
             
@@ -189,6 +193,7 @@ export default function FruityFortunePage() {
       if (currentRoundId !== roundId) {
         // New round has started
         setCurrentRoundId(roundId);
+        betsRef.current = {};
         setBets({});
         setLastWinnings(0); 
         setWinningFruit(null);
@@ -201,10 +206,7 @@ export default function FruityFortunePage() {
       
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
         // Betting phase just ended, start spinning
-        setBets(currentBets => {
-            startSpinning(roundId, currentBets);
-            return currentBets;
-        });
+        startSpinning(roundId);
       }
 
       setIsBettingPhase(newIsBettingPhase);
@@ -225,7 +227,7 @@ export default function FruityFortunePage() {
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
 
-    if ((balance ?? 0) < selectedBetAmount) {
+    if (balance < selectedBetAmount) {
          toast({
           title: "رصيد غير كاف",
           description: "لا يمكنك وضع هذا الرهان.",
@@ -234,24 +236,24 @@ export default function FruityFortunePage() {
         });
         return;
     }
+    
+    const currentBets = betsRef.current;
+    if (Object.keys(currentBets).length >= 6 && !currentBets[fruitId]) {
+        toast({
+          title: "حد الرهان",
+          description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
+          variant: "destructive",
+          duration: 2000,
+        });
+        return;
+    }
+    
+    setBalance(prevBalance => prevBalance - selectedBetAmount);
 
-    setBets(prevBets => {
-        if (Object.keys(prevBets).length >= 6 && !prevBets[fruitId]) {
-            toast({
-              title: "حد الرهان",
-              description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
-              variant: "destructive",
-              duration: 2000,
-            });
-            return prevBets;
-        }
-        
-        setBalance(prevBalance => (prevBalance ?? 0) - selectedBetAmount);
-
-        const newBets = { ...prevBets };
-        newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
-        return newBets;
-    });
+    const newBets = { ...currentBets };
+    newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
+    betsRef.current = newBets;
+    setBets(newBets);
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,60 +292,63 @@ export default function FruityFortunePage() {
     return num.toString();
   };
   
-  if (balance === null || (isProfileModalOpen && !userProfile)) {
+  if (isLoading) {
     return (
-        <>
-            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white">
-                تحميل...
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white">
+            تحميل...
+        </div>
+    );
+  }
+
+  if (!userProfile) {
+    return (
+      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-gray-900 text-white border-yellow-400" dir="rtl">
+            <DialogHeader>
+                <DialogTitle>إنشاء ملفك الشخصي</DialogTitle>
+                <DialogDescription>
+                    يجب عليك إعداد ملفك الشخصي للمتابعة.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="flex flex-col items-center gap-4">
+                    <Avatar className="h-24 w-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                        <AvatarImage src={tempProfileAvatar ?? undefined} />
+                        <AvatarFallback className="bg-gray-700">
+                            <Edit className="h-8 w-8 text-gray-400" />
+                        </AvatarFallback>
+                    </Avatar>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                        accept="image/*"
+                    />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                        الاسم
+                    </Label>
+                    <Input
+                        id="name"
+                        value={tempProfileName}
+                        onChange={(e) => setTempProfileName(e.target.value)}
+                        className="col-span-3 bg-gray-800 border-yellow-500 text-white"
+                        placeholder="ادخل اسمك"
+                    />
+                </div>
             </div>
-            <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-                <DialogContent className="sm:max-w-[425px] bg-gray-900 text-white border-yellow-400" dir="rtl">
-                    <DialogHeader>
-                        <DialogTitle>إنشاء ملفك الشخصي</DialogTitle>
-                        <DialogDescription>
-                            يجب عليك إعداد ملفك الشخصي للمتابعة.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="flex flex-col items-center gap-4">
-                            <Avatar className="h-24 w-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                                <AvatarImage src={tempProfileAvatar ?? undefined} />
-                                <AvatarFallback className="bg-gray-700">
-                                    <Edit className="h-8 w-8 text-gray-400" />
-                                </AvatarFallback>
-                            </Avatar>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleAvatarChange}
-                                className="hidden"
-                                accept="image/*"
-                            />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="name" className="text-right">
-                                الاسم
-                            </Label>
-                            <Input
-                                id="name"
-                                value={tempProfileName}
-                                onChange={(e) => setTempProfileName(e.target.value)}
-                                className="col-span-3 bg-gray-800 border-yellow-500 text-white"
-                                placeholder="ادخل اسمك"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button
-                            onClick={handleSaveProfile}
-                            className="bg-yellow-400 text-black hover:bg-yellow-500"
-                        >
-                            حفظ
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
+            <DialogFooter>
+                <Button
+                    onClick={handleSaveProfile}
+                    className="bg-yellow-400 text-black hover:bg-yellow-500"
+                >
+                    حفظ
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -489,5 +494,6 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
     
+
+  
