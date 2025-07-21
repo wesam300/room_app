@@ -6,8 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'My App',
-  description: 'A new app generated in Firebase Studio',
+  title: 'Fruity Fortune',
+  description: 'A fun fruit betting game',
 };
 
 export default function RootLayout({
