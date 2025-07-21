@@ -29,9 +29,11 @@ export const FRUITS: Record<FruitKey, Fruit> = {
 interface FruitDisplayProps {
   fruitType: keyof typeof FRUITS;
   size?: 'small' | 'medium' | 'large';
+  showMultiplier?: boolean;
+  isNew?: boolean;
 }
 
-export const FruitDisplay: React.FC<FruitDisplayProps> = ({ fruitType, size = 'medium' }) => {
+export const FruitDisplay: React.FC<FruitDisplayProps> = ({ fruitType, size = 'medium', showMultiplier = true, isNew = false }) => {
   const fruit = FRUITS[fruitType];
   
   const sizeClasses = {
@@ -45,9 +47,15 @@ export const FruitDisplay: React.FC<FruitDisplayProps> = ({ fruitType, size = 'm
       <div className={`${sizeClasses[size]} mb-1`}>
         {fruit.emoji}
       </div>
-      <div className="text-xs text-white opacity-90 font-bold">
-        x{fruit.multiplier}
-      </div>
+      {showMultiplier ? (
+        <div className="text-xs text-white opacity-90 font-bold">
+          x{fruit.multiplier}
+        </div>
+      ) : isNew ? (
+        <div className="text-xs text-yellow-300 border border-yellow-400 rounded-sm px-1 py-0.5" style={{fontSize: '0.6rem'}}>
+          new
+        </div>
+      ) : null}
     </div>
   );
 };

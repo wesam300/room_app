@@ -16,6 +16,7 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
   'grapes',   'apple',      'strawberry',
 ];
 
+
 const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
 ];
@@ -60,8 +61,8 @@ export default function FruityFortunePage() {
   // Initialize history on component mount
   useEffect(() => {
     const { roundId } = getRoundInfo();
-    const pastRounds = Array.from({ length: 10 }, (_, i) => roundId - 1 - i);
-    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i);
+    const pastWinners = pastRounds.map(id => determineWinnerForRound(id)).reverse(); // reverse to have oldest first
     setHistory(pastWinners);
   }, [getRoundInfo, determineWinnerForRound]);
 
@@ -110,7 +111,7 @@ export default function FruityFortunePage() {
             setLastWinnings(winnings);
             
             // Add to history
-            setHistory(prev => [winner, ...prev.slice(0, 14)]);
+            setHistory(prev => [winner, ...prev.slice(0, 4)]);
             setIsSpinning(false);
         }
     }, animationDuration);
@@ -206,7 +207,7 @@ export default function FruityFortunePage() {
                     )}
                   </AnimatePresence>
                    <AnimatePresence>
-                   {!isBettingPhase && lastWinnings === 0 && (
+                   {!isBettingPhase && lastWinnings === 0 && winningFruit && (
                       <div className="flex flex-col items-center justify-center">
                          <div className="text-sm text-yellow-300 mt-1">حظاً موفقاً</div>
                       </div>
@@ -280,9 +281,9 @@ export default function FruityFortunePage() {
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
           <div className="flex gap-2 overflow-hidden flex-row-reverse">
-            {history.slice(0, 10).map((fruitKey, index) => (
+            {history.slice(0, 5).map((fruitKey, index) => (
               <div key={index} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
-                 <FruitDisplay fruitType={fruitKey} size="small" />
+                 <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} isNew={index === 0} />
               </div>
             ))}
           </div>
