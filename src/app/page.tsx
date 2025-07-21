@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +26,7 @@ const pseudoRandom = (seed: number) => {
 };
 
 export default function FruityFortunePage() {
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [isClient, setIsClient] = useState(false);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
@@ -41,25 +41,6 @@ export default function FruityFortunePage() {
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [lastWinnings, setLastWinnings] = useState(0);
   const { toast } = useToast();
-
-  useEffect(() => {
-    // This effect runs only once on the client to initialize the state from localStorage
-    const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
-    if (savedBalance !== null) {
-      setBalance(JSON.parse(savedBalance));
-    } else {
-      setBalance(INITIAL_BALANCE);
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
-    }
-    setIsClient(true);
-  }, []);
-  
-  useEffect(() => {
-    // This effect syncs the balance to localStorage whenever it changes
-    if (isClient) {
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-    }
-  }, [balance, isClient]);
 
   const getRoundInfo = useCallback(() => {
     const now = Date.now();
@@ -82,13 +63,28 @@ export default function FruityFortunePage() {
   }, [determineWinnerForRound]);
 
   useEffect(() => {
-    // Initialize history on first client-side load
-    if (isClient) {
-        const { roundId } = getRoundInfo();
-        setCurrentRoundId(roundId);
-        updateHistory(roundId);
+    // This effect runs only once on the client to initialize the state from localStorage
+    const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
+    if (savedBalance !== null) {
+      setBalance(JSON.parse(savedBalance));
+    } else {
+      setBalance(INITIAL_BALANCE);
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
-  }, [isClient, getRoundInfo, updateHistory]);
+
+    const { roundId } = getRoundInfo();
+    setCurrentRoundId(roundId);
+    updateHistory(roundId);
+    
+    setIsClient(true);
+  }, [getRoundInfo, updateHistory]);
+  
+  useEffect(() => {
+    // This effect syncs the balance to localStorage whenever it changes
+    if (isClient) {
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
+    }
+  }, [balance, isClient]);
 
   const startSpinning = useCallback((roundId: number) => {
     setIsSpinning(true);
@@ -100,7 +96,7 @@ export default function FruityFortunePage() {
     
     const totalSpins = SPIN_SEQUENCE.length * 4; 
     const finalWinnerIndex = SPIN_SEQUENCE.indexOf(winner);
-    const animationDuration = 100; // ms per highlight change
+    const animationDuration = 100;
     let spinCount = 0;
 
     const spinInterval = setInterval(() => {
@@ -112,15 +108,20 @@ export default function FruityFortunePage() {
             setWinningFruit(winner);
             setHighlightedFruit(winner);
 
-            let winnings = 0;
+            // Calculate winnings and update balance
+            let totalWinnings = 0;
             if (bets[winner]) { 
-              winnings = bets[winner] * FRUITS[winner].multiplier;
-              setBalance(prev => prev + winnings);
+              totalWinnings = bets[winner] * FRUITS[winner].multiplier;
+              setBalance(prev => prev + totalWinnings);
             }
-            setLastWinnings(winnings);
+            setLastWinnings(totalWinnings);
             
             setIsSpinning(false);
-            updateHistory(roundId + 1);
+            
+            // Wait a moment before starting next round's history update
+            setTimeout(() => {
+                updateHistory(roundId + 1);
+            }, 1000);
         }
     }, animationDuration);
   }, [bets, determineWinnerForRound, updateHistory]);
@@ -133,6 +134,7 @@ export default function FruityFortunePage() {
       const newIsBettingPhase = Date.now() < bettingEndTime;
 
       if (currentRoundId !== roundId) {
+        // Start a new round
         setCurrentRoundId(roundId);
         setBets({});
         setLastWinnings(0); 
@@ -143,6 +145,7 @@ export default function FruityFortunePage() {
       }
       
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
+        // Betting time is over, start spinning
         startSpinning(roundId);
       }
 
@@ -199,7 +202,7 @@ export default function FruityFortunePage() {
   };
   
   if (!isClient) {
-    // Render nothing or a loading spinner on the server and during the initial client render
+    // Render nothing on the server and during the initial client render to avoid hydration errors
     return null; 
   }
 
@@ -238,9 +241,15 @@ export default function FruityFortunePage() {
                   </AnimatePresence>
                    <AnimatePresence>
                    {!isBettingPhase && lastWinnings === 0 && winningFruit && (
-                      <div className="flex flex-col items-center justify-center">
+                      <motion.div
+                        key="no-win"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex flex-col items-center justify-center"
+                      >
                          <div className="text-sm text-yellow-300 mt-1">حظاً موفقاً</div>
-                      </div>
+                      </motion.div>
                    )}
                    </AnimatePresence>
                    <AnimatePresence>
