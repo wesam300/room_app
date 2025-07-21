@@ -57,6 +57,10 @@ export default function FruityFortunePage() {
 
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
     
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
@@ -64,6 +68,9 @@ export default function FruityFortunePage() {
         const parsedBalance = JSON.parse(savedBalance);
         if (typeof parsedBalance === 'number') {
             setBalance(parsedBalance);
+        } else {
+            setBalance(INITIAL_BALANCE);
+            localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
         }
       } else {
         localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
@@ -77,17 +84,6 @@ export default function FruityFortunePage() {
     const { roundId: currentRoundId } = getRoundInfo(Date.now());
     const pastWinners = Array.from({ length: 5 }, (_, i) => determineWinnerForRound(currentRoundId - 5 + i));
     setHistory(pastWinners);
-
-  }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-    }
-  }, [balance, isClient]);
-  
-  useEffect(() => {
-    if (!isClient) return;
 
     const gameLoop = setInterval(() => {
         const now = Date.now();
@@ -118,10 +114,17 @@ export default function FruityFortunePage() {
                     let totalWinnings = 0;
                     if (bets[winner]) {
                         totalWinnings = bets[winner] * FRUITS[winner].multiplier;
-                        setBalance(prev => prev + totalWinnings);
+                        setBalance(prev => {
+                            const newBalance = prev + totalWinnings;
+                            localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(newBalance));
+                            return newBalance;
+                        });
                     }
                     setLastWinnings(totalWinnings);
-                    setHistory(prev => [winner, ...prev.slice(0, 4)]);
+                    setHistory(prev => {
+                        const newHistory = [winner, ...prev.slice(0, 4)];
+                        return newHistory;
+                    });
                 }
             } else {
                 const spinCount = Math.floor(timeIntoSpin / 100);
@@ -131,7 +134,7 @@ export default function FruityFortunePage() {
     }, 100);
 
     return () => clearInterval(gameLoop);
-  }, [isClient, bets, winningFruit, balance]);
+  }, [isClient]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -146,7 +149,10 @@ export default function FruityFortunePage() {
         return;
     }
     
-    setBalance(prevBalance => prevBalance - selectedBetAmount);
+    const newBalance = balance - selectedBetAmount;
+    setBalance(newBalance);
+    localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(newBalance));
+    
     setBets(prevBets => ({
         ...prevBets,
         [fruitId]: (prevBets[fruitId] || 0) + selectedBetAmount,
@@ -154,6 +160,7 @@ export default function FruityFortunePage() {
   };
 
   const formatNumber = (num: number) => {
+    if (!isClient) return '...';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${Math.floor(num / 1000)}K`;
     return num.toString();
@@ -261,5 +268,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
