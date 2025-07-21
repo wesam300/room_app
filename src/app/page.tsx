@@ -6,25 +6,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Edit } from 'lucide-react';
+import { User } from 'lucide-react';
 
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25;
 const BETTING_DURATION = 20;
 const INITIAL_BALANCE = 100000000;
 const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v3';
-const PROFILE_STORAGE_KEY = 'fruityFortuneProfile_v1';
-
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'orange', 'lemon', 'grapes', 'cherry', 'timer', 'apple', 'watermelon', 'pear', 'strawberry'
 ];
-
 
 const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
@@ -35,18 +27,8 @@ const pseudoRandom = (seed: number) => {
   return x - Math.floor(x);
 };
 
-interface UserProfile {
-    id: string;
-    name: string;
-    avatar: string;
-}
-
 export default function FruityFortunePage() {
-  const [clientLoaded, setClientLoaded] = useState(false);
   const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const betsRef = useRef<Record<string, number>>({});
   const [bets, setBets] = useState<Record<string, number>>({});
@@ -62,50 +44,19 @@ export default function FruityFortunePage() {
   const [lastWinnings, setLastWinnings] = useState(0);
   const { toast } = useToast();
 
-  const [tempProfileName, setTempProfileName] = useState("");
-  const [tempProfileAvatar, setTempProfileAvatar] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
-    try {
-      const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (savedProfile) {
-        const profile = JSON.parse(savedProfile);
-        setUserProfile(profile);
-        
-        const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
-        if (savedBalance !== null) {
-          setBalance(JSON.parse(savedBalance));
-        } else {
-          setBalance(INITIAL_BALANCE);
-          localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
-        }
-      } else {
-        setIsProfileModalOpen(true);
-      }
-    } catch (error) {
-      console.error("Error loading from localStorage, resetting state.", error);
-      localStorage.removeItem(BALANCE_STORAGE_KEY);
-      localStorage.removeItem(PROFILE_STORAGE_KEY);
-      setBalance(INITIAL_BALANCE);
-      setUserProfile(null);
-      setIsProfileModalOpen(true);
-    } finally {
-      setClientLoaded(true);
+    const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
+    if (savedBalance !== null) {
+      setBalance(JSON.parse(savedBalance));
+    } else {
+      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
   }, []);
 
   useEffect(() => {
-    if (clientLoaded && userProfile) {
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
-    }
-  }, [balance, clientLoaded, userProfile]);
+    localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
+  }, [balance]);
 
-  useEffect(() => {
-    if (clientLoaded && userProfile) {
-      localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
-    }
-  }, [userProfile, clientLoaded]);
 
   const getRoundInfo = useCallback(() => {
     const now = Date.now();
@@ -168,11 +119,9 @@ export default function FruityFortunePage() {
         }
     }, animationDuration);
 
-  }, [determineWinnerForRound, updateHistory]);
+  }, [determineWinnerForRound, updateHistory, balance]);
 
   useEffect(() => {
-    if (!clientLoaded) return;
-
     const mainLoop = setInterval(() => {
       const { roundId, bettingEndTime } = getRoundInfo();
       const newIsBettingPhase = Date.now() < bettingEndTime;
@@ -204,7 +153,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [clientLoaded, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
+  }, [getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -238,130 +187,17 @@ export default function FruityFortunePage() {
     setBets(newBets);
   };
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setTempProfileAvatar(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSaveProfile = () => {
-    if (!tempProfileName.trim() || !tempProfileAvatar) {
-      toast({
-        title: "بيانات غير مكتملة",
-        description: "الرجاء إدخال اسمك واختيار صورة.",
-        variant: "destructive",
-        duration: 2000,
-      });
-      return;
-    }
-    const newProfile: UserProfile = {
-      id: String(Math.floor(100000 + Math.random() * 900000)),
-      name: tempProfileName,
-      avatar: tempProfileAvatar,
-    };
-    setUserProfile(newProfile);
-    setBalance(INITIAL_BALANCE);
-    setIsProfileModalOpen(false);
-  };
-
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${Math.floor(num / 1000)}K`;
     return num.toString();
   };
   
-  if (!clientLoaded) {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white">
-            تحميل...
-        </div>
-    );
-  }
-
-  if (isProfileModalOpen) {
-    return (
-      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-gray-900 text-white border-yellow-400" dir="rtl">
-            <DialogHeader>
-                <DialogTitle>إنشاء ملفك الشخصي</DialogTitle>
-                <DialogDescription>
-                    يجب عليك إعداد ملفك الشخصي للمتابعة.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="flex flex-col items-center gap-4">
-                    <Avatar className="h-24 w-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                        <AvatarImage src={tempProfileAvatar ?? undefined} />
-                        <AvatarFallback className="bg-gray-700">
-                            <Edit className="h-8 w-8 text-gray-400" />
-                        </AvatarFallback>
-                    </Avatar>
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleAvatarChange}
-                        className="hidden"
-                        accept="image/*"
-                    />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                        الاسم
-                    </Label>
-                    <Input
-                        id="name"
-                        value={tempProfileName}
-                        onChange={(e) => setTempProfileName(e.target.value)}
-                        className="col-span-3 bg-gray-800 border-yellow-500 text-white"
-                        placeholder="ادخل اسمك"
-                    />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button
-                    onClick={handleSaveProfile}
-                    className="bg-yellow-400 text-black hover:bg-yellow-500"
-                >
-                    حفظ
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
       
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
          <div className="flex flex-col items-center gap-1">
-            {userProfile && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Avatar className="h-10 w-10 cursor-pointer border-2 border-yellow-400">
-                    <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                    <AvatarFallback><User /></AvatarFallback>
-                  </Avatar>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto bg-black/80 border-yellow-400 text-white" dir="rtl">
-                  <div className="flex flex-col items-center gap-2 p-2">
-                    <Avatar className="h-16 w-16">
-                      <AvatarImage src={userProfile.avatar} alt={userProfile.name} />
-                      <AvatarFallback><User /></AvatarFallback>
-                    </Avatar>
-                    <div className="text-center">
-                        <p className="font-bold text-lg">{userProfile.name}</p>
-                        <p className="text-sm text-yellow-300">ID: {userProfile.id}</p>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
             <div className="flex items-center gap-2 bg-black/40 px-4 py-1 rounded-full border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="gold" stroke="orange" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="filter drop-shadow-[0_0_3px_gold]"><path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/><path d="M12 15a3 3 0 0 0-3 3c0 .62.18 1.48 1.21 2.52a4 4 0 0 0 3.58 0c1.03-1.04 1.21-1.9 1.21-2.52a3 3 0 0 0-3-3z"/><path d="M12 2v10m-4.5 3.5.07-.07A4.5 4.5 0 0 1 12 13a4.5 4.5 0 0 1 4.43 2.43l.07.07"/></svg>
                 <span className="text-yellow-300 font-bold text-sm">كـروب وائـل🤐</span>
@@ -477,5 +313,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
