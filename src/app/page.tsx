@@ -11,11 +11,10 @@ const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
 const BETTING_DURATION = 20;
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'orange',   'cherry',     'watermelon',
-  'lemon',    'timer',      'pear',
-  'grapes',   'apple',      'strawberry',
+    'watermelon', 'cherry',     'orange',
+    'pear',       'timer',      'lemon',
+    'strawberry', 'apple',      'grapes',
 ];
-
 
 const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
@@ -58,27 +57,33 @@ export default function FruityFortunePage() {
       return fruitKeys[winnerIndex];
   }, []);
 
-  // Initialize history on component mount
+  const updateHistory = useCallback((currentRoundId: number) => {
+    const pastRounds = Array.from({ length: 5 }, (_, i) => currentRoundId - 1 - i);
+    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    setHistory(pastWinners);
+  }, [determineWinnerForRound]);
+
+
+  // Initialize component state
   useEffect(() => {
     const { roundId } = getRoundInfo();
-    const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i);
-    const pastWinners = pastRounds.map(id => determineWinnerForRound(id)).reverse(); // reverse to have oldest first
-    setHistory(pastWinners);
-  }, [getRoundInfo, determineWinnerForRound]);
+    setCurrentRoundId(roundId);
+    updateHistory(roundId);
+  }, [getRoundInfo, updateHistory]);
 
 
   const startSpinning = useCallback((roundId: number) => {
     const totalBet = Object.values(bets).reduce((sum, amount) => sum + amount, 0);
     
-    if (totalBet > balance) {
-       toast({
-         title: "رصيد غير كاف",
-         description: "إجمالي رهانك يتجاوز رصيدك الحالي.",
-         variant: "destructive",
-       });
-       setBalance(prev => prev - totalBet); // still deduct if they bet over
-    } else {
-       setBalance(prev => prev - totalBet);
+    if (totalBet > 0) {
+      if (totalBet > balance) {
+        toast({
+          title: "رصيد غير كاف",
+          description: "إجمالي رهانك يتجاوز رصيدك الحالي.",
+          variant: "destructive",
+        });
+      }
+      setBalance(prev => prev - totalBet);
     }
     
     setIsSpinning(true);
@@ -102,16 +107,15 @@ export default function FruityFortunePage() {
             setHighlightedFruit(winner);
 
             let winnings = 0;
-            // Grant winnings regardless of whether the bet was over the balance,
-            // as the balance is deducted anyway.
             if (bets[winner]) { 
               winnings = bets[winner] * FRUITS[winner].multiplier;
               setBalance(prev => prev + winnings);
             }
             setLastWinnings(winnings);
             
-            // Add to history
-            setHistory(prev => [winner, ...prev.slice(0, 4)]);
+            // The history will be updated when the next round starts.
+            // This ensures the "new" tag is on the absolute last winner.
+            
             setIsSpinning(false);
         }
     }, animationDuration);
@@ -127,15 +131,13 @@ export default function FruityFortunePage() {
         // New round has started
         setCurrentRoundId(roundId);
         setBets({});
-        setLastWinnings(0); // Clear winnings from previous round
+        setLastWinnings(0); 
         setWinningFruit(null);
         setHighlightedFruit(null);
         setIsSpinning(false);
         
-        // Update history for the new round
-        const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i);
-        const pastWinners = pastRounds.map(id => determineWinnerForRound(id)).reverse();
-        setHistory(pastWinners);
+        // Update history for the new round, showing the winner of the *previous* round as the newest.
+        updateHistory(roundId);
       }
       
       const newIsBettingPhase = Date.now() < bettingEndTime;
@@ -157,7 +159,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound]);
+  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, updateHistory]);
 
 
   const placeBet = (fruitId: FruitKey) => {
@@ -285,7 +287,7 @@ export default function FruityFortunePage() {
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
-          <div className="flex flex-grow justify-around items-center flex-row-reverse">
+          <div className="flex flex-grow justify-around items-center">
             {history.slice(0, 5).map((fruitKey, index) => (
               <div key={index} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
                  <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} isNew={index === 0} />
