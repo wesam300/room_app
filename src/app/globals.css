@@ -5,17 +5,17 @@
 
 @layer base {
   :root {
-    --background: 315 94% 12%;
-    --foreground: 0 0% 98%;
+    --background: 263 94% 12%; /* Dark purple */
+    --foreground: 0 0% 98%; /* White text */
 
-    --card: 315 94% 12%;
+    --card: 263 94% 12%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 315 94% 12%;
+    --popover: 263 94% 12%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 48 93% 58%;
-    --primary-foreground: 315 94% 12%;
+    --primary: 48 93% 58%; /* Gold/Yellow */
+    --primary-foreground: 263 94% 12%; /* Dark purple for text on primary */
 
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
@@ -23,16 +23,16 @@
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 240 3.7% 15.9%;
+    --accent: 263 70% 30%; /* Lighter purple for hover */
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 48 93% 58%;
+    --border: 48 93% 58%; /* Gold/Yellow border */
     --input: 240 3.7% 15.9%;
-    --ring: 48 93% 58%;
-    --radius: 0.5rem;
+    --ring: 48 93% 58%; /* Gold/Yellow ring */
+    --radius: 0.75rem; /* More rounded corners */
   }
 }
 
