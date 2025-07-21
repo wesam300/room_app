@@ -11,9 +11,15 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
 ];
 const ALL_FRUITS: FruitKey[] = Object.keys(FRUITS) as FruitKey[];
 
+function formatNumber(num: number) {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${Math.floor(num / 1000)}K`;
+    return num.toString();
+}
+
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
-  const [balance, setBalance] = useState(0);
+  const [balance, setBalance] = useState(100000000);
   const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
   const [timer, setTimer] = useState(20);
   const [history, setHistory] = useState<FruitKey[]>([]);
@@ -24,33 +30,18 @@ export default function FruityFortunePage() {
   useEffect(() => {
     setIsClient(true);
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
-    setBalance(savedBalance ? parseInt(savedBalance, 10) : 100000000);
-    
+    if (savedBalance) {
+        setBalance(parseInt(savedBalance, 10));
+    }
     const initialHistory = Array.from({ length: 5 }, () => ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)]);
     setHistory(initialHistory);
   }, []);
 
   useEffect(() => {
-    if (!isClient) return;
-    localStorage.setItem('fruityFortuneBalance', balance.toString());
-  }, [balance, isClient]);
-
-  const placeBet = (fruit: FruitKey) => {
-    if (timer > 3 && balance >= activeBet) {
-      setBalance(prev => prev - activeBet);
-      setBets(prev => ({
-        ...prev,
-        [fruit]: (prev[fruit] || 0) + activeBet,
-      }));
+    if (isClient) {
+      localStorage.setItem('fruityFortuneBalance', balance.toString());
     }
-  };
-
-  const formatNumber = (num: number) => {
-    if (!isClient) return '...';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${Math.floor(num / 1000)}K`;
-    return num.toString();
-  };
+  }, [balance, isClient]);
 
   const handleRoundEnd = useCallback(() => {
     setIsSpinning(true);
@@ -75,7 +66,7 @@ export default function FruityFortunePage() {
   useEffect(() => {
     if (!isClient) return;
 
-    if (timer === 3) {
+    if (timer === 3 && !isSpinning) {
       handleRoundEnd();
     }
 
@@ -87,6 +78,16 @@ export default function FruityFortunePage() {
 
     return () => clearInterval(interval);
   }, [timer, isClient, isSpinning, handleRoundEnd]);
+
+  const placeBet = (fruit: FruitKey) => {
+    if (timer > 3 && balance >= activeBet && !isSpinning) {
+      setBalance(prev => prev - activeBet);
+      setBets(prev => ({
+        ...prev,
+        [fruit]: (prev[fruit] || 0) + activeBet,
+      }));
+    }
+  };
 
   if (!isClient) {
     return (
@@ -183,5 +184,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
