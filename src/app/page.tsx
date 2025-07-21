@@ -9,8 +9,8 @@ const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
   'cherry', 'lemon', 'apple',
-  'grapes', 'timer', 'watermelon',
-  'mango', 'pineapple', 'kiwi'
+  'mango', 'timer', 'watermelon',
+  'grapes', 'pineapple', 'kiwi'
 ];
 
 export default function FruityFortunePage() {
@@ -167,7 +167,7 @@ export default function FruityFortunePage() {
       </main>
 
       <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
-        <div className="flex justify-center gap-1 mb-4 w-full">
+        <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map(amount => (
             <button
               key={amount}
@@ -182,7 +182,7 @@ export default function FruityFortunePage() {
           ))}
         </div>
         
-        <div className="mt-4 bg-black/30 w-full p-2 rounded-full flex items-center justify-between">
+        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
           <div className="flex gap-2 overflow-hidden flex-row-reverse">
             {history.map((fruitKey, index) => (
