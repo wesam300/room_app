@@ -11,9 +11,9 @@ const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
 const BETTING_DURATION = 20;
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'orange', 'cherry', 'watermelon',
-  'lemon', 'timer', 'pear',
-  'grapes', 'apple', 'strawberry'
+  'orange',   'cherry',     'watermelon',
+  'lemon',    'timer',      'pear',
+  'grapes',   'apple',      'strawberry',
 ];
 
 const SPIN_SEQUENCE: FruitKey[] = [
@@ -46,20 +46,24 @@ export default function FruityFortunePage() {
     const now = Date.now();
     const roundId = Math.floor(now / (ROUND_DURATION * 1000));
     const roundStartTime = roundId * ROUND_DURATION * 1000;
-    const roundEndTime = roundStartTime + ROUND_DURATION * 1000;
     const bettingEndTime = roundStartTime + BETTING_DURATION * 1000;
-
-    const secondsIntoRound = (now - roundStartTime) / 1000;
     
-    return { roundId, roundStartTime, roundEndTime, bettingEndTime, secondsIntoRound };
+    return { roundId, roundStartTime, bettingEndTime };
   }, []);
   
   const determineWinnerForRound = useCallback((roundId: number): FruitKey => {
       const fruitKeys = Object.keys(FRUITS) as FruitKey[];
-      // Use a predictable pseudo-random generator based on the round ID
       const winnerIndex = Math.floor(pseudoRandom(roundId) * fruitKeys.length);
       return fruitKeys[winnerIndex];
   }, []);
+
+  // Initialize history on component mount
+  useEffect(() => {
+    const { roundId } = getRoundInfo();
+    const pastRounds = Array.from({ length: 10 }, (_, i) => roundId - 1 - i);
+    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    setHistory(pastWinners);
+  }, [getRoundInfo, determineWinnerForRound]);
 
 
   const startSpinning = useCallback((roundId: number) => {
@@ -71,7 +75,7 @@ export default function FruityFortunePage() {
          description: "إجمالي رهانك يتجاوز رصيدك الحالي.",
          variant: "destructive",
        });
-       // Don't deduct balance, but let the spin happen visually
+       setBalance(prev => prev - totalBet); // still deduct if they bet over
     } else {
        setBalance(prev => prev - totalBet);
     }
@@ -97,37 +101,44 @@ export default function FruityFortunePage() {
             setHighlightedFruit(winner);
 
             let winnings = 0;
-            if (bets[winner] && totalBet <= balance) { // Only grant winnings if balance was sufficient
+            // Grant winnings regardless of whether the bet was over the balance,
+            // as the balance is deducted anyway.
+            if (bets[winner]) { 
               winnings = bets[winner] * FRUITS[winner].multiplier;
               setBalance(prev => prev + winnings);
             }
             setLastWinnings(winnings);
             
-            // Only add to history if it's a new winner
-            setHistory(prev => (prev[0] !== winner ? [winner, ...prev.slice(0, 9)] : prev));
+            // Add to history
+            setHistory(prev => [winner, ...prev.slice(0, 14)]);
+            setIsSpinning(false);
         }
     }, animationDuration);
-
-    return () => clearInterval(spinInterval);
 
   }, [bets, balance, toast, determineWinnerForRound]);
 
 
   useEffect(() => {
     const mainLoop = setInterval(() => {
-      const { roundId, bettingEndTime, secondsIntoRound } = getRoundInfo();
+      const { roundId, bettingEndTime } = getRoundInfo();
 
       if (currentRoundId !== roundId) {
         // New round has started
         setCurrentRoundId(roundId);
         setBets({});
-        setLastWinnings(0);
+        setLastWinnings(0); // Clear winnings from previous round
         setWinningFruit(null);
         setHighlightedFruit(null);
         setIsSpinning(false);
       }
       
       const newIsBettingPhase = Date.now() < bettingEndTime;
+
+      if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
+        // Betting phase just ended, start spinning
+        startSpinning(roundId);
+      }
+
       setIsBettingPhase(newIsBettingPhase);
 
       if (newIsBettingPhase) {
@@ -135,15 +146,12 @@ export default function FruityFortunePage() {
         setTimer(timeLeft);
       } else {
         setTimer(0);
-        if (!isSpinning && currentRoundId === roundId) { // Check to prevent multiple triggers
-           startSpinning(roundId);
-        }
       }
 
-    }, 1000);
+    }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId]);
+  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase]);
 
 
   const placeBet = (fruitId: FruitKey) => {
@@ -185,7 +193,7 @@ export default function FruityFortunePage() {
               return (
                 <div key="timer" className="relative flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900 rounded-2xl border-2 border-yellow-400 shadow-[inset_0_0_15px_rgba(255,215,0,0.5)] aspect-square">
                   <AnimatePresence>
-                    {lastWinnings > 0 && (
+                    {lastWinnings > 0 && !isBettingPhase && (
                        <motion.div
                          key="winnings"
                          initial={{ opacity: 0, y: -50, scale: 0.5 }}
@@ -282,6 +290,5 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
-}
 
     
