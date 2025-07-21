@@ -4,8 +4,8 @@ export type FruitKey = 'cherry' | 'lemon' | 'apple' | 'watermelon' | 'grapes' | 
 
 interface Fruit {
   id: FruitKey;
-  emoji: string;
   name: string;
+  emoji: string;
   multiplier: number;
 }
 
