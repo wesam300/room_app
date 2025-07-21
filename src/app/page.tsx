@@ -10,7 +10,7 @@ const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25; 
 const BETTING_DURATION = 20;
 const INITIAL_BALANCE = 100000000;
-const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v4_stable';
+const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v5_stable';
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'orange', 'lemon', 'grapes', 'cherry', 'timer', 'apple', 'watermelon', 'pear', 'strawberry'
@@ -27,7 +27,6 @@ const pseudoRandom = (seed: number) => {
 
 export default function FruityFortunePage() {
   const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
-  const [isClient, setIsClient] = useState(false);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
   
@@ -41,6 +40,8 @@ export default function FruityFortunePage() {
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [lastWinnings, setLastWinnings] = useState(0);
   const { toast } = useToast();
+
+  const [isLoading, setIsLoading] = useState(true);
 
   const getRoundInfo = useCallback(() => {
     const now = Date.now();
@@ -63,28 +64,28 @@ export default function FruityFortunePage() {
   }, [determineWinnerForRound]);
 
   useEffect(() => {
-    // This effect runs only once on the client to initialize the state from localStorage
+    // This effect runs only once on the client to initialize the state
     const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
     if (savedBalance !== null) {
       setBalance(JSON.parse(savedBalance));
     } else {
-      setBalance(INITIAL_BALANCE);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
+      setBalance(INITIAL_BALANCE);
     }
 
     const { roundId } = getRoundInfo();
     setCurrentRoundId(roundId);
     updateHistory(roundId);
     
-    setIsClient(true);
+    setIsLoading(false);
   }, [getRoundInfo, updateHistory]);
   
   useEffect(() => {
     // This effect syncs the balance to localStorage whenever it changes
-    if (isClient) {
+    if (!isLoading) {
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
-  }, [balance, isClient]);
+  }, [balance, isLoading]);
 
   const startSpinning = useCallback((roundId: number) => {
     setIsSpinning(true);
@@ -110,37 +111,43 @@ export default function FruityFortunePage() {
 
             // Calculate winnings and update balance
             let totalWinnings = 0;
-            if (bets[winner]) { 
-              totalWinnings = bets[winner] * FRUITS[winner].multiplier;
+            const currentBets = {...bets}; // Use a snapshot of bets
+            if (currentBets[winner]) { 
+              totalWinnings = currentBets[winner] * FRUITS[winner].multiplier;
               setBalance(prev => prev + totalWinnings);
             }
             setLastWinnings(totalWinnings);
             
             setIsSpinning(false);
             
-            // Wait a moment before starting next round's history update
+            // Wait a moment before starting next round's history update and clearing bets
             setTimeout(() => {
-                updateHistory(roundId + 1);
-            }, 1000);
+                const nextRoundId = roundId + 1;
+                updateHistory(nextRoundId);
+                setCurrentRoundId(nextRoundId);
+                setBets({});
+                setLastWinnings(0); 
+                setWinningFruit(null);
+                setHighlightedFruit(null);
+            }, 3000); // Wait 3 seconds before next round truly begins
         }
     }, animationDuration);
   }, [bets, determineWinnerForRound, updateHistory]);
 
   useEffect(() => {
-    if (!isClient) return;
+    if (isLoading) return;
 
     const mainLoop = setInterval(() => {
       const { roundId, bettingEndTime } = getRoundInfo();
       const newIsBettingPhase = Date.now() < bettingEndTime;
 
-      if (currentRoundId !== roundId) {
-        // Start a new round
+      if (currentRoundId !== roundId && !isSpinning) {
+        // A new round has started naturally (time elapsed)
         setCurrentRoundId(roundId);
         setBets({});
-        setLastWinnings(0); 
+        setLastWinnings(0);
         setWinningFruit(null);
         setHighlightedFruit(null);
-        if (isSpinning) setIsSpinning(false);
         updateHistory(roundId);
       }
       
@@ -161,7 +168,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [isClient, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
+  }, [isLoading, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
@@ -201,9 +208,12 @@ export default function FruityFortunePage() {
     return num.toString();
   };
   
-  if (!isClient) {
-    // Render nothing on the server and during the initial client render to avoid hydration errors
-    return null; 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
+        <div className="text-2xl font-bold">...تحميل اللعبة</div>
+      </div>
+    );
   }
 
   return (
@@ -331,5 +341,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
-    
