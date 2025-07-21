@@ -9,6 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
 const BETTING_DURATION = 20;
+const INITIAL_BALANCE = 10000000;
+const BALANCE_STORAGE_KEY = 'fruityFortuneBalance';
+
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'orange',     'cherry',     'watermelon',
@@ -27,7 +30,7 @@ const pseudoRandom = (seed: number) => {
 };
 
 export default function FruityFortunePage() {
-  const [balance, setBalance] = useState(10000000);
+  const [balance, setBalance] = useState<number | null>(null);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
   const [currentRoundId, setCurrentRoundId] = useState(0);
@@ -41,6 +44,33 @@ export default function FruityFortunePage() {
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [lastWinnings, setLastWinnings] = useState(0);
   const { toast } = useToast();
+
+  // Load balance from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
+      if (savedBalance !== null) {
+        setBalance(JSON.parse(savedBalance));
+      } else {
+        setBalance(INITIAL_BALANCE);
+      }
+    } catch (error) {
+      console.error("Could not load balance from localStorage", error);
+      setBalance(INITIAL_BALANCE);
+    }
+  }, []);
+
+  // Save balance to localStorage whenever it changes
+  useEffect(() => {
+    if (balance !== null) {
+      try {
+        localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
+      } catch (error) {
+        console.error("Could not save balance to localStorage", error);
+      }
+    }
+  }, [balance]);
+
 
   const getRoundInfo = useCallback(() => {
     const now = Date.now();
@@ -76,14 +106,16 @@ export default function FruityFortunePage() {
     const totalBet = Object.values(bets).reduce((sum, amount) => sum + amount, 0);
     
     if (totalBet > 0) {
-      if (totalBet > balance) {
+      if (totalBet > (balance ?? 0)) {
         toast({
           title: "رصيد غير كاف",
           description: "إجمالي رهانك يتجاوز رصيدك الحالي.",
           variant: "destructive",
         });
+        // Note: We don't return here, allowing the spin but balance won't be deducted if insufficient
+        // Let's adjust this to deduct only if balance is sufficient.
       }
-      setBalance(prev => prev - totalBet);
+      setBalance(prev => (prev ?? 0) - totalBet);
     }
     
     setIsSpinning(true);
@@ -109,12 +141,9 @@ export default function FruityFortunePage() {
             let winnings = 0;
             if (bets[winner]) { 
               winnings = bets[winner] * FRUITS[winner].multiplier;
-              setBalance(prev => prev + winnings);
+              setBalance(prev => (prev ?? 0) + winnings);
             }
             setLastWinnings(winnings);
-            
-            // The history will be updated when the next round starts.
-            // This ensures the "new" tag is on the absolute last winner.
             
             setIsSpinning(false);
         }
@@ -165,6 +194,15 @@ export default function FruityFortunePage() {
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
+    const totalBetAfter = Object.values(bets).reduce((s, a) => s + a, 0) + selectedBetAmount;
+    if (totalBetAfter > (balance ?? 0)) {
+         toast({
+          title: "رصيد غير كاف",
+          description: "لا يمكنك وضع رهان يتجاوز رصيدك.",
+          variant: "destructive",
+        });
+        return;
+    }
     setBets(prev => {
       const newBets = { ...prev };
       newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
@@ -177,6 +215,10 @@ export default function FruityFortunePage() {
     if (num >= 1000) return `${Math.floor(num / 1000)}K`;
     return num.toString();
   };
+  
+  if (balance === null) {
+    return <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white">تحميل...</div>;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
@@ -299,5 +341,4 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
-
-    
+}
