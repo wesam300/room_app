@@ -90,7 +90,7 @@ export default function FruityFortunePage() {
   const updateHistory = useCallback((currentRoundIdForHistory: number) => {
     const pastRounds = Array.from({ length: 5 }, (_, i) => currentRoundIdForHistory - 1 - i);
     const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
-    setHistory(pastWinners);
+    setHistory(pastWinners.reverse());
   }, [determineWinnerForRound]);
 
 
@@ -102,7 +102,7 @@ export default function FruityFortunePage() {
   }, [getRoundInfo, updateHistory]);
 
 
-  const startSpinning = useCallback((roundId: number) => {
+  const startSpinning = useCallback((roundId: number, currentBets: Record<string, number>) => {
     setIsSpinning(true);
     setWinningFruit(null);
     setHighlightedFruit(null);
@@ -125,8 +125,8 @@ export default function FruityFortunePage() {
             setHighlightedFruit(winner);
 
             let winnings = 0;
-            if (bets[winner]) { 
-              winnings = bets[winner] * FRUITS[winner].multiplier;
+            if (currentBets[winner]) { 
+              winnings = currentBets[winner] * FRUITS[winner].multiplier;
               setBalance(prev => (prev ?? 0) + winnings);
             }
             setLastWinnings(winnings);
@@ -135,7 +135,7 @@ export default function FruityFortunePage() {
         }
     }, animationDuration);
 
-  }, [bets, determineWinnerForRound]);
+  }, [determineWinnerForRound]);
 
 
   useEffect(() => {
@@ -159,7 +159,11 @@ export default function FruityFortunePage() {
       
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
         // Betting phase just ended, start spinning
-        startSpinning(roundId);
+        // We pass a copy of 'bets' state at this exact moment to startSpinning
+        setBets(currentBets => {
+            startSpinning(roundId, currentBets);
+            return currentBets; // Don't change the state here
+        });
       }
 
       setIsBettingPhase(newIsBettingPhase);
@@ -174,41 +178,43 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound]);
+  // This dependency array is now safe and won't cause re-runs on every bet.
+  }, [getRoundInfo, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound, startSpinning]);
 
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase) return;
 
-    if (Object.keys(bets).length >= 6 && !bets[fruitId]) {
-        toast({
-          title: "حد الرهان",
-          description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
-          variant: "destructive",
-          duration: 2000,
-        });
-        return;
-    }
-    
-    // Check if balance is sufficient for this single bet
-    if ((balance ?? 0) < selectedBetAmount) {
-         toast({
-          title: "رصيد غير كاف",
-          description: "لا يمكنك وضع هذا الرهان.",
-          variant: "destructive",
-          duration: 1000,
-        });
-        return;
-    }
+    // We use a functional update on `setBets` to ensure we have the latest state
+    // without needing `bets` in the dependency array.
+    setBets(prevBets => {
+        if (Object.keys(prevBets).length >= 6 && !prevBets[fruitId]) {
+            toast({
+              title: "حد الرهان",
+              description: "لا يمكنك الرهان على اكثر من 6 خيارات.",
+              variant: "destructive",
+              duration: 2000,
+            });
+            return prevBets; // Return previous state if validation fails
+        }
+        
+        if ((balance ?? 0) < selectedBetAmount) {
+             toast({
+              title: "رصيد غير كاف",
+              description: "لا يمكنك وضع هذا الرهان.",
+              variant: "destructive",
+              duration: 1000,
+            });
+            return prevBets; // Return previous state if validation fails
+        }
 
-    // Deduct from balance immediately
-    setBalance(prev => (prev ?? 0) - selectedBetAmount);
+        // Deduct from balance immediately
+        setBalance(prevBalance => (prevBalance ?? 0) - selectedBetAmount);
 
-    // Add to bets state
-    setBets(prev => {
-      const newBets = { ...prev };
-      newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
-      return newBets;
+        // Add to bets state
+        const newBets = { ...prevBets };
+        newBets[fruitId] = (newBets[fruitId] || 0) + selectedBetAmount;
+        return newBets;
     });
   };
 
@@ -340,5 +346,7 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
 
     
