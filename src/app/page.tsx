@@ -44,7 +44,7 @@ interface UserProfile {
 
 export default function FruityFortunePage() {
   const [isLoading, setIsLoading] = useState(true);
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
@@ -69,49 +69,50 @@ export default function FruityFortunePage() {
 
   // Load balance and profile from localStorage on initial mount
   useEffect(() => {
-    // This effect should only run once on the client.
+    // This effect runs only on the client side.
     try {
       const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
-      if (savedBalance !== null) {
-        setBalance(JSON.parse(savedBalance));
-      } else {
-        setBalance(INITIAL_BALANCE);
-      }
-
       const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+
       if (savedProfile) {
         setUserProfile(JSON.parse(savedProfile));
+        if (savedBalance !== null) {
+          setBalance(JSON.parse(savedBalance));
+        } else {
+          setBalance(INITIAL_BALANCE);
+          localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
+        }
       } else {
-        setIsProfileModalOpen(true); // No profile found, open modal.
+        // No profile, needs setup. Don't set balance yet.
+        setIsProfileModalOpen(true);
       }
     } catch (error) {
-      console.error("Could not load from localStorage, resetting.", error);
-      // If there's any error, reset to a clean state.
-      setBalance(INITIAL_BALANCE);
-      localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
-      setUserProfile(null);
+      console.error("Error loading from localStorage, resetting state.", error);
+      // If there's an error, reset to a clean state.
+      localStorage.removeItem(BALANCE_STORAGE_KEY);
       localStorage.removeItem(PROFILE_STORAGE_KEY);
+      setBalance(INITIAL_BALANCE);
+      setUserProfile(null);
       setIsProfileModalOpen(true);
     } finally {
-      // Loading is finished, whether successful or not.
       setIsLoading(false);
     }
   }, []);
 
   // Save balance to localStorage whenever it changes
   useEffect(() => {
-    // Don't save during the initial loading phase.
-    if (!isLoading) {
+    // Don't save during the initial loading phase or if profile isn't set
+    if (!isLoading && userProfile) {
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(balance));
     }
-  }, [balance, isLoading]);
+  }, [balance, isLoading, userProfile]);
 
   // Save profile to localStorage whenever it changes
    useEffect(() => {
-    if (userProfile) {
+    if (userProfile && !isLoading) {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(userProfile));
     }
-  }, [userProfile]);
+  }, [userProfile, isLoading]);
 
 
   const getRoundInfo = useCallback(() => {
@@ -176,7 +177,7 @@ export default function FruityFortunePage() {
             
             setIsSpinning(false);
             
-            // This needs to be consistent
+            // Update history for the *next* round, showing this one as the latest.
             updateHistory(roundId + 1);
         }
     }, animationDuration);
@@ -185,6 +186,8 @@ export default function FruityFortunePage() {
 
 
   useEffect(() => {
+    if (isLoading) return; // Don't run the main loop until everything is loaded
+
     const mainLoop = setInterval(() => {
       const { roundId, bettingEndTime } = getRoundInfo();
       const newIsBettingPhase = Date.now() < bettingEndTime;
@@ -220,7 +223,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
+  }, [isLoading, getRoundInfo, isSpinning, currentRoundId, isBettingPhase, startSpinning, updateHistory]);
 
 
   const placeBet = (fruitId: FruitKey) => {
@@ -282,6 +285,8 @@ export default function FruityFortunePage() {
       avatar: tempProfileAvatar,
     };
     setUserProfile(newProfile);
+    // Set initial balance for the new user
+    setBalance(INITIAL_BALANCE);
     setIsProfileModalOpen(false);
   };
 
@@ -299,9 +304,9 @@ export default function FruityFortunePage() {
     );
   }
 
-  if (isProfileModalOpen || !userProfile) {
+  if (isProfileModalOpen) {
     return (
-      <Dialog open={true} onOpenChange={() => {}}>
+      <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
         <DialogContent className="sm:max-w-[425px] bg-gray-900 text-white border-yellow-400" dir="rtl">
             <DialogHeader>
                 <DialogTitle>إنشاء ملفك الشخصي</DialogTitle>
