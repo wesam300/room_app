@@ -9,9 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-  'orange', 'cherry', 'watermelon',
-  'lemon', 'timer', 'pear',
-  'grapes', 'apple', 'strawberry'
+  'watermelon', 'cherry', 'orange',
+  'pear', 'timer', 'lemon',
+  'strawberry', 'apple', 'grapes'
 ];
 
 
@@ -143,7 +143,7 @@ export default function FruityFortunePage() {
                 <path d="m12 4 2 2-2 2-2-2Z"/>
                 <path d="m12 20 2-2-2-2-2 2Z"/>
             </svg>
-            <span className="text-yellow-300 font-bold text-sm">كـروب وائـ🎻ـل</span>
+            <span className="text-yellow-300 font-bold text-sm">كـروب وائـل🤐</span>
         </div>
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
           <span className="text-yellow-300 font-bold">الرصيد: {formatNumber(balance)}</span>
