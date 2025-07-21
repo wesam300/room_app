@@ -4,8 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
 
 type Fruit = {
@@ -17,14 +15,14 @@ type Fruit = {
 };
 
 const FRUITS: Fruit[] = [
-  { id: 'watermelon', name: 'بطيخ', multiplier: 5, image: '/fruits/watermelon.png', hint: 'watermelon slice' },
-  { id: 'cherry', name: 'كرز', multiplier: 45, image: '/fruits/cherry.png', hint: 'cherries' },
-  { id: 'orange', name: 'برتقال', multiplier: 25, image: '/fruits/orange.png', hint: 'orange fruit' },
-  { id: 'pear', name: 'كمثرى', multiplier: 5, image: '/fruits/pear.png', hint: 'pear' },
-  { id: 'lemon', name: 'ليمون', multiplier: 15, image: '/fruits/lemon.png', hint: 'lemon' },
-  { id: 'strawberry', name: 'فراولة', multiplier: 5, image: '/fruits/strawberry.png', hint: 'strawberry' },
-  { id: 'apple', name: 'تفاح', multiplier: 5, image: '/fruits/apple.png', hint: 'apple' },
-  { id: 'grapes', name: 'عنب', multiplier: 10, image: '/fruits/grapes.png', hint: 'grapes' },
+  { id: 'watermelon', name: 'بطيخ', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'watermelon slice' },
+  { id: 'cherry', name: 'كرز', multiplier: 45, image: 'https://placehold.co/128x128.png', hint: 'cherries' },
+  { id: 'orange', name: 'برتقال', multiplier: 25, image: 'https://placehold.co/128x128.png', hint: 'orange fruit' },
+  { id: 'pear', name: 'كمثرى', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'pear' },
+  { id: 'lemon', name: 'ليمون', multiplier: 15, image: 'https://placehold.co/128x128.png', hint: 'lemon' },
+  { id: 'strawberry', name: 'فراولة', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'strawberry' },
+  { id: 'apple', name: 'تفاح', multiplier: 5, image: 'https://placehold.co/128x128.png', hint: 'red apple' },
+  { id: 'grapes', name: 'عنب', multiplier: 10, image: 'https://placehold.co/128x128.png', hint: 'grapes' },
 ];
 
 const FRUIT_GRID_ORDER: (Fruit | null)[] = [
@@ -38,7 +36,6 @@ const GAME_DURATION = 30;
 const WAIT_DURATION = 5;
 
 type GameState = 'betting' | 'waiting' | 'spinning' | 'result';
-type Bet = { fruitId: string; amount: number };
 
 export default function FruitGamePage() {
   const [balance, setBalance] = useState(10000000);
@@ -71,9 +68,9 @@ export default function FruitGamePage() {
     setGameState('spinning');
     const randomIndex = Math.floor(Math.random() * FRUITS.length);
     const winningFruit = FRUITS[randomIndex];
-    setWinner(winningFruit);
     
     setTimeout(() => {
+      setWinner(winningFruit);
       let totalWinnings = 0;
       if (bets[winningFruit.id]) {
         totalWinnings = bets[winningFruit.id] * winningFruit.multiplier;
@@ -94,25 +91,19 @@ export default function FruitGamePage() {
   }, []);
 
   useEffect(() => {
-    if (gameState === 'betting' && countdown === 0) {
+    let timer: NodeJS.Timeout;
+
+    if ((gameState === 'betting' || gameState === 'waiting') && countdown > 0) {
+      timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+    } else if (gameState === 'betting' && countdown === 0) {
       startGame();
+    } else if (gameState === 'waiting' && countdown === 0) {
+      runSpinner();
+    } else if (gameState === 'result') {
+      timer = setTimeout(resetGame, 5000);
     }
-    
-    if (gameState === 'waiting' && countdown === 0) {
-        runSpinner();
-    }
-    
-    if (gameState === 'result') {
-      const timer = setTimeout(resetGame, 5000);
-      return () => clearTimeout(timer);
-    }
-    
-    if (gameState === 'betting' || gameState === 'waiting') {
-      if (countdown > 0) {
-        const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
-        return () => clearTimeout(timer);
-      }
-    }
+
+    return () => clearTimeout(timer);
   }, [gameState, countdown, startGame, runSpinner, resetGame]);
 
   const formatAmount = (amount: number) => {
@@ -202,7 +193,7 @@ export default function FruitGamePage() {
             exit={{ opacity: 0, scale: 0.5 }}
             className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10"
           >
-            {winner && <Image src={winner.image} alt={winner.name} width={128} height={128} className="drop-shadow-2xl" />}
+            {winner && <Image src={winner.image} alt={winner.name} width={128} height={128} data-ai-hint={winner.hint} className="drop-shadow-2xl" />}
             {lastWinnings > 0 ? (
               <>
                 <h2 className="text-4xl font-bold text-green-400 mt-4"> 🎉 لقد فزت! 🎉</h2>
@@ -221,9 +212,9 @@ export default function FruitGamePage() {
              {history.map((fruit, index) => (
                 <div key={index} className="relative bg-black/30 p-1.5 rounded-full">
                     {index === 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-1.5 rounded-full">New</span>
+                        <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full leading-tight">الآن</div>
                     )}
-                    <Image src={fruit.image} alt={fruit.name} width={32} height={32}/>
+                    <Image src={fruit.image} alt={fruit.name} width={32} height={32} data-ai-hint={fruit.hint}/>
                 </div>
              ))}
           </div>
