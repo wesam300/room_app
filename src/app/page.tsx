@@ -10,7 +10,7 @@ const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 const ROUND_DURATION = 25; // 20 seconds betting, 5 seconds result
 const BETTING_DURATION = 20;
 const INITIAL_BALANCE = 100000000; // Increased initial balance
-const BALANCE_STORAGE_KEY = 'fruityFortuneBalance';
+const BALANCE_STORAGE_KEY = 'fruityFortuneBalance_v2';
 
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
