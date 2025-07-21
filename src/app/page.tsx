@@ -131,6 +131,11 @@ export default function FruityFortunePage() {
         setWinningFruit(null);
         setHighlightedFruit(null);
         setIsSpinning(false);
+        
+        // Update history for the new round
+        const pastRounds = Array.from({ length: 5 }, (_, i) => roundId - 1 - i);
+        const pastWinners = pastRounds.map(id => determineWinnerForRound(id)).reverse();
+        setHistory(pastWinners);
       }
       
       const newIsBettingPhase = Date.now() < bettingEndTime;
@@ -152,7 +157,7 @@ export default function FruityFortunePage() {
     }, 500);
 
     return () => clearInterval(mainLoop);
-  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase]);
+  }, [getRoundInfo, startSpinning, isSpinning, currentRoundId, isBettingPhase, determineWinnerForRound]);
 
 
   const placeBet = (fruitId: FruitKey) => {
@@ -280,7 +285,7 @@ export default function FruityFortunePage() {
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
           <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
-          <div className="flex gap-2 overflow-hidden flex-row-reverse">
+          <div className="flex flex-grow justify-around items-center flex-row-reverse">
             {history.slice(0, 5).map((fruitKey, index) => (
               <div key={index} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
                  <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} isNew={index === 0} />
@@ -291,5 +296,4 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
-
-    
+}
