@@ -14,6 +14,7 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
   'grapes', 'apple', 'strawberry'
 ];
 
+
 // To create the spinning effect
 const SPIN_SEQUENCE: FruitKey[] = [
     'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry'
@@ -136,8 +137,13 @@ export default function FruityFortunePage() {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
       
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
-        <div className="bg-black/40 px-4 py-1 rounded-full border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]">
-            <span className="text-yellow-300 font-bold text-sm">كروب وائل</span>
+        <div className="flex items-center gap-2 bg-black/40 px-4 py-1 rounded-full border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-400 filter drop-shadow-[0_0_2px_#facc15]">
+                <path d="M2 4h20M2 8h20M4 12h16M6 16h12M8 20h8M12 4V2M10 4V2M14 4V2M12 20v2M10 20v2M14 20v2M4 8V6M4 12V10M4 16V14M4 20V18M20 8V6M20 12V10M20 16V14M20 20V18M2 12l2-2M2 12l2 2M22 12l-2-2M22 12l-2 2"/>
+                <path d="m12 4 2 2-2 2-2-2Z"/>
+                <path d="m12 20 2-2-2-2-2 2Z"/>
+            </svg>
+            <span className="text-yellow-300 font-bold text-sm">كـروب وائـ🎻ـل</span>
         </div>
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
           <span className="text-yellow-300 font-bold">الرصيد: {formatNumber(balance)}</span>
