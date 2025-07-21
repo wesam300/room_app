@@ -57,8 +57,8 @@ export default function FruityFortunePage() {
       return fruitKeys[winnerIndex];
   }, []);
 
-  const updateHistory = useCallback((currentRoundId: number) => {
-    const pastRounds = Array.from({ length: 5 }, (_, i) => currentRoundId - 1 - i);
+  const updateHistory = useCallback((currentRoundIdForHistory: number) => {
+    const pastRounds = Array.from({ length: 5 }, (_, i) => currentRoundIdForHistory - 1 - i);
     const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
     setHistory(pastWinners);
   }, [determineWinnerForRound]);
@@ -298,4 +298,5 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
-}
+
+    
