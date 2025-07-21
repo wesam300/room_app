@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 
 type Fruit = {
   id: string;
@@ -152,7 +151,7 @@ export default function FruitGamePage() {
                   )}
                 >
                   <motion.div whileTap={{ scale: 0.9 }}>
-                    <Image src={fruit.image} alt={fruit.name} width={64} height={64} data-ai-hint={fruit.hint} className="md:w-20 md:h-20" />
+                    <img src={fruit.image} alt={fruit.name} width={64} height={64} data-ai-hint={fruit.hint} className="md:w-20 md:h-20" />
                   </motion.div>
                   <span className="font-bold text-white text-md mt-1">{fruit.multiplier} مرة</span>
                   {bets[fruit.id] && (
@@ -194,7 +193,7 @@ export default function FruitGamePage() {
             exit={{ opacity: 0, scale: 0.5 }}
             className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10"
           >
-            {winner && <Image src={winner.image} alt={winner.name} width={128} height={128} data-ai-hint={winner.hint} className="drop-shadow-2xl" />}
+            {winner && <img src={winner.image} alt={winner.name} width={128} height={128} data-ai-hint={winner.hint} className="drop-shadow-2xl" />}
             {lastWinnings > 0 ? (
               <>
                 <h2 className="text-4xl font-bold text-green-400 mt-4"> 🎉 لقد فزت! 🎉</h2>
@@ -215,7 +214,7 @@ export default function FruitGamePage() {
                     {index === 0 && (
                         <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 rounded-full leading-tight">الآن</div>
                     )}
-                    <Image src={fruit.image} alt={fruit.name} width={32} height={32} data-ai-hint={fruit.hint}/>
+                    <img src={fruit.image} alt={fruit.name} width={32} height={32} data-ai-hint={fruit.hint}/>
                 </div>
              ))}
           </div>
@@ -223,3 +222,5 @@ export default function FruitGamePage() {
     </div>
   );
 }
+
+    
