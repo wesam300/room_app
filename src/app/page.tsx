@@ -26,11 +26,10 @@ const pseudoRandom = (seed: number) => {
 };
 
 export default function FruityFortunePage() {
-  const [balance, setBalance] = useState<number>(0);
+  const [balance, setBalance] = useState<number>(INITIAL_BALANCE);
   const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
   const [bets, setBets] = useState<Record<string, number>>({});
   
-  const [currentRoundId, setCurrentRoundId] = useState(0);
   const [timer, setTimer] = useState(BETTING_DURATION);
   const [isBettingPhase, setIsBettingPhase] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -43,9 +42,8 @@ export default function FruityFortunePage() {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  const getRoundInfo = useCallback(() => {
-    const now = Date.now();
-    const roundId = Math.floor(now / (ROUND_DURATION * 1000));
+  const getRoundInfo = useCallback((time: number) => {
+    const roundId = Math.floor(time / (ROUND_DURATION * 1000));
     const roundStartTime = roundId * ROUND_DURATION * 1000;
     const bettingEndTime = roundStartTime + BETTING_DURATION * 1000;
     return { roundId, roundStartTime, bettingEndTime };
@@ -56,28 +54,24 @@ export default function FruityFortunePage() {
       const winnerIndex = Math.floor(pseudoRandom(roundId) * fruitKeys.length);
       return fruitKeys[winnerIndex];
   }, []);
-  
-  const updateHistory = useCallback((roundIdForHistory: number) => {
-      const pastRounds = Array.from({ length: 5 }, (_, i) => roundIdForHistory - 1 - i);
-      const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
-      setHistory(pastWinners);
+
+  const updateHistory = useCallback((currentRoundId: number) => {
+    const pastRounds = Array.from({ length: 5 }, (_, i) => currentRoundId - 1 - i);
+    const pastWinners = pastRounds.map(id => determineWinnerForRound(id));
+    setHistory(pastWinners);
   }, [determineWinnerForRound]);
 
   useEffect(() => {
-    // This effect runs only once on the client after the component mounts.
-    // It's safe to access localStorage here.
     const savedBalance = localStorage.getItem(BALANCE_STORAGE_KEY);
     if (savedBalance !== null) {
       setBalance(JSON.parse(savedBalance));
     } else {
-      setBalance(INITIAL_BALANCE);
       localStorage.setItem(BALANCE_STORAGE_KEY, JSON.stringify(INITIAL_BALANCE));
     }
-
-    const { roundId } = getRoundInfo();
-    setCurrentRoundId(roundId);
-    updateHistory(roundId);
     
+    const { roundId } = getRoundInfo(Date.now());
+    updateHistory(roundId);
+
     setIsLoading(false);
   }, [getRoundInfo, updateHistory]);
   
@@ -87,75 +81,73 @@ export default function FruityFortunePage() {
     }
   }, [balance, isLoading]);
 
-  const startSpinning = useCallback((roundId: number) => {
-    setIsSpinning(true);
-    setWinningFruit(null);
-    setHighlightedFruit(null);
-    setLastWinnings(0);
-
-    const winner = determineWinnerForRound(roundId);
-    
-    const totalSpins = SPIN_SEQUENCE.length * 4; 
-    const finalWinnerIndex = SPIN_SEQUENCE.indexOf(winner);
-    const animationDuration = 100;
-    let spinCount = 0;
-
-    const spinInterval = setInterval(() => {
-        setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
-        spinCount++;
-
-        if(spinCount > totalSpins + finalWinnerIndex) {
-            clearInterval(spinInterval);
-            setWinningFruit(winner);
-            setHighlightedFruit(winner);
-
-            let totalWinnings = 0;
-            const currentBets = bets; 
-            if (currentBets[winner]) { 
-              totalWinnings = currentBets[winner] * FRUITS[winner].multiplier;
-              setBalance(prev => prev + totalWinnings);
-            }
-            setLastWinnings(totalWinnings);
-            
-            setIsSpinning(false);
-            
-            setTimeout(() => {
-                const nextRoundId = roundId + 1;
-                setCurrentRoundId(nextRoundId);
-                updateHistory(nextRoundId);
-                setBets({});
-                setLastWinnings(0); 
-                setWinningFruit(null);
-                setHighlightedFruit(null);
-            }, 3000);
-        }
-    }, animationDuration);
-  }, [determineWinnerForRound, updateHistory, bets, balance]); // Added balance to dependency array
-
   useEffect(() => {
     if (isLoading) return;
 
-    const mainLoop = setInterval(() => {
-      const { roundId, bettingEndTime } = getRoundInfo();
-      const newIsBettingPhase = Date.now() < bettingEndTime;
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const { roundId, bettingEndTime } = getRoundInfo(now);
+      
+      const newIsBettingPhase = now < bettingEndTime;
 
       if (isBettingPhase && !newIsBettingPhase && !isSpinning) {
-        startSpinning(roundId);
+        setIsBettingPhase(false);
+        setWinningFruit(null);
+        setHighlightedFruit(null);
+        setLastWinnings(0);
+        setIsSpinning(true);
+
+        const winner = determineWinnerForRound(roundId);
+        
+        const totalSpins = SPIN_SEQUENCE.length * 3; // Spin for ~3 seconds
+        const finalWinnerIndex = SPIN_SEQUENCE.indexOf(winner);
+        const animationDuration = 100;
+        let spinCount = 0;
+
+        const spinInterval = setInterval(() => {
+            setHighlightedFruit(SPIN_SEQUENCE[spinCount % SPIN_SEQUENCE.length]);
+            spinCount++;
+
+            if(spinCount > totalSpins + finalWinnerIndex) {
+                clearInterval(spinInterval);
+                setWinningFruit(winner);
+                setHighlightedFruit(winner);
+
+                setBets(prevBets => {
+                    let totalWinnings = 0;
+                    if (prevBets[winner]) {
+                        totalWinnings = prevBets[winner] * FRUITS[winner].multiplier;
+                        setBalance(prev => prev + totalWinnings);
+                    }
+                    setLastWinnings(totalWinnings);
+                    return prevBets; // Return previous bets to calculate winnings
+                });
+                
+                setTimeout(() => {
+                    setIsSpinning(false);
+                    setBets({});
+                    setLastWinnings(0);
+                    setWinningFruit(null);
+                    setHighlightedFruit(null);
+                    updateHistory(roundId + 1);
+                }, 4000); // Wait 4 seconds before starting new round
+            }
+        }, animationDuration);
       }
       
-      setIsBettingPhase(newIsBettingPhase);
-      
       if (newIsBettingPhase) {
-        const timeLeft = Math.max(0, Math.floor((bettingEndTime - Date.now()) / 1000));
-        setTimer(timeLeft);
+          setIsBettingPhase(true);
+          const timeLeft = Math.max(0, Math.floor((bettingEndTime - now) / 1000));
+          setTimer(timeLeft);
       } else {
-        setTimer(0);
+          setTimer(0);
       }
 
     }, 500);
 
-    return () => clearInterval(mainLoop);
-  }, [isLoading, getRoundInfo, isSpinning, isBettingPhase, startSpinning]);
+    return () => clearInterval(interval);
+  }, [isLoading, getRoundInfo, isSpinning, isBettingPhase, determineWinnerForRound, updateHistory]);
+
 
   const placeBet = (fruitId: FruitKey) => {
     if (!isBettingPhase || isSpinning) return;
@@ -237,7 +229,7 @@ export default function FruityFortunePage() {
                     )}
                   </AnimatePresence>
                    <AnimatePresence>
-                   {!isBettingPhase && lastWinnings === 0 && winningFruit && (
+                   {!isBettingPhase && winningFruit && Object.keys(bets).length > 0 && !bets[winningFruit] && (
                       <motion.div
                         key="no-win"
                         initial={{ opacity: 0, scale: 0.8 }}
