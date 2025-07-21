@@ -1,279 +1,233 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Coins, Flame, Rocket, CircleDashed, X } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from '@/components/ui/card';
+import Image from 'next/image';
 
-type GameState = 'BETTING' | 'WAITING' | 'LAUNCHED' | 'CRASHED';
+type Fruit = {
+  id: string;
+  name: string;
+  multiplier: number;
+  image: string;
+  hint: string;
+};
 
-const BETTING_TIME = 10; // 10 seconds for betting
+const FRUITS: Fruit[] = [
+  { id: 'watermelon', name: 'بطيخ', multiplier: 5, image: '/fruits/watermelon.png', hint: 'watermelon slice' },
+  { id: 'cherry', name: 'كرز', multiplier: 45, image: '/fruits/cherry.png', hint: 'cherries' },
+  { id: 'orange', name: 'برتقال', multiplier: 25, image: '/fruits/orange.png', hint: 'orange fruit' },
+  { id: 'pear', name: 'كمثرى', multiplier: 5, image: '/fruits/pear.png', hint: 'pear' },
+  { id: 'lemon', name: 'ليمون', multiplier: 15, image: '/fruits/lemon.png', hint: 'lemon' },
+  { id: 'strawberry', name: 'فراولة', multiplier: 5, image: '/fruits/strawberry.png', hint: 'strawberry' },
+  { id: 'apple', name: 'تفاح', multiplier: 5, image: '/fruits/apple.png', hint: 'apple' },
+  { id: 'grapes', name: 'عنب', multiplier: 10, image: '/fruits/grapes.png', hint: 'grapes' },
+];
 
-export default function CrashGamePage() {
-  const { toast } = useToast();
-  const [balance, setBalance] = useState(10000);
-  const [betAmount, setBetAmount] = useState<number | string>(100);
-  const [gameState, setGameState] = useState<GameState>('BETTING');
-  const [multiplier, setMultiplier] = useState(1.00);
-  const [countdown, setCountdown] = useState(BETTING_TIME);
-  const [hasBet, setHasBet] = useState(false);
-  const [crashPoint, setCrashPoint] = useState(0);
-  const [history, setHistory] = useState<number[]>([]);
-  const [rocketPosition, setRocketPosition] = useState(0);
+const FRUIT_GRID_ORDER: (Fruit | null)[] = [
+  FRUITS[0], FRUITS[1], FRUITS[2],
+  FRUITS[3], null, FRUITS[4],
+  FRUITS[5], FRUITS[6], FRUITS[7]
+];
 
-  const intervalRef = useRef<NodeJS.Timeout>();
-  const gameLogicRef = useRef<NodeJS.Timeout>();
+const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
+const GAME_DURATION = 30;
+const WAIT_DURATION = 5;
+
+type GameState = 'betting' | 'waiting' | 'spinning' | 'result';
+type Bet = { fruitId: string; amount: number };
+
+export default function FruitGamePage() {
+  const [balance, setBalance] = useState(10000000);
+  const [bets, setBets] = useState<Record<string, number>>({});
+  const [selectedBetAmount, setSelectedBetAmount] = useState(BET_AMOUNTS[0]);
+  const [gameState, setGameState] = useState<GameState>('betting');
+  const [countdown, setCountdown] = useState(GAME_DURATION);
+  const [winner, setWinner] = useState<Fruit | null>(null);
+  const [history, setHistory] = useState<Fruit[]>([]);
+  const [lastWinnings, setLastWinnings] = useState(0);
+
+  const placeBet = (fruitId: string) => {
+    if (gameState !== 'betting') return;
+    if (balance < selectedBetAmount) return;
+
+    const newBets = { ...bets };
+    const currentBet = newBets[fruitId] || 0;
+    newBets[fruitId] = currentBet + selectedBetAmount;
+
+    setBets(newBets);
+    setBalance(prev => prev - selectedBetAmount);
+  };
+  
+  const startGame = useCallback(() => {
+    setGameState('waiting');
+    setCountdown(WAIT_DURATION);
+  }, []);
+
+  const runSpinner = useCallback(() => {
+    setGameState('spinning');
+    const randomIndex = Math.floor(Math.random() * FRUITS.length);
+    const winningFruit = FRUITS[randomIndex];
+    setWinner(winningFruit);
+    
+    setTimeout(() => {
+      let totalWinnings = 0;
+      if (bets[winningFruit.id]) {
+        totalWinnings = bets[winningFruit.id] * winningFruit.multiplier;
+        setBalance(prev => prev + totalWinnings);
+      }
+      setLastWinnings(totalWinnings);
+      setGameState('result');
+      setHistory(prev => [winningFruit, ...prev.slice(0, 7)]);
+    }, 3000);
+  }, [bets]);
 
   const resetGame = useCallback(() => {
-    if (gameState === 'CRASHED' && history[history.length - 1] !== crashPoint) {
-      setHistory(prev => [...prev.slice(-9), crashPoint].filter(p => p > 0));
-    }
-    setGameState('BETTING');
-    setCountdown(BETTING_TIME);
-    setHasBet(false);
-    setMultiplier(1.00);
-    setRocketPosition(0);
-  }, [crashPoint, gameState, history]);
+    setBets({});
+    setWinner(null);
+    setGameState('betting');
+    setCountdown(GAME_DURATION);
+    setLastWinnings(0);
+  }, []);
 
   useEffect(() => {
-    if (gameState === 'BETTING') {
-      intervalRef.current = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current);
-            setGameState('WAITING');
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (gameState === 'betting' && countdown === 0) {
+      startGame();
     }
-    return () => clearInterval(intervalRef.current);
-  }, [gameState]);
-
-  const calculateCrashPoint = () => {
-      const e = 2 ** 32;
-      const h = crypto.getRandomValues(new Uint32Array(1))[0];
-      return Math.floor((100 * e - h) / (e-h)) / 100;
-  }
-
-  useEffect(() => {
-    if (gameState === 'WAITING') {
-      const newCrashPoint = calculateCrashPoint();
-      setCrashPoint(newCrashPoint);
-      setTimeout(() => {
-        setGameState('LAUNCHED');
-      }, 1000); // 1s pause before launch
+    
+    if (gameState === 'waiting' && countdown === 0) {
+        runSpinner();
     }
-  }, [gameState]);
-
-
-  useEffect(() => {
-    if (gameState === 'LAUNCHED') {
-        const startTime = Date.now();
-        gameLogicRef.current = setInterval(() => {
-            const elapsedTime = (Date.now() - startTime) / 1000;
-            const currentMultiplier = Math.max(1, parseFloat(Math.pow(1.05, elapsedTime).toFixed(2)));
-            setMultiplier(currentMultiplier);
-            setRocketPosition(elapsedTime);
-
-            if (currentMultiplier >= crashPoint) {
-                clearInterval(gameLogicRef.current);
-                setGameState('CRASHED');
-                if(hasBet){
-                  toast({
-                      title: "💥 تحطم!",
-                      description: `لقد تحطم الصاروخ عند x${crashPoint.toFixed(2)}. حظ أوفر في المرة القادمة.`,
-                      variant: "destructive",
-                  });
-                }
-            }
-        }, 100);
+    
+    if (gameState === 'result') {
+      const timer = setTimeout(resetGame, 5000);
+      return () => clearTimeout(timer);
     }
-    return () => clearInterval(gameLogicRef.current);
-  }, [gameState, crashPoint, hasBet, toast]);
-  
-  useEffect(() => {
-    if (gameState === 'CRASHED') {
-      setTimeout(resetGame, 3000);
-    }
-  }, [gameState, resetGame]);
-
-  const handlePlaceBet = () => {
-    const amount = Number(betAmount);
-    if (amount <= 0 || amount > balance) {
-      toast({ title: "خطأ", description: "مبلغ رهان غير صالح.", variant: "destructive" });
-      return;
-    }
-    setBalance(prev => prev - amount);
-    setHasBet(true);
-    toast({ title: "تم وضع الرهان!", description: `لقد راهنت بـ ${amount.toLocaleString()} كوينز.` });
-  };
-  
-  const handleCancelBet = () => {
-    const amount = Number(betAmount);
-    setBalance(prev => prev + amount);
-    setHasBet(false);
-    toast({ title: "تم إلغاء الرهان", variant: "default" });
-  };
-
-  const handleCashOut = () => {
-    const amount = Number(betAmount);
-    const winnings = amount * multiplier;
-    setBalance(prev => prev + winnings);
-    setHasBet(false);
-    toast({
-        title: "🎉 نجاح!",
-        description: `لقد سحبت ${winnings.toLocaleString()} كوينز عند x${multiplier.toFixed(2)}!`,
-        className: "bg-green-600 border-green-600 text-white"
-    });
-    // Keep the game running, just disable cashout for this user
-  };
-
-  const renderButton = () => {
-    if (gameState === 'BETTING') {
-      if (hasBet) {
-        return <Button onClick={handleCancelBet} variant="destructive" size="lg" className="w-full text-lg font-bold"><X className="mr-2"/>إلغاء</Button>;
+    
+    if (gameState === 'betting' || gameState === 'waiting') {
+      if (countdown > 0) {
+        const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
+        return () => clearTimeout(timer);
       }
-      return <Button onClick={handlePlaceBet} disabled={countdown === 0} size="lg" className="w-full text-lg font-bold bg-primary hover:bg-primary/90"><Coins className="mr-2"/>ضع الرهان</Button>;
     }
-    if (gameState === 'LAUNCHED' && hasBet) {
-      return <Button onClick={handleCashOut} size="lg" className="w-full text-lg font-bold bg-green-500 hover:bg-green-600 text-black">اسحب {(Number(betAmount) * multiplier).toLocaleString(undefined, {maximumFractionDigits: 0})} الآن</Button>;
-    }
-    return <Button size="lg" disabled className="w-full text-lg font-bold">{gameState === 'WAITING' ? "استعد للإطلاق..." : "انتظر الجولة التالية..."}</Button>
-  };
+  }, [gameState, countdown, startGame, runSpinner, resetGame]);
 
-  const rocketY = useMemo(() => {
-      const power = 1.8;
-      return Math.min(80, rocketPosition * power);
-  }, [rocketPosition])
+  const formatAmount = (amount: number) => {
+    if (amount >= 1000000) return `${amount / 1000000}M`;
+    if (amount >= 1000) return `${amount / 1000}K`;
+    return amount.toString();
+  };
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full min-h-screen p-4 overflow-hidden select-none gradient-background">
-        <div className="star"></div>
-        <div className="star"></div>
-        <div className="star"></div>
-        <div className="star"></div>
-      
-      <div className="absolute top-4 left-4 z-20">
-        <Card className="bg-black/30 backdrop-blur-sm border-white/20">
-          <CardContent className="p-3">
-            <div className="flex items-center gap-3">
-              <Coins className="text-yellow-400" />
-              <div className="text-lg">
-                <span className="font-bold">{balance.toLocaleString()}</span>
-                <p className="text-xs text-muted-foreground -mt-1">رصيدك</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="relative flex flex-col items-center justify-center w-full min-h-screen p-4 overflow-hidden select-none game-background font-sans">
+      <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm p-2 px-4 rounded-full text-lg font-bold text-yellow-300">
+        الرصيد: {balance.toLocaleString()}
       </div>
 
-      <div className="absolute top-4 right-4 z-20 w-full max-w-md">
-         <Card className="bg-black/30 backdrop-blur-sm border-white/20">
-            <CardContent className="p-2">
-                <p className="text-xs text-muted-foreground mb-1 text-center">الجولات السابقة</p>
-                <div className="flex justify-end items-center gap-2">
-                    {history.map((h, i) => (
-                        <span key={i} className={cn("font-mono text-sm", h < 2 ? "text-red-400" : "text-green-400")}>
-                           x{h.toFixed(2)}
-                        </span>
-                    ))}
-                </div>
-            </CardContent>
-         </Card>
-      </div>
-
-
-      <div className="relative w-full h-[50vh] flex items-center justify-center">
-        <AnimatePresence>
-          {gameState === 'BETTING' && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.5 }}
-              className="absolute z-10 flex flex-col items-center"
-            >
-              <div className="text-6xl font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
-                {countdown}
-              </div>
-              <p className="text-lg text-muted-foreground">تبدأ الجولة التالية...</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <AnimatePresence>
-            {(gameState === 'LAUNCHED' || (gameState === 'CRASHED' && multiplier > 1)) && (
-                 <motion.div
-                    key="multiplier"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{duration: 0.2}}
-                    className="absolute z-10 flex flex-col items-center"
-                 >
-                    <div className={cn("text-7xl font-bold drop-shadow-lg", gameState === 'CRASHED' ? 'text-red-500' : 'text-white')}>
-                        x{multiplier.toFixed(2)}
+      <main className="flex flex-col items-center gap-6">
+        <div className="gold-frame">
+          <div className="grid grid-cols-3 gap-3 game-board p-4">
+            {FRUIT_GRID_ORDER.map((fruit, index) => {
+              if (fruit === null) {
+                return (
+                  <div key={index} className="flex items-center justify-center w-28 h-28 md:w-36 md:h-36 timer-board">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={countdown}
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 0.3 }}
+                        className="text-5xl md:text-6xl font-bold"
+                      >
+                        {countdown}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                );
+              }
+              const isWinner = winner?.id === fruit.id;
+              return (
+                <div
+                  key={fruit.id}
+                  onClick={() => placeBet(fruit.id)}
+                  className={cn(
+                    'relative flex flex-col items-center justify-center w-28 h-28 md:w-36 md:h-36 rounded-2xl cursor-pointer fruit-slot',
+                    { 'winner': isWinner, 'opacity-70': winner && !isWinner }
+                  )}
+                >
+                  <motion.div whileTap={{ scale: 0.9 }}>
+                    <Image src={fruit.image} alt={fruit.name} width={64} height={64} data-ai-hint={fruit.hint} className="md:w-20 md:h-20" />
+                  </motion.div>
+                  <span className="font-bold text-white text-md mt-1">{fruit.multiplier} مرة</span>
+                  {bets[fruit.id] && (
+                    <div className="absolute top-1 right-1 bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                      {formatAmount(bets[fruit.id])}
                     </div>
-                 </motion.div>
-            )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {(gameState === 'LAUNCHED' || gameState === 'WAITING' || (gameState === 'CRASHED' && rocketPosition > 0)) && (
-            <motion.div
-              key="rocket"
-              initial={{ y: 100, x: "-50%", opacity: 0, scale: 0.5, rotate: -45 }}
-              animate={{ y: `-${rocketY}vh`, opacity: 1, scale: 1, rotate: -45 }}
-              exit={{ opacity: 0, scale: 2, transition: {duration: 0.5}}}
-              className="absolute bottom-0 left-1/2"
-            >
-              {gameState !== 'CRASHED' ? (
-                <div className="relative animate-float">
-                  <Rocket size={80} className="text-white -rotate-45 rocket-shadow" />
-                  <Flame size={40} className="absolute -bottom-2 -right-2 text-orange-400 rocket-shadow" />
+                  )}
                 </div>
-              ) : (
-                 <motion.div
-                    initial={{ scale: 0, opacity: 0}}
-                    animate={{ scale: 1, opacity: 1}}
-                    transition={{duration: 0.3}}
-                 >
-                    <div className="text-8xl">💥</div>
-                 </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-      </div>
-
-      <Card className="w-full max-w-lg bg-black/30 backdrop-blur-sm border-white/20 z-20">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-                <label className="text-sm text-muted-foreground">مبلغ الرهان</label>
-                <Input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(e.target.value)}
-                    disabled={hasBet || gameState !== 'BETTING'}
-                    className="text-center text-lg h-12"
-                    placeholder="100"
-                />
-            </div>
-            <div className="flex flex-col gap-2 justify-end">
-                {renderButton()}
-            </div>
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
+        <div className="flex justify-center gap-2 md:gap-4">
+          {BET_AMOUNTS.map(amount => (
+            <button
+              key={amount}
+              onClick={() => setSelectedBetAmount(amount)}
+              disabled={gameState !== 'betting'}
+              className={cn(
+                'w-16 h-16 md:w-20 md:h-20 rounded-full text-lg md:text-xl font-bold bet-button',
+                { 'active': selectedBetAmount === amount }
+              )}
+            >
+              <div className="flex flex-col items-center justify-center -space-y-1">
+                <span className="text-sm">$</span>
+                <span>{formatAmount(amount)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </main>
+
+       <AnimatePresence>
+        {gameState === 'result' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10"
+          >
+            {winner && <Image src={winner.image} alt={winner.name} width={128} height={128} className="drop-shadow-2xl" />}
+            {lastWinnings > 0 ? (
+              <>
+                <h2 className="text-4xl font-bold text-green-400 mt-4"> 🎉 لقد فزت! 🎉</h2>
+                <p className="text-2xl text-yellow-300">+{lastWinnings.toLocaleString()}</p>
+              </>
+            ) : (
+              <h2 className="text-4xl font-bold text-red-500 mt-4">💥 حظ أوفر! 💥</h2>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <div className="fixed bottom-0 left-0 right-0 p-3 history-bar flex items-center justify-center gap-4">
+          <span className="text-lg font-bold text-yellow-300">التاريخ:</span>
+          <div className="flex gap-3">
+             {history.map((fruit, index) => (
+                <div key={index} className="relative bg-black/30 p-1.5 rounded-full">
+                    {index === 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-1.5 rounded-full">New</span>
+                    )}
+                    <Image src={fruit.image} alt={fruit.name} width={32} height={32}/>
+                </div>
+             ))}
+          </div>
+      </div>
     </div>
   );
 }
