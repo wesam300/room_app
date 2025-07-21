@@ -110,9 +110,9 @@ export default function FruityFortunePage() {
 
     const winner = determineWinnerForRound(roundId);
     
-    const totalSpins = SPIN_SEQUENCE.length * 2;
+    const totalSpins = SPIN_SEQUENCE.length * 4; // Increased spins for more suspense
     const finalWinnerIndex = SPIN_SEQUENCE.indexOf(winner);
-    const animationDuration = 100;
+    const animationDuration = 100; // 100ms per highlight
     let spinCount = 0;
 
     const spinInterval = setInterval(() => {
