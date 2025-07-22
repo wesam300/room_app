@@ -83,7 +83,7 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
     }
 
     return (
-        <div className="flex flex-col h-screen" dir="rtl">
+        <div className="flex flex-col h-screen">
             {activeTab === 'profile' && (
                 <TopBar name={name} image={image} userId={userId} onBack={() => setActiveTab('rooms')} />
             )}
@@ -92,13 +92,13 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                 <button 
-                    onClick={() => setActiveTab('profile')} 
+                    onClick={() => setActiveTab('rooms')} 
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                        activeTab === 'profile' ? "text-primary" : "hover:text-foreground"
+                        activeTab === 'rooms' ? "text-primary" : "hover:text-foreground"
                     )}>
-                    <User className="w-6 h-6" />
-                    <span className="text-xs font-medium">أنا</span>
+                    <MessageSquare className="w-6 h-6" />
+                    <span className="text-xs font-medium">الغرف</span>
                 </button>
                  <Link href="/project-885" passHref>
                     <div className={cn(
@@ -110,13 +110,13 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
                     </div>
                 </Link>
                 <button 
-                    onClick={() => setActiveTab('rooms')} 
+                    onClick={() => setActiveTab('profile')} 
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                        activeTab === 'rooms' ? "text-primary" : "hover:text-foreground"
+                        activeTab === 'profile' ? "text-primary" : "hover:text-foreground"
                     )}>
-                    <MessageSquare className="w-6 h-6" />
-                    <span className="text-xs font-medium">الغرف</span>
+                    <User className="w-6 h-6" />
+                    <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
         </div>
@@ -205,7 +205,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4" dir="rtl">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl">إنشاء ملفك الشخصي</CardTitle>
