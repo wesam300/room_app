@@ -11,11 +11,6 @@ export default function HomePage() {
         <p className="text-lg text-muted-foreground mb-8">
           هذه هي نقطة البداية لمشاريعنا الجديدة. يمكنك استخدام هذه المساحة لبناء أي فكرة لديك.
         </p>
-        <Link href="/project-885">
-          <Button size="lg">
-            فتح مشروع 885 (لعبة الفواكه)
-          </Button>
-        </Link>
       </div>
     </div>
   );
