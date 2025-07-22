@@ -102,8 +102,9 @@ export default function FruityFortunePage() {
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
           <span className="text-white font-bold">الرصيد: {formatNumber(balance)}</span>
         </div>
-        <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
+        <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50 flex items-center gap-2">
           <span className="text-white font-bold">كروب وائل</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-crown text-yellow-400"><path d="M13 14.2 15.5 18 l-3.5-1.5 -3.5 1.5 L11 14.2"/><path d="M6 8.2c0-1 1-2 2-2h8c1 0 2 1 2 2v2.4c0 1.4-1.2 2.6-2.6 2.6H8.6C7.2 13.2 6 12 6 10.6V8.2z"/><path d="M6.5 18.2 6 13.2l-3.5 1.5L4 20l4-1.5"/></svg>
         </div>
       </header>
 
