@@ -910,7 +910,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     </div>
                      <div className="relative">
                         <div className="flex items-center gap-2">
-                           <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                           <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3 max-w-[calc(100%-14rem)]">
                                 <Input
                                     placeholder="اكتب رسالتك..."
                                     value={chatInput}
@@ -1103,6 +1103,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
     const [view, setView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [activeTab, setActiveTab] = useState<'rooms' | 'profile'>('rooms');
+    const { toast } = useToast();
 
     const handleEnterRoom = (room: Room) => {
         setCurrentRoom(room);
@@ -1142,7 +1143,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
                     onClick={() => {
                         // In a real app, you would navigate to the game page.
                         // For this example, we'll just show a toast.
-                        alert("Navigating to game page is not implemented in this component.");
+                        toast({ title: "اللعبة موجودة داخل الغرف" });
                     }}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground cursor-pointer",
