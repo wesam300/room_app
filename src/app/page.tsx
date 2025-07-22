@@ -30,10 +30,8 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
 
 
 function formatNumber(num: number) {
-    if (!num) return '0';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${Math.floor(num / 1000)}K`;
-    return num.toString();
+    if (num === null || num === undefined) return '0';
+    return num.toLocaleString('en-US');
 }
 
 // Deterministic function to get the winner for a given roundId
@@ -522,4 +520,5 @@ const handleClaimReward = () => {
   );
 }
 
+    
     
