@@ -14,12 +14,12 @@ const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
+    'orange', 'cherry', 'watermelon', 'lemon', 'timer', 'pear', 'grapes', 'apple', 'strawberry'
 ];
 
 // This defines the visual, clockwise path for the spinning animation
 const VISUAL_SPIN_ORDER: FruitKey[] = [
-    'watermelon', 'cherry', 'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear'
+    'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple', 'grapes', 'lemon'
 ];
 
 
@@ -248,7 +248,7 @@ export default function FruityFortunePage() {
                 key={`${fruitKey}-${index}`}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                     isSpinningAndHighlighted && "bg-white/20 ring-2 ring-white/80 scale-110",
+                     isSpinningAndHighlighted && "ring-2 ring-white/80 scale-110",
                      isSpinning && !isSpinningAndHighlighted && "opacity-60"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
