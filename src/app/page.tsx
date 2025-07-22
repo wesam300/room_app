@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 
-const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
+const BET_AMOUNTS = [1000000, 500000, 100000, 50000, 10000];
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
 ];
@@ -112,6 +112,7 @@ export default function FruityFortunePage() {
       
       const winnerIndexInSequence = spinSequence.indexOf(winningFruit);
       if (winnerIndexInSequence === -1) { // Fallback if winner not in sequence
+          // This should ideally not happen if all fruits are in spin sequence
           setWinningFruit(spinSequence[0]); // Default to first item
           return;
       }
@@ -198,8 +199,7 @@ export default function FruityFortunePage() {
             if (item === 'timer') {
               return (
                 <div key="timer" className={cn(
-                  "relative flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900 rounded-2xl border-2 border-yellow-400 shadow-[inset_0_0_15px_rgba(255,215,0,0.5)] aspect-square",
-                   isSpinning && "animate-pulse"
+                  "relative flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900 rounded-2xl border-2 border-yellow-400 shadow-[inset_0_0_15px_rgba(255,215,0,0.5)] aspect-square"
                 )}>
                     <div className="flex flex-col items-center justify-center">
                         <div className="text-5xl font-bold text-white z-10">{isSpinning ? '...' : timer}</div>
@@ -217,7 +217,7 @@ export default function FruityFortunePage() {
                 key={`${fruitKey}-${index}`}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                    isHighlighted && !isWinning && "bg-purple-700/80 ring-2 ring-purple-400",
+                    isHighlighted && "bg-purple-700/80 ring-2 ring-purple-400",
                     isWinning && "bg-yellow-500/50 ring-2 ring-yellow-300",
                     isSpinning && !isHighlighted && !isWinning && "opacity-50"
                 )}
@@ -266,5 +266,7 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
+
+    
 
     
