@@ -14,12 +14,12 @@ const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'watermelon', 'cherry', 'orange', 'lemon', 'timer', 'pear', 'strawberry', 'apple', 'grapes'
+    'pear', 'strawberry', 'apple', 'grapes', 'timer', 'lemon', 'orange', 'cherry', 'watermelon'
 ];
 
-// This defines the visual, clockwise path for the spinning animation
+// This defines the visual, clockwise path for the spinning animation, AFTER the swap
 const VISUAL_SPIN_ORDER: FruitKey[] = [
-    'watermelon', 'cherry', 'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear'
+    'pear', 'strawberry', 'apple', 'grapes', 'lemon', 'orange', 'cherry', 'watermelon'
 ];
 
 
@@ -308,6 +308,8 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+    
+
     
 
     
