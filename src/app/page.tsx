@@ -103,8 +103,7 @@ export default function FruityFortunePage() {
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
-  const roundBetsRef = useRef<Record<FruitKey, number>>({});
-
+  
 
   // Load state from localStorage on initial mount
   useEffect(() => {
@@ -219,21 +218,18 @@ const handleClaimReward = () => {
         if (timeInCycle < ROUND_DURATION) {
             // --- BETTING PHASE ---
             if (isSpinning) { // Spin just finished, new round starts
+                setIsSpinning(false);
                 setBets({});
-                roundBetsRef.current = {};
             }
-            setIsSpinning(false);
             setTimer(ROUND_DURATION - Math.floor(timeInCycle));
             setHighlightPosition(null);
         } else {
             // --- SPINNING PHASE ---
             if (!isSpinning) {
                 // ---- START OF SPIN PHASE ----
-                // 1. Finalize bets for this round
-                roundBetsRef.current = { ...bets };
                 const winner = getWinnerForRound(currentRoundId);
 
-                // 2. Determine winner and generate animation sequence
+                // 1. Determine winner and generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
                 if (winnerIndex === -1) {
                     animationSequenceRef.current = [winner];
@@ -246,10 +242,9 @@ const handleClaimReward = () => {
                     animationSequenceRef.current = sequence;
                 }
 
-                // 3. Schedule results to appear *after* the spin
+                // 2. Schedule results to appear *after* the spin
                 setTimeout(() => {
-                    const roundResult = roundBetsRef.current;
-                    const payout = (roundResult[winner] || 0) * FRUITS[winner].multiplier;
+                    const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
                     if (payout > 0) {
                         setBalance(prev => prev + payout);
                         setWinnerScreenInfo({ fruit: winner, payout: payout });
@@ -519,5 +514,3 @@ const handleClaimReward = () => {
     </div>
   );
 }
-
-    
