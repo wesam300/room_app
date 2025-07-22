@@ -401,8 +401,8 @@ const handleClaimReward = () => {
       <header className="w-full max-w-sm flex justify-between items-center mb-4 gap-4">
         {/* New Balance Display */}
         <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
-            <div className="flex items-center justify-center gap-2">
-                <span className="text-lg font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>👑</span>
+            <div className="flex flex-col items-center justify-center">
+                <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
                 <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{formatNumber(balance)}</span>
             </div>
         </div>
