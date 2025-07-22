@@ -211,26 +211,26 @@ const handleClaimReward = () => {
 
   // Effect to process round results when spinning stops
   useEffect(() => {
-    // We only want to run this when `isSpinning` changes from true to false
     const justStoppedSpinning = previousIsSpinningRef.current && !isSpinning;
 
     if (justStoppedSpinning) {
-        // roundId is for the *current* round, winner is for the *previous* round
         const winner = getWinnerForRound(roundId - 1);
         const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
-
+        
+        let shouldShowWinnerScreen = payout > 0;
+        
         if (payout > 0) {
             setBalance(prev => prev + payout);
             setWinnerScreenInfo({ fruit: winner, payout: payout });
-            setTimeout(() => setWinnerScreenInfo(null), 4000); // Keep winner screen for 4s
         }
-
+        
         setHistory(prev => [winner, ...prev.slice(0, 4)]);
-        setBets({}); // Clear bets for the new round
-        setHighlightPosition(null);
+        setBets({});
+        
+        if(shouldShowWinnerScreen){
+             setTimeout(() => setWinnerScreenInfo(null), 4000);
+        }
     }
-    
-    // Update the ref for the next render
     previousIsSpinningRef.current = isSpinning;
 
   }, [isSpinning, roundId, bets]);
@@ -240,6 +240,8 @@ const handleClaimReward = () => {
   useEffect(() => {
       
       const updateGameState = () => {
+          if (winnerScreenInfo) return; // PAUSE the game loop while winner screen is active
+
           const now = Date.now();
           const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
           const timeInCycle = (now / 1000) % TOTAL_DURATION;
@@ -252,9 +254,7 @@ const handleClaimReward = () => {
               // Betting phase
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
-               if (!winnerScreenInfo) { // Don't clear highlight if winner screen is up
-                 setHighlightPosition(null);
-               }
+              setHighlightPosition(null);
           } else {
               // Spinning phase
               if (!isSpinning) {
