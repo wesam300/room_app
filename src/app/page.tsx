@@ -29,6 +29,7 @@ export default function FruityFortunePage() {
 
   useEffect(() => {
     setIsClient(true);
+    // Only access localStorage on the client
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
     if (savedBalance) {
         setBalance(parseInt(savedBalance, 10));
