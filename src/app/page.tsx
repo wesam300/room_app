@@ -79,8 +79,9 @@ function getWinnerForRound(
     };
 
     // --- Special Event Logic ---
+    const displayRoundId = (roundId % 1000);
     // Every 20 rounds, guarantee a medium win (overrides the 10-round rule)
-    if (roundId > 0 && roundId % 20 === 0) {
+    if (roundId > 0 && displayRoundId > 0 && displayRoundId % 20 === 0) {
         const mediumWinFruits = [...FRUITS_BY_MULTIPLIER[10], ...FRUITS_BY_MULTIPLIER[15]];
         const winner = mediumWinFruits[Math.floor(pseudoRandom() * mediumWinFruits.length)];
         const result = { winner, isBigWin: true };
@@ -89,7 +90,7 @@ function getWinnerForRound(
     }
 
     // Every 10 rounds, the lowest bet wins
-    if (roundId > 0 && roundId % 10 === 0) {
+    if (roundId > 0 && displayRoundId > 0 && displayRoundId % 10 === 0) {
         const betAmounts = FRUIT_KEYS.map(key => ({ key, amount: betsForRound[key] || 0 }));
         
         // If no bets are placed, fall back to probability logic
@@ -98,16 +99,22 @@ function getWinnerForRound(
         } else {
             let minBet = Infinity;
             betAmounts.forEach(b => {
-                if (b.amount < minBet) {
+                if (b.amount > 0 && b.amount < minBet) { // Only consider non-zero bets
                     minBet = b.amount;
                 }
             });
-            const lowestBetFruits = betAmounts.filter(b => b.amount === minBet).map(b => b.key);
-            const winner = lowestBetFruits[Math.floor(pseudoRandom() * lowestBetFruits.length)];
-            const isBigWin = FRUITS[winner].multiplier > 5;
-            const result = { winner, isBigWin };
-            deterministicWinnerCache.set(roundId, result);
-            return result;
+
+            // If all bets are zero, fall through
+            if(minBet === Infinity) {
+                // Fallthrough
+            } else {
+                 const lowestBetFruits = betAmounts.filter(b => b.amount === minBet).map(b => b.key);
+                 const winner = lowestBetFruits[Math.floor(pseudoRandom() * lowestBetFruits.length)];
+                 const isBigWin = FRUITS[winner].multiplier > 5;
+                 const result = { winner, isBigWin };
+                 deterministicWinnerCache.set(roundId, result);
+                 return result;
+            }
         }
     }
 
@@ -116,7 +123,7 @@ function getWinnerForRound(
     let roundsSinceBigWin = 0;
     // To calculate roundsSinceBigWin, we must check previous rounds
     let checkRound = roundId - 1;
-    while(checkRound > 0) {
+    while(checkRound >= 0) { // check until round 0
         const previousRoundResult = getWinnerForRound(checkRound, {}); // Pass empty bets for historical checks
         if (previousRoundResult.isBigWin) {
             break;
@@ -171,8 +178,10 @@ function getWinnerForRound(
 
 function formatNumber(num: number) {
     if (num === null || num === undefined) return '0';
-    if (num >= 1000000) return `${(num / 1000000).toFixed(0)}m`;
-    if (num >= 1000) return `${(num / 1000).toFixed(0)}k`;
+    if (num >= 10000000) return `${(num / 1000000).toFixed(0)}m`;
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}m`;
+    if (num >= 10000) return `${(num / 1000).toFixed(0)}k`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}k`;
     return num.toLocaleString('en-US');
 }
 
@@ -247,6 +256,7 @@ export default function FruityFortunePage() {
     
     const now = Date.now();
     const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
+    setRoundId(currentRoundId);
 
     // --- Load Balance ---
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
@@ -264,28 +274,36 @@ export default function FruityFortunePage() {
     
     // --- Load History ---
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
-    
+    let loadedHistory : FruitKey[] = [];
     if (savedHistory) {
       try {
         const parsedHistory = JSON.parse(savedHistory);
         if(Array.isArray(parsedHistory)) {
-            setHistory(parsedHistory);
-        } else {
-            // Handle case where history is not an array
-            setHistory([]);
+            loadedHistory = parsedHistory;
         }
       } catch {
-        setHistory([]);
+        // ignore parsing errors
       }
+    } 
+
+    const latestHistory = [];
+    const lastSyncedRound = loadedHistory.length > 0 ? (parseInt(localStorage.getItem('fruityFortuneLastSyncedRound') || '0')) : currentRoundId - 6;
+
+    if (currentRoundId > lastSyncedRound) {
+        // Sync history since last visit
+        for (let i = Math.max(lastSyncedRound + 1, currentRoundId - 4); i <= currentRoundId; i++) {
+            const { winner } = getWinnerForRound(i - 1); // get winner of previous round
+            latestHistory.push(winner);
+        }
+        // Combine old history with new history
+        const finalHistory = [...latestHistory, ...loadedHistory].slice(0, 5);
+        setHistory(finalHistory);
     } else {
-      // Set initial history based on current global time if none is saved
-      const latestHistory = [];
-      for (let i = 5; i > 0; i--) {
-          const { winner } = getWinnerForRound(currentRoundId - i);
-          latestHistory.push(winner);
-      }
-      setHistory(latestHistory);
+        setHistory(loadedHistory.slice(0, 5));
     }
+    
+    localStorage.setItem('fruityFortuneLastSyncedRound', currentRoundId.toString());
+
     
     // --- Bets & Offline Payout Logic ---
     const savedBetsData = localStorage.getItem('fruityFortuneBets');
@@ -412,6 +430,8 @@ const handleClaimReward = () => {
         if (roundId !== currentRoundId) {
              // ---- NEW ROUND LOGIC ----
             setRoundId(currentRoundId);
+             localStorage.setItem('fruityFortuneLastSyncedRound', currentRoundId.toString());
+
             // On a new round, the winner of the *previous* round is determined
             const { winner: previousWinner } = getWinnerForRound(currentRoundId - 1, bets);
             
@@ -546,6 +566,8 @@ const handleClaimReward = () => {
     hidden: { y: 20, opacity: 0 },
     visible: { y: 0, opacity: 1 },
   };
+  
+  const displayRoundId = (roundId % 1000) + 1;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
@@ -590,34 +612,40 @@ const handleClaimReward = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <header className="w-full max-w-sm flex justify-between items-center mb-4 gap-4">
-        {/* New Balance Display */}
-        <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
-            <div className="flex flex-col items-center justify-center">
-                <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
-                <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
+      <div className="w-full max-w-sm flex flex-col items-center">
+        <header className="w-full flex justify-between items-center mb-2 gap-4">
+            {/* New Balance Display */}
+            <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
+                <div className="flex flex-col items-center justify-center">
+                    <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
+                    <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
+                </div>
             </div>
-        </div>
 
-        {/* Existing Claim Reward Button */}
-        <button 
-            onClick={handleClaimReward}
-            disabled={!canClaim}
-            className={cn(
-                "bg-black/30 px-4 py-2 rounded-full border border-yellow-400/50 flex flex-col items-center text-center transition-all duration-300",
-                canClaim ? "cursor-pointer hover:bg-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "cursor-not-allowed opacity-60"
-            )}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-white font-bold">استلام الجائزة</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-gift text-yellow-400"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 5a4.8 8 0 0 1 4.5 3 2.5 2.5 0 0 1 0 5"/></svg>
-          </div>
-          <span className={cn("text-xs mt-1", canClaim ? "text-green-400" : "text-gray-400")}>
-            {timeUntilNextClaim}
-          </span>
-        </button>
-      </header>
+            {/* Existing Claim Reward Button */}
+            <button 
+                onClick={handleClaimReward}
+                disabled={!canClaim}
+                className={cn(
+                    "bg-black/30 px-4 py-2 rounded-full border border-yellow-400/50 flex flex-col items-center text-center transition-all duration-300",
+                    canClaim ? "cursor-pointer hover:bg-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "cursor-not-allowed opacity-60"
+                )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-white font-bold">استلام الجائزة</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-gift text-yellow-400"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 5a4.8 8 0 0 1 4.5 3 2.5 2.5 0 0 1 0 5"/></svg>
+              </div>
+              <span className={cn("text-xs mt-1", canClaim ? "text-green-400" : "text-gray-400")}>
+                {timeUntilNextClaim}
+              </span>
+            </button>
+        </header>
+
+        <div className="text-center mb-4 text-yellow-300 font-bold text-lg bg-black/20 py-1 px-4 rounded-full border border-yellow-400/30">
+          الجولة: {displayRoundId}
+        </div>
+      </div>
+
 
       <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30">
         <div className="relative grid grid-cols-3 gap-3" ref={gridRef}>
@@ -702,7 +730,7 @@ const handleClaimReward = () => {
                 <div className={cn("bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center", index === 0 && "scale-110 border-2 border-yellow-300")}>
                    <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} />
                 </div>
-                {index === 0 && (
+                {index === 0 && !isSpinning && (
                    <div className="absolute -top-3 -right-3 bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg animate-pulse">
                         New
                     </div>
