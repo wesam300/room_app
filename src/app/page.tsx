@@ -27,6 +27,12 @@ export default function FruityFortunePage() {
   const [lastWin, setLastWin] = useState<{ fruit: FruitKey; amount: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
+  // useRef to hold the latest state values without causing re-renders for the timer.
+  const betsRef = useRef(bets);
+  useEffect(() => {
+      betsRef.current = bets;
+  }, [bets]);
+
   // Load state from localStorage only once
   useEffect(() => {
     setIsClient(true);
@@ -52,7 +58,8 @@ export default function FruityFortunePage() {
 
     setTimeout(() => {
         const winningFruit = ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)];
-        const payout = (bets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
+        const currentBets = betsRef.current; // Use the ref to get the latest bets
+        const payout = (currentBets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
 
         if (payout > 0) {
             setBalance(prev => prev + payout);
@@ -66,9 +73,9 @@ export default function FruityFortunePage() {
         setIsSpinning(false);
         setTimer(20); 
     }, 3000);
-  }, [bets]);
+  }, []); // Empty dependency array, it no longer depends on `bets`
 
-  // Dedicated effect for the timer logic
+  // THE ULTIMATE, FINAL, UNINTERRUPTIBLE TIMER
   useEffect(() => {
     if (!isClient || isSpinning) {
       return;
@@ -84,6 +91,8 @@ export default function FruityFortunePage() {
     }, 1000);
 
     return () => clearInterval(intervalId);
+    // This effect ONLY re-runs if these specific values change. 
+    // It is now completely independent of bets or other state updates.
   }, [timer, isClient, isSpinning, handleRoundEnd]);
 
 
@@ -198,5 +207,7 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
 
     
