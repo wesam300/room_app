@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -25,6 +26,18 @@ interface Room {
     image: string;
     ownerId: string;
 }
+
+interface ChatMessage {
+    id: string;
+    user: UserProfile;
+    text: string;
+}
+
+interface MicSlot {
+    user: UserProfile | null;
+    isMuted: boolean;
+}
+
 
 // --- TopBar Component ---
 function TopBar({ name, image, userId, onBack }: { name: string | null, image: string | null, userId: string | null, onBack: () => void }) {
@@ -73,7 +86,6 @@ function ProfileScreen({ onReset }: { onReset: () => void }) {
              <p className="text-muted-foreground mb-6">
                مرحبًا بك! يمكنك إدارة حسابك من هنا.
             </p>
-            <Button onClick={onReset} variant="link">إعادة تعيين الملف الشخصي</Button>
         </div>
     );
 }
@@ -110,13 +122,12 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
             ownerId: user.userId,
         };
 
-        // Save to localStorage (or could be an API call)
         const existingRooms: Room[] = JSON.parse(localStorage.getItem('userRooms') || '[]');
         localStorage.setItem('userRooms', JSON.stringify([...existingRooms, newRoom]));
         
         toast({ title: "تم إنشاء الغرفة بنجاح!" });
         onRoomCreated(newRoom);
-        setIsOpen(false); // Close dialog
+        setIsOpen(false);
         setRoomName("");
         setRoomImage(null);
     };
@@ -156,19 +167,30 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
 }
 
 function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom: (room: Room) => void }) {
-    // In a real app, you'd fetch public rooms or user's rooms
-    const myRooms = JSON.parse(localStorage.getItem('userRooms') || '[]') as Room[];
+    const [myRooms, setMyRooms] = useState<Room[]>([]);
+    
+    useEffect(() => {
+        // This useEffect ensures that we read from localStorage only on the client side.
+        const rooms = JSON.parse(localStorage.getItem('userRooms') || '[]') as Room[];
+        setMyRooms(rooms);
+    }, []);
+
+
+    const handleRoomCreated = (newRoom: Room) => {
+        setMyRooms(prev => [...prev, newRoom]);
+        onEnterRoom(newRoom);
+    }
 
     return (
         <div className="flex flex-col h-full">
             <header className="flex items-center justify-between p-2 border-b">
-                <CreateRoomDialog user={user} onRoomCreated={onEnterRoom} />
+                <CreateRoomDialog user={user} onRoomCreated={handleRoomCreated} />
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm">الغرف المتاحة</Button>
                     <Button variant="outline" size="icon"><Search className="h-4 w-4" /></Button>
                 </div>
             </header>
-            <div className="flex-1 p-4 text-center">
+            <div className="flex-1 p-4 text-right">
                 <h2 className="text-xl font-bold mb-4">غرفي</h2>
                 {myRooms.length === 0 ? (
                     <p className="text-muted-foreground">لم تقم بإنشاء أي غرف بعد.</p>
@@ -190,16 +212,67 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
     );
 }
 
-function RoomScreen({ room, onExit }: { room: Room, onExit: () => void }) {
+function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onExit: () => void }) {
      const { toast } = useToast();
+     const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false }));
+     const [messages, setMessages] = useState<ChatMessage[]>([]);
+     const [chatInput, setChatInput] = useState("");
+     const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
 
      const handleCopyId = () => {
         navigator.clipboard.writeText(room.id);
         toast({ title: "تم نسخ ID الغرفة" });
     };
 
+    const handleAscend = (index: number) => {
+        if (myMicIndex !== -1) {
+            toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر."});
+            return;
+        }
+        if (micSlots[index].user) {
+            toast({ variant: "destructive", description: "هذا المايك مشغول."});
+            return;
+        }
+        setMicSlots(prev => {
+            const newSlots = [...prev];
+            newSlots[index] = { user: user, isMuted: false };
+            return newSlots;
+        });
+    }
+
+    const handleDescend = () => {
+        if (myMicIndex !== -1) {
+             setMicSlots(prev => {
+                const newSlots = [...prev];
+                newSlots[myMicIndex] = { user: null, isMuted: false };
+                return newSlots;
+            });
+        }
+    }
+    
+    const handleToggleMute = () => {
+         if (myMicIndex !== -1) {
+             setMicSlots(prev => {
+                const newSlots = [...prev];
+                newSlots[myMicIndex].isMuted = !newSlots[myMicIndex].isMuted;
+                return newSlots;
+            });
+        }
+    }
+    
+    const handleSendMessage = () => {
+        if (!chatInput.trim()) return;
+        const newMessage: ChatMessage = {
+            id: `msg_${Date.now()}`,
+            user: user,
+            text: chatInput,
+        };
+        setMessages(prev => [...prev, newMessage]);
+        setChatInput("");
+    }
+
     return (
-         <div className="flex flex-col h-full">
+         <div className="flex flex-col h-full bg-background">
             <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
                 <Button variant="ghost" size="icon" onClick={onExit}>
                     <ChevronLeft className="w-6 h-6" />
@@ -220,10 +293,88 @@ function RoomScreen({ room, onExit }: { room: Room, onExit: () => void }) {
                     </Avatar>
                 </div>
             </header>
-            <main className="flex-1 p-4">
-                {/* Room content goes here */}
-                 <h1 className="text-center text-2xl text-muted-foreground">محتوى الغرفة سيكون هنا</h1>
+            
+            {/* Mic Grid */}
+            <div className="grid grid-cols-5 gap-4 p-4">
+                {micSlots.map((slot, index) => (
+                    <Popover key={index}>
+                        <PopoverTrigger asChild>
+                             <div className="aspect-square bg-muted rounded-full flex items-center justify-center cursor-pointer relative">
+                                {slot.user ? (
+                                    <>
+                                        <Avatar className="w-full h-full">
+                                            <AvatarImage src={slot.user.image} alt={slot.user.name} />
+                                            <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        {slot.isMuted && (
+                                            <div className="absolute bottom-0 right-0 bg-red-600 p-1 rounded-full">
+                                                <MicOff className="w-3 h-3 text-white"/>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <Mic className="w-8 h-8 text-muted-foreground" />
+                                )}
+                            </div>
+                        </PopoverTrigger>
+                         <PopoverContent className="w-auto p-0">
+                           <div className="flex flex-col gap-2 p-2">
+                               {slot.user?.userId === user.userId ? (
+                                   <>
+                                       <Button variant="outline" onClick={handleToggleMute}>
+                                            {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
+                                       </Button>
+                                       <Button variant="destructive" onClick={handleDescend}>النزول من المايك</Button>
+                                   </>
+                               ) : !slot.user ? (
+                                   <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
+                               ) : (
+                                   <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
+                               )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                ))}
+            </div>
+
+            {/* Chat Area */}
+             <main className="flex-1 p-4 overflow-y-auto flex flex-col-reverse">
+                <div className="flex flex-col gap-3">
+                    {messages.slice().reverse().map(msg => (
+                        <div key={msg.id} className="flex items-start gap-2.5">
+                            <Avatar className="w-8 h-8">
+                                <AvatarImage src={msg.user.image} />
+                                <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col gap-1 w-full max-w-[320px]">
+                                <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                    <span className="text-sm font-semibold text-foreground">{msg.user.name}</span>
+                                </div>
+                                <div className="leading-1.5 p-3 border-gray-200 bg-muted rounded-e-xl rounded-es-xl">
+                                    <p className="text-sm font-normal text-foreground">{msg.text}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                     {messages.length === 0 && <p className="text-center text-muted-foreground">لا توجد رسائل بعد. ابدأ المحادثة!</p>}
+                </div>
             </main>
+
+             {/* Chat Input */}
+            <footer className="p-4 border-t bg-background">
+                <div className="flex items-center gap-2">
+                    <Input 
+                        placeholder="اكتب رسالتك هنا..." 
+                        className="text-right"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <Button size="icon" onClick={handleSendMessage}>
+                        <Send className="w-5 h-5"/>
+                    </Button>
+                </div>
+            </footer>
         </div>
     );
 }
@@ -232,7 +383,6 @@ function RoomScreen({ room, onExit }: { room: Room, onExit: () => void }) {
 // --- Main App Shell ---
 function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) {
     const [activeTab, setActiveTab] = useState('rooms');
-    // 'list' | 'in_room'
     const [roomView, setRoomView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
 
@@ -245,18 +395,29 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
         setCurrentRoom(null);
         setRoomView('list');
     };
+    
+    const handleProfileClick = () => {
+      // If we are in a room, the back button should exit the room.
+      // Otherwise, it should go to profile edit.
+      if (activeTab === 'profile') {
+          onReset();
+      } else {
+         setActiveTab('profile');
+      }
+    }
 
     const renderContent = () => {
         switch (activeTab) {
             case 'profile':
-                return <ProfileScreen onReset={() => setActiveTab('profile_edit')} />;
+                return <ProfileScreen onReset={onReset} />;
             case 'rooms':
                 if (roomView === 'in_room' && currentRoom) {
-                    return <RoomScreen room={currentRoom} onExit={handleExitRoom} />;
+                    return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} />;
                 }
                 return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} />;
             default:
-                return <div className="flex-1 p-4"></div>;
+                 // Default to rooms list if no specific view is active
+                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} />;
         }
     }
 
@@ -306,13 +467,11 @@ export default function HomePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // States for profile creation
   const [name, setName] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Load profile from localStorage on initial mount
   useEffect(() => {
     const savedName = localStorage.getItem("userName");
     const savedImage = localStorage.getItem("userImage");
@@ -360,9 +519,7 @@ export default function HomePage() {
   };
   
   const handleReset = () => {
-    // Clear user state to show creation screen
     setUser(null); 
-    // also clear localStorage if you want it to be permanent
     localStorage.removeItem("userName");
     localStorage.removeItem("userImage");
     localStorage.removeItem("userId");
@@ -373,7 +530,6 @@ export default function HomePage() {
   if (isLoading) {
       return (
           <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
-              {/* Optional: Add a spinner here */}
           </div>
       )
   }
@@ -382,7 +538,6 @@ export default function HomePage() {
     return <MainApp user={user} onReset={handleReset} />;
   }
 
-  // --- Profile Creation Screen ---
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
       <Card className="w-full max-w-md">
@@ -425,4 +580,3 @@ export default function HomePage() {
     </div>
   );
 }
-
