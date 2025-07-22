@@ -910,7 +910,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     </div>
                      <div className="relative">
                         <div className="flex items-center gap-2">
-                            <div className="flex-grow flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                           <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                                 <Input
                                     placeholder="اكتب رسالتك..."
                                     value={chatInput}
@@ -925,7 +925,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="bg-black/40 rounded-full h-12 w-12"
+                                className="bg-black/40 rounded-full h-12 w-12 flex-shrink-0"
                                 onClick={() => setIsRoomMuted(prev => !prev)}
                             >
                                 {isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
@@ -933,7 +933,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                              <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="bg-black/40 rounded-full h-12 w-12"
+                                className="bg-black/40 rounded-full h-12 w-12 flex-shrink-0"
                                 onClick={() => handleOpenGiftDialog(null)}
                             >
                                  <Gift className="w-6 h-6 text-primary" />
