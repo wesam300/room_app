@@ -157,7 +157,7 @@ export default function FruityFortunePage() {
               <div
                 key={`${fruitKey}-${index}`}
                 className={cn(
-                    "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30 hover:bg-purple-700/60",
+                    "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
                     isWinning && "bg-yellow-500/50 ring-2 ring-yellow-300 animate-pulse",
                     isSpinning && !isWinning && "opacity-50"
                 )}
@@ -207,6 +207,8 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
 
     
 
