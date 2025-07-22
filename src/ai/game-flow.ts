@@ -100,7 +100,7 @@ function gameEngine() {
             gameState.isSpinning = true;
             gameState.winningFruit = FRUIT_KEYS[Math.floor(Math.random() * FRUIT_KEYS.length)];
             gameState.spinStartTime = now;
-            gameState.lastUpdate = now;
+            gameState.lastUpdate = now; // This was the missing line
             gameState.timer = 0;
         }
     }
