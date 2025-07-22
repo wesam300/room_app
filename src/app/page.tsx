@@ -101,7 +101,8 @@ export default function FruityFortunePage() {
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
-  const previousIsSpinningRef = useRef<boolean>();
+  const previousIsSpinningRef = useRef(false);
+  const roundBetsRef = useRef<Record<FruitKey, number>>({});
 
 
   // Load state from localStorage on initial mount
@@ -126,17 +127,8 @@ export default function FruityFortunePage() {
         }
     }
     
-    const savedBets = localStorage.getItem('fruityFortuneBets');
-    if (savedBets) {
-        try {
-            const parsedBets = JSON.parse(savedBets);
-            if (typeof parsedBets === 'object' && parsedBets !== null) {
-                setBets(parsedBets);
-            }
-        } catch (e) {
-            setBets({});
-        }
-    }
+    // Bets are ephemeral per session, so we don't load them.
+    setBets({});
 
     const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
     if (savedClaimTimestamp) {
@@ -149,12 +141,12 @@ export default function FruityFortunePage() {
     if (isClient) {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
       localStorage.setItem('fruityFortuneHistory', JSON.stringify(history));
-      localStorage.setItem('fruityFortuneBets', JSON.stringify(bets));
+      // Do not save bets, they reset each round.
       if (lastClaimTimestamp) {
           localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
       }
     }
-  }, [balance, history, bets, lastClaimTimestamp, isClient]);
+  }, [balance, history, lastClaimTimestamp, isClient]);
 
 
    // Daily Reward Timer Logic
@@ -209,39 +201,10 @@ const handleClaimReward = () => {
     }
 };
 
-  // Effect to process round results when spinning stops
-  useEffect(() => {
-    const justStoppedSpinning = previousIsSpinningRef.current && !isSpinning;
-
-    if (justStoppedSpinning) {
-        const winner = getWinnerForRound(roundId - 1);
-        const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
-        
-        let shouldShowWinnerScreen = payout > 0;
-        
-        if (payout > 0) {
-            setBalance(prev => prev + payout);
-            setWinnerScreenInfo({ fruit: winner, payout: payout });
-        }
-        
-        setHistory(prev => [winner, ...prev.slice(0, 4)]);
-        setBets({});
-        
-        if(shouldShowWinnerScreen){
-             setTimeout(() => setWinnerScreenInfo(null), 4000);
-        }
-    }
-    previousIsSpinningRef.current = isSpinning;
-
-  }, [isSpinning, roundId, bets]);
-
-
+  
   // The main game loop, driven by a simple interval
   useEffect(() => {
-      
       const updateGameState = () => {
-          if (winnerScreenInfo) return; // PAUSE the game loop while winner screen is active
-
           const now = Date.now();
           const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
           const timeInCycle = (now / 1000) % TOTAL_DURATION;
@@ -252,14 +215,33 @@ const handleClaimReward = () => {
 
           if (timeInCycle < ROUND_DURATION) {
               // Betting phase
+              if(isSpinning) { // Spin just finished
+                setBets({});
+                roundBetsRef.current = {};
+              }
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
               setHighlightPosition(null);
           } else {
               // Spinning phase
               if (!isSpinning) {
-                // Generate animation sequence ONCE at the start of the spin
+                // ---- START OF SPIN PHASE ----
+                // 1. Finalize bets for this round
+                roundBetsRef.current = { ...bets };
+                
+                // 2. Determine winner and process results
                 const winner = getWinnerForRound(currentRoundId);
+                const payout = (roundBetsRef.current[winner] || 0) * FRUITS[winner].multiplier;
+                
+                if (payout > 0) {
+                    setBalance(prev => prev + payout);
+                    setWinnerScreenInfo({ fruit: winner, payout: payout });
+                    setTimeout(() => setWinnerScreenInfo(null), 4000); // Show for 4 seconds
+                }
+                
+                setHistory(prev => [winner, ...prev.slice(0, 4)]);
+
+                // 3. Generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
                 
                 if (winnerIndex === -1) { 
@@ -310,7 +292,7 @@ const handleClaimReward = () => {
       return () => {
         clearInterval(interval)
       };
-  }, [roundId, isSpinning, winnerScreenInfo]); 
+  }, [roundId, isSpinning, bets]); // `bets` is needed to correctly capture them before the spin
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
