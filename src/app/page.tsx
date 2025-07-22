@@ -62,57 +62,6 @@ const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://storage.googleapis.com/stey-kr/lion_gift.png' }
 ];
 
-// --- TopBar Component ---
-function TopBar({ name, image, userId, onBack }: { name: string | null, image: string | null, userId: string | null, onBack: () => void }) {
-    const { toast } = useToast();
-
-    const handleCopyId = () => {
-        if (userId) {
-            navigator.clipboard.writeText(userId);
-            toast({
-                title: "تم نسخ الـ ID",
-                description: "تم نسخ هوية المستخدم إلى الحافظة.",
-            });
-        }
-    };
-
-    return (
-        <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-             <Button variant="ghost" size="icon" onClick={onBack}>
-                <ChevronLeft className="w-6 h-6" />
-            </Button>
-            <div className="flex items-center gap-3">
-                 <div className="text-right">
-                    <p className="font-bold text-lg">{name}</p>
-                    {userId && (
-                        <div className="flex items-center justify-end gap-1.5">
-                             <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                                <Copy className="h-3 w-3" />
-                            </button>
-                            <span className="text-sm text-muted-foreground">{userId}</span>
-                        </div>
-                    )}
-                </div>
-                <Avatar className="w-12 h-12">
-                    <AvatarImage src={image || ''} alt={name || ''} />
-                    <AvatarFallback>{name ? name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
-                </Avatar>
-            </div>
-        </header>
-    );
-}
-
-// --- ProfileScreen Component ---
-function ProfileScreen({ onReset }: { onReset: () => void }) {
-    return (
-        <div className="flex flex-col items-center justify-center flex-1 p-4 text-center">
-             <p className="text-muted-foreground mb-6">
-               مرحبًا بك! يمكنك إدارة حسابك من هنا.
-            </p>
-        </div>
-    );
-}
-
 
 // --- Rooms Feature Components ---
 
@@ -935,7 +884,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
 // --- Main App Shell ---
 function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) {
-    const [activeTab, setActiveTab] = useState('rooms');
     const [roomView, setRoomView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
 
@@ -948,52 +896,23 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
         setCurrentRoom(null);
         setRoomView('list');
     };
-    
-    const handleProfileClick = () => {
-        if (activeTab === 'profile') {
-           setActiveTab('rooms');
-        } else {
-           setActiveTab('profile');
-        }
-    }
 
     const handleRoomUpdated = (updatedRoom: Room) => {
-        // Update the room in the main state
         setCurrentRoom(updatedRoom);
-
-        // Update the room in localStorage is handled in EditRoomDialog to persist changes
     };
 
     if (roomView === 'in_room' && currentRoom) {
         return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} />;
     }
 
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'profile':
-                return <ProfileScreen onReset={onReset} />;
-            case 'rooms':
-                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated}/>;
-            default:
-                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated}/>;
-        }
-    }
-
     return (
         <div className="flex flex-col h-screen">
-            {activeTab === 'profile' ? (
-                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={handleReset} />
-            ) : null }
             <main className="flex-1 overflow-y-auto bg-background">
-                {renderContent()}
+                 <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated}/>
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
-                    onClick={() => setActiveTab('rooms')} 
-                    className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                        activeTab === 'rooms' ? "text-primary" : "hover:text-foreground"
-                    )}>
+                    className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-primary">
                     <MessageSquare className="w-6 h-6" />
                     <span className="text-xs font-medium">الغرف</span>
                 </button>
@@ -1007,12 +926,10 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
                     </div>
                 </Link>
                 <button 
-                    onClick={handleProfileClick}
-                    className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                        activeTab === 'profile' ? "text-primary" : "hover:text-foreground"
-                    )}>
+                     onClick={onReset}
+                    className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground">
                     <User className="w-6 h-6" />
+                    <span className="text-xs font-medium">الخروج</span>
                 </button>
             </footer>
         </div>
@@ -1077,11 +994,15 @@ export default function HomePage() {
   };
   
   const handleReset = () => {
+    // Clear user data from state and local storage for a clean "logout"
     setUser(null); 
-    const savedName = localStorage.getItem("userName");
-    const savedImage = localStorage.getItem("userImage");
-    setName(savedName);
-    setImage(savedImage);
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userImage");
+    // We keep userId to allow the same user to log back in
+    // Resetting input fields to avoid showing stale data
+    setName("");
+    setImage(null);
+    toast({ title: "تم تسجيل الخروج" });
   }
   
   if (isLoading) {
