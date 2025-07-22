@@ -118,7 +118,7 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
         }
 
         const newRoom: Room = {
-            id: `room_${Math.random().toString(36).substr(2, 9)}`,
+            id: Math.floor(100000 + Math.random() * 900000).toString(),
             name: roomName,
             image: roomImage,
             ownerId: user.userId,
@@ -196,14 +196,33 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
                 {myRooms.length === 0 ? (
                     <p className="text-muted-foreground">لم تقم بإنشاء أي غرف بعد.</p>
                 ) : (
-                    <div className="grid gap-4">
+                    <div className="grid gap-3">
                         {myRooms.map(room => (
-                             <button key={room.id} onClick={() => onEnterRoom(room)} className="w-full text-right p-3 bg-muted rounded-lg flex items-center gap-3">
-                                 <Avatar>
-                                     <AvatarImage src={room.image} alt={room.name} />
-                                     <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
-                                 </Avatar>
-                                 <span>{room.name}</span>
+                            <button key={room.id} onClick={() => onEnterRoom(room)} className="w-full text-right p-0.5 bg-gradient-to-b from-yellow-300 to-yellow-500 rounded-2xl shadow-lg">
+                                <div className="bg-gradient-to-b from-yellow-50 via-amber-50 to-yellow-100 rounded-[14px] p-3 flex items-center justify-between gap-3">
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="font-bold text-lg text-gray-800">{room.name}</h3>
+                                                <p className="text-sm text-gray-500 mt-1">مرحبا بكم في غرفة {room.name}</p>
+                                            </div>
+                                            <div className="bg-amber-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                                <span>{Math.floor(Math.random() * 500) + 10}</span>
+                                                <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0H9.33333V10H11V0Z" fill="white"/><path d="M7.33333 3.33333H5.66667V10H7.33333V3.33333Z" fill="white"/><path d="M3.66667 6.66667H2V10H3.66667V6.66667Z" fill="white"/></svg>
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 flex items-center gap-2">
+                                            <div className="bg-purple-800 text-white text-xs font-bold px-1.5 py-0.5 rounded-sm">ID</div>
+                                            <span className="text-gray-600 font-semibold">{room.id}</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-20 h-20 rounded-lg p-0.5 bg-gradient-to-b from-yellow-400 to-yellow-600">
+                                         <Avatar className="w-full h-full rounded-md">
+                                             <AvatarImage src={room.image} alt={room.name} />
+                                             <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
+                                         </Avatar>
+                                    </div>
+                                </div>
                              </button>
                         ))}
                     </div>
@@ -220,18 +239,21 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
      const [isSpeaking, setIsSpeaking] = useState(false); 
      
      useEffect(() => {
+        // This effect will only run if the current user is on a mic and is not muted.
+        // In a real app, you'd replace this with a voice activity detection library.
+        // For now, we simulate speaking to show the animation.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
-            // In a real app, this would be controlled by a voice activity detection library.
-            // For now, we simulate speaking for demonstration.
             const interval = setInterval(() => {
                 setIsSpeaking(true);
+                // The animation will show for 1.5 seconds, then stop.
                 setTimeout(() => setIsSpeaking(false), 1500); 
-            }, 4000);
+            }, 4000); // Trigger speaking animation every 4 seconds.
             return () => {
                 clearInterval(interval)
                 setIsSpeaking(false);
             };
         } else {
+             // Ensure speaking animation is off if the user mutes or descends.
              setIsSpeaking(false);
         }
      }, [myMicIndex, micSlots]);
@@ -280,6 +302,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
     
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
+        // The speaking animation should only show for the current user when they are actively speaking and not muted.
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
 
         return (
@@ -610,5 +633,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
