@@ -111,9 +111,6 @@ export default function FruityFortunePage() {
 
   // The main game loop, driven by a simple interval
   useEffect(() => {
-      if (winnerTimeoutRef.current) {
-        clearTimeout(winnerTimeoutRef.current);
-      }
       
       const updateGameState = () => {
           const now = Date.now();
@@ -127,6 +124,9 @@ export default function FruityFortunePage() {
           if (timeInCycle < ROUND_DURATION) {
               // Betting phase
               if(isSpinning) { // Process results only once when spinning stops
+                if (winnerTimeoutRef.current) {
+                  clearTimeout(winnerTimeoutRef.current);
+                }
                 const winner = getWinnerForRound(currentRoundId -1);
                 const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
           
@@ -141,14 +141,12 @@ export default function FruityFortunePage() {
                 setMomentaryWinner(winner);
                 winnerTimeoutRef.current = setTimeout(() => {
                     setMomentaryWinner(null);
-                    setHighlightedFruit(null);
                     setHighlightPosition(null);
                 }, 1000); // Show for 1 second
               }
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
                if (!momentaryWinner) {
-                 setHighlightedFruit(null);
                  setHighlightPosition(null);
                }
 
@@ -156,6 +154,11 @@ export default function FruityFortunePage() {
           } else {
               // Spinning phase
               if (!isSpinning) {
+                if (winnerTimeoutRef.current) {
+                  clearTimeout(winnerTimeoutRef.current);
+                }
+                setMomentaryWinner(null);
+
                 // Generate animation sequence ONCE at the start of the spin
                 const winner = getWinnerForRound(currentRoundId);
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -284,7 +287,6 @@ export default function FruityFortunePage() {
             const fruitKey = item as FruitKey;
             
             const isMomentaryWinner = momentaryWinner === fruitKey;
-            const isSpinningAndHighlighted = isSpinning && highlightedFruit === fruitKey;
 
             return (
               <div
@@ -301,6 +303,9 @@ export default function FruityFortunePage() {
                     <div className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full shadow-lg">
                         {formatNumber(bets[fruitKey])}
                     </div>
+                )}
+                 {isMomentaryWinner && (
+                    <div className="absolute inset-0 rounded-2xl " />
                 )}
               </div>
             );
