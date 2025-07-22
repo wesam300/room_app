@@ -5,7 +5,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { GameState } from '@/types/game';
 
 const BET_AMOUNTS = [1000000, 500000, 100000, 50000, 10000];
 const ROUND_DURATION = 20; // seconds
@@ -29,17 +28,16 @@ export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
   const [balance, setBalance] = useState(10000000);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
-  const [gameState, setGameState] = useState<GameState>({
+  const [gameState, setGameState] = useState({
     timer: ROUND_DURATION,
     isSpinning: false,
-    winningFruit: null,
-    highlightedFruit: null,
-    history: [],
-    bets: {},
+    winningFruit: null as FruitKey | null,
+    highlightedFruit: null as FruitKey | null,
+    history: [] as FruitKey[],
+    bets: {} as Record<FruitKey, number>,
   });
    const [lastWin, setLastWin] = useState<FruitKey | null>(null);
 
-  // Use a ref for bets to avoid re-triggering useEffects that don't need it
   const betsRef = useRef<Record<FruitKey, number>>({});
   
   const { toast } = useToast();
@@ -74,8 +72,6 @@ export default function FruityFortunePage() {
       const weights: number[] = fruits.map(fruit => {
           const betAmount = allBets[fruit] || 0;
           const multiplier = FRUITS[fruit].multiplier;
-          // The higher the bet and lower the multiplier, the lower the chance to win.
-          // We use inverse of multiplier to give higher chance to lower multiplier fruits.
           return betAmount / multiplier;
       });
 
@@ -93,7 +89,7 @@ export default function FruityFortunePage() {
       
       setGameState(prev => ({ ...prev, isSpinning: true, winningFruit }));
 
-  }, []); // No dependencies, uses refs
+  }, []);
 
 
   // Main Game Loop Timer
@@ -107,7 +103,6 @@ export default function FruityFortunePage() {
 
     const interval = setInterval(() => {
       setGameState(prev => {
-        // Ensure we don't go past 0 if the component re-renders slowly
         if (prev.isSpinning) {
             clearInterval(interval);
             return prev;
@@ -115,7 +110,6 @@ export default function FruityFortunePage() {
         const newTime = prev.timer - 1;
         if (newTime <= 0) {
             clearInterval(interval);
-            // Defer the call to handleRoundEnd to the next render cycle
             setTimeout(handleRoundEnd, 0);
             return { ...prev, timer: 0 };
         }
@@ -164,7 +158,6 @@ export default function FruityFortunePage() {
           if (currentStep > totalSteps) {
               clearInterval(spinInterval);
 
-              // Final payout and reset logic
               const userBetOnWinner = betsRef.current[winningFruit] || 0;
               if (userBetOnWinner > 0) {
                   const payout = userBetOnWinner * FRUITS[winningFruit].multiplier;
@@ -201,6 +194,8 @@ export default function FruityFortunePage() {
         
         betsRef.current[fruit] = (betsRef.current[fruit] || 0) + activeBet;
 
+        // This state update is only for re-rendering the bet amount on the fruit
+        // It does not influence the game logic which now uses betsRef
         setGameState(prev => {
             const newBets = {...prev.bets};
             newBets[fruit] = (newBets[fruit] || 0) + activeBet;
@@ -296,12 +291,22 @@ export default function FruityFortunePage() {
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
           <span className="text-sm font-bold text-yellow-300 ml-2">الجولات:</span>
-          <div className="flex flex-grow justify-around items-center">
+          <div className="flex flex-1 justify-evenly items-center h-10">
             {history.length > 0 ? history.map((fruitKey, index) => (
-              <div key={`${fruitKey}-${index}-${Math.random()}`} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
-                 <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} />
+              <div key={`${fruitKey}-${index}`} className="relative">
+                <div className={cn("bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center", index === 0 && "scale-110 border-2 border-yellow-300")}>
+                   <FruitDisplay fruitType={fruitKey} size="small" showMultiplier={false} />
+                </div>
+                {index === 0 && (
+                   <div className="absolute -top-3 -right-3 bg-yellow-400 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-lg animate-pulse">
+                        New
+                    </div>
+                )}
               </div>
             )) : <span className="text-xs text-gray-400">لا يوجد تاريخ بعد</span>}
+             {Array.from({ length: Math.max(0, 5 - history.length) }).map((_, i) => (
+                <div key={`placeholder-${i}`} className="w-8 h-8" />
+            ))}
           </div>
         </div>
       </footer>
