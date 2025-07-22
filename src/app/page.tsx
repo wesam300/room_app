@@ -43,6 +43,24 @@ interface MicSlot {
     isLocked: boolean;
 }
 
+interface GiftItem {
+    id: string;
+    name: string;
+    price: number;
+    image: string;
+}
+
+
+// --- Constants ---
+const BOT_USER: UserProfile = {
+    name: "روكي",
+    image: "https://placehold.co/100x100/A755F7/FFFFFF.png", // A distinct color for the bot
+    userId: "bot-001"
+};
+
+const GIFTS: GiftItem[] = [
+    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://placehold.co/200x200/FFD700/000000.png' }
+];
 
 // --- TopBar Component ---
 function TopBar({ name, image, userId, onBack }: { name: string | null, image: string | null, userId: string | null, onBack: () => void }) {
@@ -324,10 +342,88 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
     );
 }
 
+const FallingSparkles = () => {
+    const items = Array.from({ length: 30 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      animationDuration: `${Math.random() * 2 + 3}s`,
+      animationDelay: `${Math.random() * 3}s`,
+      fontSize: `${Math.random() * 1 + 0.5}rem`,
+      opacity: Math.random() * 0.5 + 0.5,
+    }));
+  
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {items.map(item => (
+          <motion.div
+            key={item.id}
+            className="absolute -top-10 text-yellow-300"
+            style={{ left: item.left, fontSize: item.fontSize, opacity: item.opacity }}
+            animate={{ top: '110%', rotate: 360 }}
+            transition={{
+              duration: parseFloat(item.animationDuration),
+              delay: parseFloat(item.animationDelay),
+              repeat: Infinity,
+              ease: 'linear',
+            }}
+          >
+            ✨
+          </motion.div>
+        ))}
+      </div>
+    );
+};
+
+function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserProfile, receiver: UserProfile, gift: GiftItem, onEnd: () => void }) {
+    useEffect(() => {
+        const timer = setTimeout(onEnd, 4000); // Animation lasts for 4 seconds
+        return () => clearTimeout(timer);
+    }, [onEnd]);
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4"
+        >
+            <FallingSparkles />
+            <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', damping: 10, stiffness: 100, delay: 0.2 }}
+                className="text-center text-white"
+            >
+                <p className="text-xl font-bold">{sender.name} أهدى {receiver.name}</p>
+                <h2 className="text-4xl font-extrabold text-yellow-300 my-4">{gift.name}</h2>
+            </motion.div>
+            <motion.div
+                 initial={{ y: "150%", opacity: 0, scale: 0.5 }}
+                 animate={{ y: 0, opacity: 1, scale: 1 }}
+                 transition={{ type: 'spring', damping: 15, stiffness: 80, delay: 0.5 }}
+                 className="my-8"
+            >
+                <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-[0_0_25px_rgba(255,215,0,0.7)]" />
+            </motion.div>
+             <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1 }}
+                className="text-2xl font-bold text-yellow-400"
+            >
+                +{gift.price.toLocaleString()}
+            </motion.p>
+        </motion.div>
+    )
+}
 
 function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void }) {
      const { toast } = useToast();
-     const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false, isLocked: false }));
+     const [micSlots, setMicSlots] = useState<MicSlot[]>(
+        // Initialize with bot on mic 1
+        Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
+     );
      const [isSpeaking, setIsSpeaking] = useState(false);
      const [isGameVisible, setIsGameVisible] = useState(false);
      
@@ -338,6 +434,12 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState("");
     const chatContainerRef = useRef<HTMLDivElement>(null);
+
+    // --- Gift State ---
+    const [balance, setBalance] = useState(10000000); // Example balance
+    const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
+    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+    const [activeGiftAnimation, setActiveGiftAnimation] = useState<{ sender: UserProfile, receiver: UserProfile, gift: GiftItem } | null>(null);
 
      useEffect(() => {
         // This effect simulates speaking. In a real app, this would be driven
@@ -435,9 +537,27 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         setChatInput("");
     };
 
+    const handleSendGift = (gift: GiftItem) => {
+        if (!selectedRecipient) return;
+
+        if (balance < gift.price) {
+            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: "ليس لديك ما يكفي من العملات لإرسال هذه الهدية." });
+            return;
+        }
+
+        setBalance(prev => prev - gift.price);
+        setActiveGiftAnimation({ sender: user, receiver: selectedRecipient, gift });
+
+        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${gift.name} إلى ${selectedRecipient.name}.` });
+        setIsGiftDialogOpen(false);
+        setSelectedRecipient(null);
+    };
+
+
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
+        const isBot = slot.user?.userId === BOT_USER.userId;
 
         return (
              <Popover>
@@ -466,7 +586,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                         <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                         <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    {isCurrentUser && slot.isMuted && (
+                                     {isCurrentUser && slot.isMuted && (
                                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                                             <XCircle className="w-8 h-8 text-red-500"/>
                                         </div>
@@ -514,9 +634,22 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                  <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
                             )
                         ) : isOwner ? ( // Mic is occupied, and current user is owner
-                            <Button variant="destructive" onClick={() => handleDescend(index)}>طرد من المايك</Button>
-                        ): (
-                            <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
+                            <>
+                                {isBot && (
+                                    <Button onClick={() => { setSelectedRecipient(slot.user); setIsGiftDialogOpen(true); }}>
+                                        إرسال هدية
+                                    </Button>
+                                )}
+                                <Button variant="destructive" onClick={() => handleDescend(index)}>طرد من المايك</Button>
+                            </>
+                        ): ( // Mic is occupied, and current user is NOT owner
+                            isBot ? (
+                                <Button onClick={() => { setSelectedRecipient(slot.user); setIsGiftDialogOpen(true); }}>
+                                    إرسال هدية
+                                </Button>
+                            ) : (
+                                <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
+                            )
                         )}
                     </div>
                 </PopoverContent>
@@ -570,6 +703,17 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     return (
          <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+            <AnimatePresence>
+                {activeGiftAnimation && (
+                    <GiftAnimationOverlay
+                        sender={activeGiftAnimation.sender}
+                        receiver={activeGiftAnimation.receiver}
+                        gift={activeGiftAnimation.gift}
+                        onEnd={() => setActiveGiftAnimation(null)}
+                    />
+                )}
+            </AnimatePresence>
+
             <RoomHeader />
 
             {/* Sub-header */}
@@ -584,7 +728,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                    </div>
                 </div>
                 <div className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500">
-                    <span className="font-bold text-sm">0</span>
+                    <span className="font-bold text-sm">{balance.toLocaleString()}</span>
                     <Trophy className="w-5 h-5 text-yellow-400"/>
                 </div>
             </div>
@@ -653,9 +797,28 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
                         <Send className="w-5 h-5"/>
                     </Button>
-                     <Button size="icon" variant="ghost" className="rounded-full bg-primary/20">
-                        <Gift className="w-5 h-5 text-primary"/>
-                    </Button>
+                    <Dialog open={isGiftDialogOpen} onOpenChange={setIsGiftDialogOpen}>
+                        <DialogTrigger asChild>
+                             <Button size="icon" variant="ghost" className="rounded-full bg-primary/20">
+                                <Gift className="w-5 h-5 text-primary"/>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>إرسال هدية</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid grid-cols-2 gap-4 py-4">
+                                {GIFTS.map(gift => (
+                                    <div key={gift.id} className="flex flex-col items-center gap-2 p-2 border rounded-lg">
+                                        <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-24 h-24" />
+                                        <p className="font-bold">{gift.name}</p>
+                                        <p className="text-sm text-muted-foreground">{gift.price.toLocaleString()}</p>
+                                        <Button size="sm" onClick={() => handleSendGift(gift)} disabled={!selectedRecipient}>إرسال</Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
