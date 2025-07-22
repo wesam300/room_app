@@ -108,6 +108,11 @@ export default function FruityFortunePage() {
   // Load state from localStorage on initial mount
   useEffect(() => {
     setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+
     // Balance
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
     if (savedBalance) {
@@ -143,12 +148,12 @@ export default function FruityFortunePage() {
     if (savedBetsData) {
         try {
             const { bets: savedBets, roundId: savedRoundId } = JSON.parse(savedBetsData);
-            if (savedRoundId < currentRoundId) {
+            if (savedBets && typeof savedRoundId === 'number' && savedRoundId < currentRoundId) {
                 // Round is over, calculate offline winnings
                 const winner = getWinnerForRound(savedRoundId);
                 const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
                 if (payout > 0) {
-                    const newBalance = (parseInt(savedBalance || '0', 10)) + payout;
+                    const newBalance = (parseInt(localStorage.getItem('fruityFortuneBalance') || '0', 10)) + payout;
                     setBalance(newBalance);
                     localStorage.setItem('fruityFortuneBalance', newBalance.toString());
                     toast({
@@ -158,16 +163,20 @@ export default function FruityFortunePage() {
                     });
                 }
                 localStorage.removeItem('fruityFortuneBets');
-            } else {
+            } else if (savedRoundId === currentRoundId) {
                 // Round is still ongoing, restore bets
                 setBets(savedBets);
+            } else {
+                 // Bets from a future or invalid round, remove them
+                 localStorage.removeItem('fruityFortuneBets');
             }
         } catch(e) {
+            console.error("Failed to parse saved bets:", e);
             localStorage.removeItem('fruityFortuneBets');
         }
     }
     
-  }, []);
+  }, [isClient, toast]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
