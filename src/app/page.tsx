@@ -798,11 +798,11 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     }
 
     return (
-         <div className="relative flex flex-col h-screen text-foreground overflow-hidden">
+         <div className="relative flex flex-col h-screen text-foreground overflow-hidden bg-background">
             {/* Background Image */}
             <div 
                 className="absolute inset-0 z-0 bg-cover bg-center"
-                style={{backgroundImage: "url('https://storage.googleapis.com/stey-kr/85e4e75d7e5d263b860645069f532a76.png')"}}
+                style={{backgroundImage: `url('https://storage.googleapis.com/stey-kr/85e4e75d7e5d263b860645069f532a76.png')`}}
                 data-ai-hint="beach sunset"
             />
             <div className="absolute inset-0 z-0 bg-black/50" />
