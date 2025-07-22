@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -181,6 +182,13 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
         setMyRooms(prev => [...prev, newRoom]);
         onEnterRoom(newRoom);
     }
+    
+    const handleDeleteRoom = (roomIdToDelete: string) => {
+        const updatedRooms = myRooms.filter(room => room.id !== roomIdToDelete);
+        setMyRooms(updatedRooms);
+        localStorage.setItem('userRooms', JSON.stringify(updatedRooms));
+    };
+
 
     return (
         <div className="flex flex-col h-full">
@@ -198,32 +206,53 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
                 ) : (
                     <div className="grid gap-3">
                         {myRooms.map(room => (
-                            <button key={room.id} onClick={() => onEnterRoom(room)} className="w-full text-right p-0.5 bg-gradient-to-b from-yellow-300 to-yellow-500 rounded-2xl shadow-lg">
-                                <div className="bg-gradient-to-b from-yellow-50 via-amber-50 to-yellow-100 rounded-[14px] p-3 flex items-center justify-between gap-3">
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-bold text-lg text-gray-800">{room.name}</h3>
-                                                <p className="text-sm text-gray-500 mt-1">مرحبا بكم في غرفة {room.name}</p>
+                            <div key={room.id} className="relative group">
+                                <button onClick={() => onEnterRoom(room)} className="w-full text-right p-0.5 bg-gradient-to-b from-yellow-300 to-yellow-500 rounded-2xl shadow-lg">
+                                    <div className="bg-gradient-to-b from-yellow-50 via-amber-50 to-yellow-100 rounded-[14px] p-3 flex items-center justify-between gap-3">
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-bold text-lg text-gray-800">{room.name}</h3>
+                                                    <p className="text-sm text-gray-500 mt-1">مرحبا بكم في غرفة {room.name}</p>
+                                                </div>
+                                                <div className="bg-amber-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                                                    <span>{Math.floor(Math.random() * 500) + 10}</span>
+                                                    <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0H9.33333V10H11V0Z" fill="white"/><path d="M7.33333 3.33333H5.66667V10H7.33333V3.33333Z" fill="white"/><path d="M3.66667 6.66667H2V10H3.66667V6.66667Z" fill="white"/></svg>
+                                                </div>
                                             </div>
-                                            <div className="bg-amber-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                                                <span>{Math.floor(Math.random() * 500) + 10}</span>
-                                                <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0H9.33333V10H11V0Z" fill="white"/><path d="M7.33333 3.33333H5.66667V10H7.33333V3.33333Z" fill="white"/><path d="M3.66667 6.66667H2V10H3.66667V6.66667Z" fill="white"/></svg>
+                                            <div className="mt-4 flex items-center gap-2">
+                                                <div className="bg-purple-800 text-white text-xs font-bold px-1.5 py-0.5 rounded-sm">ID</div>
+                                                <span className="text-gray-600 font-semibold">{room.id}</span>
                                             </div>
                                         </div>
-                                        <div className="mt-4 flex items-center gap-2">
-                                            <div className="bg-purple-800 text-white text-xs font-bold px-1.5 py-0.5 rounded-sm">ID</div>
-                                            <span className="text-gray-600 font-semibold">{room.id}</span>
+                                        <div className="w-20 h-20 rounded-lg p-0.5 bg-gradient-to-b from-yellow-400 to-yellow-600">
+                                            <Avatar className="w-full h-full rounded-md">
+                                                <AvatarImage src={room.image} alt={room.name} />
+                                                <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
                                         </div>
                                     </div>
-                                    <div className="w-20 h-20 rounded-lg p-0.5 bg-gradient-to-b from-yellow-400 to-yellow-600">
-                                         <Avatar className="w-full h-full rounded-md">
-                                             <AvatarImage src={room.image} alt={room.name} />
-                                             <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
-                                         </Avatar>
-                                    </div>
-                                </div>
-                             </button>
+                                </button>
+                                 <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive" size="icon" className="absolute top-2 left-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                سيتم حذف هذه الغرفة بشكل دائم. لا يمكن التراجع عن هذا الإجراء.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteRoom(room.id)}>حذف</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         ))}
                     </div>
                 )}
@@ -243,7 +272,10 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
         // In a real app, you'd replace this with a voice activity detection library.
         // For now, we simulate speaking to show the animation.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
-            const interval = setInterval(() => {
+             // In a real app, you'd use a voice activity detection library
+             // to set isSpeaking to true when the user talks and false when they stop.
+             // For this demo, we'll just toggle it to show the animation.
+             const interval = setInterval(() => {
                 setIsSpeaking(true);
                 // The animation will show for 1.5 seconds, then stop.
                 setTimeout(() => setIsSpeaking(false), 1500); 
@@ -477,9 +509,9 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
 
     return (
         <div className="flex flex-col h-screen">
-            {activeTab === 'profile' && (
-                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={onReset} />
-            )}
+            {activeTab === 'profile' ? (
+                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={handleReset} />
+            ) : null }
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
             </main>
@@ -503,7 +535,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
                     </div>
                 </Link>
                 <button 
-                    onClick={() => setActiveTab('profile')} 
+                    onClick={handleProfileClick}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
                         activeTab === 'profile' ? "text-primary" : "hover:text-foreground"
