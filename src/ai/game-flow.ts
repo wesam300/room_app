@@ -58,10 +58,14 @@ function gameEngine() {
             // Spin animation phase
             const winner = gameState.winningFruit!;
             const winnerIndex = SPIN_SEQUENCE_MAP.indexOf(winner);
-            // Ensure at least 3 full spins before landing on the winner
-            const totalSteps = (3 * SPIN_SEQUENCE_MAP.length) + winnerIndex;
+            const totalRevolutions = 3;
+            // Total steps available in the animation sequence
+            const totalSteps = (totalRevolutions * SPIN_SEQUENCE_MAP.length) + winnerIndex;
+            // Progress of the spin animation (0 to 1)
             const progress = spinElapsedTime / SPIN_DURATION_MS;
+            // Current step in the animation sequence
             const currentStep = Math.floor(progress * totalSteps);
+            // Get the fruit to highlight from the sequence map
             gameState.highlightedFruit = SPIN_SEQUENCE_MAP[currentStep % SPIN_SEQUENCE_MAP.length];
         } else {
             // End of spin, reset for next round
@@ -70,13 +74,19 @@ function gameEngine() {
             // The client will handle the payout, so we just reset the server state
             gameState.bets = {} as Record<FruitKey, number>;
             gameState.timer = ROUND_DURATION;
-            gameState.highlightedFruit = null;
+            gameState.highlightedFruit = gameState.winningFruit; // Keep winner highlighted briefly
             gameState.winningFruit = null;
             gameState.spinStartTime = undefined;
+            gameState.lastUpdate = now;
         }
     } else {
         // Betting phase
         if (elapsedSeconds > 0) {
+            // If the round just ended, there might be a brief moment where winningFruit is null
+            // but the timer reset is pending. We clear the highlight here.
+            if(gameState.highlightedFruit) {
+                gameState.highlightedFruit = null;
+            }
             gameState.timer -= elapsedSeconds;
             gameState.lastUpdate = now;
         }
@@ -86,6 +96,8 @@ function gameEngine() {
             gameState.isSpinning = true;
             gameState.winningFruit = FRUIT_KEYS[Math.floor(Math.random() * FRUIT_KEYS.length)];
             gameState.spinStartTime = now;
+            gameState.lastUpdate = now;
+            gameState.timer = 0;
         }
     }
 }
