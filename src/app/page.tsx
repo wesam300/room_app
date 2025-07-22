@@ -11,6 +11,7 @@ const BET_AMOUNTS = [1000, 5000, 10000, 50000, 1000000];
 const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
+const DAILY_REWARD_AMOUNT = 10000000;
 
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
@@ -51,6 +52,11 @@ export default function FruityFortunePage() {
   const [timer, setTimer] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number} | null>(null);
+
+  // Daily Reward State
+  const [lastClaimTimestamp, setLastClaimTimestamp] = useState<number | null>(null);
+  const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
+  const [canClaim, setCanClaim] = useState(false);
 
 
   const [history, setHistory] = useState<FruitKey[]>([]);
@@ -98,6 +104,11 @@ export default function FruityFortunePage() {
             setBets({});
         }
     }
+
+    const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
+    if (savedClaimTimestamp) {
+        setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
+    }
   }, []);
 
   // Save state to localStorage whenever it changes
@@ -106,8 +117,64 @@ export default function FruityFortunePage() {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
       localStorage.setItem('fruityFortuneHistory', JSON.stringify(history));
       localStorage.setItem('fruityFortuneBets', JSON.stringify(bets));
+      if (lastClaimTimestamp) {
+          localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
+      }
     }
-  }, [balance, history, bets, isClient]);
+  }, [balance, history, bets, lastClaimTimestamp, isClient]);
+
+
+   // Daily Reward Timer Logic
+   useEffect(() => {
+    const updateClaimTimer = () => {
+        const now = new Date();
+        const iraqTimezoneOffset = 3 * 60; // UTC+3
+        const nowUtc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+        const nowIraq = new Date(nowUtc + (iraqTimezoneOffset * 60 * 1000));
+
+        const nextClaimDate = new Date(nowIraq);
+        nextClaimDate.setHours(24, 0, 0, 0); // Next day at 00:00 Iraq time
+
+        if (lastClaimTimestamp) {
+            const lastClaimDate = new Date(lastClaimTimestamp);
+            const lastClaimUtc = lastClaimDate.getTime() + (lastClaimDate.getTimezoneOffset() * 60 * 1000);
+            const lastClaimIraq = new Date(lastClaimUtc + (iraqTimezoneOffset * 60 * 1000));
+            
+            if (lastClaimIraq.getFullYear() === nowIraq.getFullYear() &&
+                lastClaimIraq.getMonth() === nowIraq.getMonth() &&
+                lastClaimIraq.getDate() === nowIraq.getDate()) {
+                // Already claimed today
+                setCanClaim(false);
+                const diff = nextClaimDate.getTime() - nowIraq.getTime();
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                setTimeUntilNextClaim(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+                return;
+            }
+        }
+
+        // Can claim now
+        setCanClaim(true);
+        setTimeUntilNextClaim('جاهزة للاستلام!');
+    };
+
+    updateClaimTimer();
+    const interval = setInterval(updateClaimTimer, 1000);
+    return () => clearInterval(interval);
+}, [lastClaimTimestamp]);
+
+const handleClaimReward = () => {
+    if (canClaim) {
+        setBalance(prev => prev + DAILY_REWARD_AMOUNT);
+        setLastClaimTimestamp(Date.now());
+        setCanClaim(false);
+        toast({ title: "تم استلام الجائزة!", description: `تمت إضافة ${formatNumber(DAILY_REWARD_AMOUNT)} إلى رصيدك.`, variant: "default" });
+    } else {
+        toast({ title: "لا يمكنك الاستلام الآن", description: "لقد استلمت جائزتك اليومية بالفعل.", variant: "destructive" });
+    }
+};
+
 
   // The main game loop, driven by a simple interval
   useEffect(() => {
@@ -127,6 +194,7 @@ export default function FruityFortunePage() {
                 if (winnerTimeoutRef.current) {
                   clearTimeout(winnerTimeoutRef.current);
                 }
+                setHighlightPosition(null);
                 
                 const winner = getWinnerForRound(currentRoundId - 1);
                 const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
@@ -138,10 +206,6 @@ export default function FruityFortunePage() {
                 }
                 setHistory(prev => [winner, ...prev.slice(0, 4)]);
                 setBets({}); // Clear bets for the new round
-                
-                winnerTimeoutRef.current = setTimeout(() => {
-                    setHighlightPosition(null);
-                }, 1000); // Hide highlight after 1 second
               }
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
@@ -179,6 +243,9 @@ export default function FruityFortunePage() {
               
               const spinTime = timeInCycle - ROUND_DURATION; // time elapsed in spin
               const sequence = animationSequenceRef.current;
+              
+              if(sequence.length === 0) return;
+
               const highlightDuration = SPIN_DURATION / sequence.length;
               const highlightIndex = Math.floor(spinTime / highlightDuration);
               
@@ -267,16 +334,28 @@ export default function FruityFortunePage() {
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
           <span className="text-white font-bold">الرصيد: {formatNumber(balance)}</span>
         </div>
-        <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50 flex items-center gap-2">
-          <span className="text-white font-bold">كروب وائل</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-crown text-yellow-400"><path d="M13 14.2 15.5 18 l-3.5-1.5 -3.5 1.5 L11 14.2"/><path d="M6 8.2c0-1 1-2 2-2h8c1 0 2 1 2 2v2.4c0 1.4-1.2 2.6-2.6 2.6H8.6C7.2 13.2 6 12 6 10.6V8.2z"/><path d="M6.5 18.2 6 13.2l-3.5 1.5L4 20l4-1.5"/></svg>
-        </div>
+        <button 
+            onClick={handleClaimReward}
+            disabled={!canClaim}
+            className={cn(
+                "bg-black/30 px-4 py-2 rounded-full border border-yellow-400/50 flex flex-col items-center text-center transition-all duration-300",
+                canClaim ? "cursor-pointer hover:bg-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "cursor-not-allowed opacity-60"
+            )}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-white font-bold">استلام الجائزة</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-gift text-yellow-400"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 5a4.8 8 0 0 1 4.5 3 2.5 2.5 0 0 1 0 5"/></svg>
+          </div>
+          <span className={cn("text-xs mt-1", canClaim ? "text-green-400" : "text-gray-400")}>
+            {timeUntilNextClaim}
+          </span>
+        </button>
       </header>
 
       <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30">
         <div className="relative grid grid-cols-3 gap-3" ref={gridRef}>
             <AnimatePresence>
-              {highlightPosition && (
+              {highlightPosition && isSpinning && (
                 <motion.div
                   className="absolute z-10 rounded-2xl ring-2 ring-white/50 shadow-[0_0_15px_rgba(255,255,255,0.7)] pointer-events-none"
                   initial={{ opacity: 0 }}
@@ -401,6 +480,7 @@ export default function FruityFortunePage() {
 
 
     
+
 
 
 
