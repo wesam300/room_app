@@ -79,7 +79,7 @@ const FallingCoins = () => {
 
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
-  const [balance, setBalance] = useState(10000000);
+  const [balance, setBalance] = useState(1000000000);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
   // Game state driven by time
@@ -112,7 +112,7 @@ export default function FruityFortunePage() {
     if (savedBalance && !isNaN(parseInt(savedBalance, 10)) && parseInt(savedBalance, 10) > 0) {
         setBalance(parseInt(savedBalance, 10));
     } else {
-        setBalance(10000000);
+        setBalance(1000000000);
     }
 
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
