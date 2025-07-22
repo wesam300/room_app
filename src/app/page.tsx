@@ -31,9 +31,8 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
 
 function formatNumber(num: number) {
     if (num === null || num === undefined) return '0';
-    if (num >= 1000000000) return `${(num / 1000000000).toFixed(1).replace(/\.0$/, '')}ب`;
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}م`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}أ`;
+    if (num >= 1000000) return `${(num / 1000000).toFixed(0)}m`;
+    if (num >= 1000) return `${(num / 1000).toFixed(0)}k`;
     return num.toLocaleString('en-US');
 }
 
@@ -485,7 +484,7 @@ const handleClaimReward = () => {
                 key={amount} 
                 onClick={() => setActiveBet(amount)}
                 className={cn(
-                    'px-1 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
+                    'px-2 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
                     activeBet === amount
                         ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]'
                         : 'bg-black/30 text-white border-yellow-400/50'
