@@ -1,21 +1,19 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
+import { useGameEngine } from '@/hooks/useGameEngine';
 
 const BET_AMOUNTS = [1000000, 500000, 100000, 50000, 10000];
+
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
 ];
-// This is the visual order for the spinning animation
-const SPIN_SEQUENCE: FruitKey[] = [
-    'lemon', 'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple', 'grapes'
-];
-const ALL_FRUITS: FruitKey[] = Object.keys(FRUITS) as FruitKey[];
 
 function formatNumber(num: number) {
+    if (!num) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
     if (num >= 1000) return `${Math.floor(num / 1000)}K`;
     return num.toString();
@@ -24,32 +22,26 @@ function formatNumber(num: number) {
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
   const [balance, setBalance] = useState(10000000);
-  const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
-  const [timer, setTimer] = useState(20);
-  const [history, setHistory] = useState<FruitKey[]>([]);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
-  const [lastWin, setLastWin] = useState<{ fruit: FruitKey; amount: number } | null>(null);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
-  const [winningFruit, setWinningFruit] = useState<FruitKey | null>(null);
 
-  const betsRef = useRef(bets);
-  useEffect(() => {
-      betsRef.current = bets;
-  }, [bets]);
-
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const { gameState, placeBet, highlightedFruit } = useGameEngine(balance, setBalance);
+  
+  const { 
+    timer = 20, 
+    bets = {}, 
+    history = [], 
+    isSpinning = false, 
+    winningFruit = null 
+  } = gameState || {};
 
   useEffect(() => {
     setIsClient(true);
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
-    if (savedBalance && parseInt(savedBalance, 10) > 0) {
+    if (savedBalance && !isNaN(parseInt(savedBalance, 10)) && parseInt(savedBalance, 10) > 0) {
         setBalance(parseInt(savedBalance, 10));
     } else {
         setBalance(10000000); 
     }
-    const initialHistory = Array.from({ length: 5 }, () => ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)]);
-    setHistory(initialHistory);
   }, []);
 
   useEffect(() => {
@@ -57,121 +49,16 @@ export default function FruityFortunePage() {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
     }
   }, [balance, isClient]);
-  
-  const handleRoundEnd = useCallback(() => {
-    setIsSpinning(true);
-    const winner = ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)];
-    setWinningFruit(winner);
 
-    // Stop the timer immediately
-    if (timerRef.current) {
-        clearInterval(timerRef.current);
+  const handlePlaceBet = (fruit: FruitKey) => {
+    if (balance >= activeBet) {
+      placeBet(fruit, activeBet);
+    } else {
+      console.log("Not enough balance to place bet");
     }
-    setTimer(0);
+  }
 
-    // The animation and result logic will be handled by the useEffect watching [isSpinning, winningFruit]
-  }, []);
-
-  // Timer logic
-  useEffect(() => {
-      if (!isClient || isSpinning) {
-          if (timerRef.current) {
-              clearInterval(timerRef.current);
-          }
-          return;
-      }
-
-      if (timer === 0) {
-          handleRoundEnd();
-          return;
-      }
-      
-      timerRef.current = setInterval(() => {
-          setTimer(prev => {
-              if (prev <= 1) {
-                  if (timerRef.current) clearInterval(timerRef.current);
-                  handleRoundEnd();
-                  return 0;
-              }
-              return prev - 1;
-          });
-      }, 1000);
-
-      return () => {
-          if (timerRef.current) {
-              clearInterval(timerRef.current);
-          }
-      };
-  }, [isClient, isSpinning, timer, handleRoundEnd]);
-
-
-  // Animation and Result Logic
-  useEffect(() => {
-    if (isSpinning && winningFruit) {
-      let spinSequence = [...SPIN_SEQUENCE];
-      
-      const winnerIndexInSequence = spinSequence.indexOf(winningFruit);
-      if (winnerIndexInSequence === -1) { // Fallback if winner not in sequence
-          spinSequence.push(winningFruit);
-      }
-      
-      const totalSpins = 3; // How many full loops
-      const totalSteps = (totalSpins * spinSequence.length) + spinSequence.indexOf(winningFruit);
-
-      const spinAnimationSequence = Array.from(
-        { length: totalSteps + 1 },
-        (_, i) => spinSequence[i % spinSequence.length]
-      );
-      
-      let spinIndex = 0;
-      const spinInterval = setInterval(() => {
-        if(spinIndex < spinAnimationSequence.length) {
-          setHighlightedFruit(spinAnimationSequence[spinIndex]);
-          spinIndex++;
-        } else {
-          clearInterval(spinInterval);
-          
-          // Officially set the winner and calculate payout
-          const currentBets = betsRef.current;
-          const payout = (currentBets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
-          
-          setHighlightedFruit(winningFruit); // Final highlight on winner
-
-          if (payout > 0) {
-              setBalance(prev => prev + payout);
-              setLastWin({ fruit: winningFruit, amount: payout });
-          } else {
-              setLastWin(null);
-          }
-          
-          // Wait 1 second, then reset for the next round
-          setTimeout(() => {
-              setLastWin(null);
-              setHighlightedFruit(null);
-              setHistory(prev => [winningFruit, ...prev.slice(0, 4)]);
-              setBets({} as Record<FruitKey, number>);
-              setIsSpinning(false);
-              setWinningFruit(null);
-              setTimer(20); 
-          }, 1000);
-        }
-      }, 150); // Speed of the spin
-
-      return () => clearInterval(spinInterval);
-    }
-  }, [isSpinning, winningFruit]);
-
-  const placeBet = (fruit: FruitKey) => {
-    if (timer > 3 && balance >= activeBet && !isSpinning) {
-      setBalance(prev => prev - activeBet);
-      setBets(prev => ({
-        ...prev,
-        [fruit]: (prev[fruit] || 0) + activeBet,
-      }));
-    }
-  };
-
-  if (!isClient) {
+  if (!isClient || !gameState) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
         <div className="text-2xl font-bold">...تحميل اللعبة</div>
@@ -207,19 +94,19 @@ export default function FruityFortunePage() {
               );
             }
             const fruitKey = item as FruitKey;
-            const isWinning = lastWin?.fruit === fruitKey;
-            const isHighlighted = highlightedFruit === fruitKey;
+            const isActuallyWinning = isSpinning && winningFruit === fruitKey;
+            const isHighlightedForSpin = highlightedFruit === fruitKey;
 
             return (
               <div
                 key={`${fruitKey}-${index}`}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                    isHighlighted && !isWinning && "bg-purple-700/80 ring-2 ring-purple-400",
-                    isWinning && "bg-yellow-500/50 ring-2 ring-yellow-300",
-                    isSpinning && !isHighlighted && !isWinning && "opacity-50"
+                     isSpinning && isHighlightedForSpin && !isActuallyWinning && "bg-purple-700/80 ring-2 ring-purple-400",
+                     isActuallyWinning && "bg-yellow-500/50 ring-2 ring-yellow-300",
+                     isSpinning && !isHighlightedForSpin && !isActuallyWinning && "opacity-50"
                 )}
-                onClick={() => placeBet(fruitKey)}
+                onClick={() => handlePlaceBet(fruitKey)}
               >
                 <FruitDisplay fruitType={fruitKey} />
                 {bets[fruitKey] > 0 && (
@@ -264,9 +151,4 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
-
-    
-
-    
-
-    
+}
