@@ -10,7 +10,7 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
 ];
 const SPIN_SEQUENCE: FruitKey[] = [
-    'watermelon', 'cherry', 'orange', 'pear', 'lemon', 'strawberry', 'apple', 'grapes'
+    'grapes', 'apple', 'strawberry', 'pear', 'watermelon', 'cherry', 'orange', 'lemon'
 ];
 const ALL_FRUITS: FruitKey[] = Object.keys(FRUITS) as FruitKey[];
 
@@ -224,5 +224,7 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
 
     
