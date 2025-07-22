@@ -29,10 +29,11 @@ export default function FruityFortunePage() {
 
   useEffect(() => {
     setIsClient(true);
-    // Only access localStorage on the client
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
-    if (savedBalance) {
+    if (savedBalance && parseInt(savedBalance, 10) > 0) {
         setBalance(parseInt(savedBalance, 10));
+    } else {
+        setBalance(10000000);
     }
     const initialHistory = Array.from({ length: 5 }, () => ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)]);
     setHistory(initialHistory);
