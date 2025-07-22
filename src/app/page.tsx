@@ -254,7 +254,7 @@ export default function FruityFortunePage() {
             <AnimatePresence>
               {highlightPosition && (
                 <motion.div
-                  className="absolute z-10 rounded-2xl ring-2 ring-white/80 shadow-[0_0_20px_white]"
+                  className="absolute z-10 rounded-2xl ring-2 ring-white/50 shadow-[0_0_15px_white]"
                   initial={{ opacity: 0 }}
                   animate={{
                     top: highlightPosition.top,
@@ -371,6 +371,8 @@ export default function FruityFortunePage() {
 
 
 
+
+    
 
     
 
