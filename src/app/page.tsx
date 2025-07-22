@@ -6,7 +6,7 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
-const BET_AMOUNTS = [1000000, 500000, 100000, 50000, 10000];
+const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
@@ -211,7 +211,7 @@ export default function FruityFortunePage() {
         </div>
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
-          <span className="text-sm font-bold text-yellow-300 ml-2">الجولات:</span>
+          <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
           <div className="flex flex-grow justify-around items-center">
             {history.length > 0 ? history.map((fruitKey, index) => (
               <div key={`${fruitKey}-${index}-${Math.random()}`} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
