@@ -47,16 +47,18 @@ export default function FruityFortunePage() {
   
   const handleRoundEnd = useCallback(() => {
     setIsSpinning(true);
+    setLastWin(null);
 
     setTimeout(() => {
         const winningFruit = ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)];
+        
         const payout = (bets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
 
         if (payout > 0) {
             setBalance(prev => prev + payout);
             setLastWin({ fruit: winningFruit, amount: payout });
         } else {
-            setLastWin(null); // Clear last win if no payout
+            setLastWin(null);
         }
 
         setHistory(prev => [winningFruit, ...prev.slice(0, 4)]);
@@ -69,16 +71,16 @@ export default function FruityFortunePage() {
   useEffect(() => {
     if (!isClient || isSpinning) return;
 
-    if (timer === 0) {
-      handleRoundEnd();
+    if (timer > 0) {
+        const interval = setInterval(() => {
+            setTimer(prev => prev - 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    } else {
+        handleRoundEnd();
     }
-
-    const interval = setInterval(() => {
-      setTimer(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => clearInterval(interval);
   }, [timer, isClient, isSpinning, handleRoundEnd]);
+
 
   useEffect(() => {
     // When timer starts for a new round (and not spinning), clear the previous win highlight
@@ -191,4 +193,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
