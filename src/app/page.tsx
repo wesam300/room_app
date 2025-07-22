@@ -418,6 +418,86 @@ function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserP
     )
 }
 
+// --- New Gift Dialog Component ---
+function GiftDialog({ 
+    isOpen, 
+    onOpenChange, 
+    usersOnMics, 
+    onSendGift, 
+    balance 
+}: { 
+    isOpen: boolean, 
+    onOpenChange: (open: boolean) => void,
+    usersOnMics: UserProfile[],
+    onSendGift: (gift: GiftItem, recipient: UserProfile) => void,
+    balance: number,
+}) {
+    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+
+    // Reset recipient when dialog closes
+    useEffect(() => {
+        if (!isOpen) {
+            setSelectedRecipient(null);
+        }
+    }, [isOpen]);
+
+    const handleSendClick = (gift: GiftItem) => {
+        if (selectedRecipient) {
+            onSendGift(gift, selectedRecipient);
+        }
+    };
+    
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[425px] bg-background border-primary">
+                 <DialogHeader>
+                    <DialogTitle className="text-right text-primary">إرسال هدية</DialogTitle>
+                </DialogHeader>
+                
+                {!selectedRecipient ? (
+                    // Step 1: Select a recipient
+                    <div className="py-4">
+                        <h3 className="text-center text-lg mb-4">اختر مستلم الهدية</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            {usersOnMics.map(user => (
+                                <button key={user.userId} onClick={() => setSelectedRecipient(user)} className="flex flex-col items-center gap-2 text-center p-2 rounded-lg hover:bg-accent">
+                                    <Avatar>
+                                        <AvatarImage src={user.image} alt={user.name} />
+                                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <span className="text-xs truncate">{user.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ) : (
+                    // Step 2: Send the gift
+                    <div className="py-4 text-right">
+                         <p className="text-center mb-4">إرسال هدية إلى: <span className="font-bold text-primary">{selectedRecipient.name}</span></p>
+                        {GIFTS.map(gift => (
+                            <div key={gift.id} className="flex flex-col items-center gap-3">
+                                <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-32 h-32" />
+                                <div className="text-center">
+                                    <p className="font-bold text-lg">{gift.name}</p>
+                                    <p className="text-sm text-yellow-400">{gift.price.toLocaleString()} كوينز</p>
+                                </div>
+                                <div className="flex justify-between items-center w-full mt-4 p-2 bg-black/30 rounded-lg">
+                                     <Button size="lg" onClick={() => handleSendClick(gift)}>إرسال</Button>
+                                     <div className="flex items-center gap-2">
+                                        <span className="font-bold text-lg">{balance.toLocaleString()}</span>
+                                        <Trophy className="w-6 h-6 text-yellow-400"/>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
 function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
@@ -438,7 +518,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     // --- Gift State ---
     const [balance, setBalance] = useState(10000000); // Example balance
     const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
-    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+    const [selectedRecipientForGift, setSelectedRecipientForGift] = useState<UserProfile | null>(null);
     const [activeGiftAnimation, setActiveGiftAnimation] = useState<{ sender: UserProfile, receiver: UserProfile, gift: GiftItem } | null>(null);
 
      useEffect(() => {
@@ -537,22 +617,27 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         setChatInput("");
     };
 
-    const handleSendGift = (gift: GiftItem) => {
-        if (!selectedRecipient) return;
-
+    const handleSendGift = (gift: GiftItem, recipient: UserProfile) => {
         if (balance < gift.price) {
             toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: "ليس لديك ما يكفي من العملات لإرسال هذه الهدية." });
             return;
         }
 
         setBalance(prev => prev - gift.price);
-        setActiveGiftAnimation({ sender: user, receiver: selectedRecipient, gift });
+        setActiveGiftAnimation({ sender: user, receiver: recipient, gift });
 
-        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${gift.name} إلى ${selectedRecipient.name}.` });
+        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${gift.name} إلى ${recipient.name}.` });
         setIsGiftDialogOpen(false);
-        setSelectedRecipient(null);
     };
 
+    const handleMicClick = (slot: MicSlot) => {
+        if (slot.user && slot.user.userId !== user.userId) {
+            setSelectedRecipientForGift(slot.user);
+            setIsGiftDialogOpen(true);
+        }
+    }
+
+    const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
@@ -562,7 +647,10 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         return (
              <Popover>
                 <PopoverTrigger asChild>
-                    <div className="flex flex-col items-center gap-1 cursor-pointer">
+                    <div 
+                        className="flex flex-col items-center gap-1 cursor-pointer"
+                        onClick={() => handleMicClick(slot)}
+                    >
                         <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
                              {slot.user ? (
                                 <div className="relative w-full h-full">
@@ -591,7 +679,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                             <XCircle className="w-8 h-8 text-red-500"/>
                                         </div>
                                     )}
-                                     {isOwner && isCurrentUser && (
+                                     {isOwner && slot.user.userId === user.userId && (
                                         <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
                                             OWNER
                                         </div>
@@ -634,22 +722,16 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                  <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
                             )
                         ) : isOwner ? ( // Mic is occupied, and current user is owner
-                            <>
-                                {isBot && (
-                                    <Button onClick={() => { setSelectedRecipient(slot.user); setIsGiftDialogOpen(true); }}>
-                                        إرسال هدية
-                                    </Button>
-                                )}
+                             <>
+                                <Button onClick={() => { setSelectedRecipientForGift(slot.user); setIsGiftDialogOpen(true); }}>
+                                    إرسال هدية
+                                </Button>
                                 <Button variant="destructive" onClick={() => handleDescend(index)}>طرد من المايك</Button>
                             </>
                         ): ( // Mic is occupied, and current user is NOT owner
-                            isBot ? (
-                                <Button onClick={() => { setSelectedRecipient(slot.user); setIsGiftDialogOpen(true); }}>
-                                    إرسال هدية
-                                </Button>
-                            ) : (
-                                <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
-                            )
+                             <Button onClick={() => { setSelectedRecipientForGift(slot.user); setIsGiftDialogOpen(true); }}>
+                                إرسال هدية
+                            </Button>
                         )}
                     </div>
                 </PopoverContent>
@@ -713,6 +795,14 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     />
                 )}
             </AnimatePresence>
+            
+            <GiftDialog 
+                isOpen={isGiftDialogOpen}
+                onOpenChange={setIsGiftDialogOpen}
+                usersOnMics={usersOnMics}
+                onSendGift={handleSendGift}
+                balance={balance}
+            />
 
             <RoomHeader />
 
@@ -797,28 +887,9 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
                         <Send className="w-5 h-5"/>
                     </Button>
-                    <Dialog open={isGiftDialogOpen} onOpenChange={setIsGiftDialogOpen}>
-                        <DialogTrigger asChild>
-                             <Button size="icon" variant="ghost" className="rounded-full bg-primary/20">
-                                <Gift className="w-5 h-5 text-primary"/>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>إرسال هدية</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid grid-cols-2 gap-4 py-4">
-                                {GIFTS.map(gift => (
-                                    <div key={gift.id} className="flex flex-col items-center gap-2 p-2 border rounded-lg">
-                                        <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-24 h-24" />
-                                        <p className="font-bold">{gift.name}</p>
-                                        <p className="text-sm text-muted-foreground">{gift.price.toLocaleString()}</p>
-                                        <Button size="sm" onClick={() => handleSendGift(gift)} disabled={!selectedRecipient}>إرسال</Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                    <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => setIsGiftDialogOpen(true)}>
+                        <Gift className="w-5 h-5 text-primary"/>
+                    </Button>
                 </div>
             </div>
 
