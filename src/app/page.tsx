@@ -79,7 +79,7 @@ const FallingCoins = () => {
 
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
-  const [balance, setBalance] = useState(1000000000);
+  const [balance, setBalance] = useState(0);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
   // Game state driven by time
@@ -108,8 +108,12 @@ export default function FruityFortunePage() {
   // Load state from localStorage on initial mount
   useEffect(() => {
     setIsClient(true);
-    // Force set balance to 1 billion for testing purposes, overriding saved value.
-    setBalance(1000000000);
+    const savedBalance = localStorage.getItem('fruityFortuneBalance');
+    if (savedBalance) {
+        setBalance(parseInt(savedBalance, 10));
+    } else {
+        setBalance(1000000000); // Set initial balance to 1 billion if nothing is saved
+    }
 
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
     if (savedHistory) {
