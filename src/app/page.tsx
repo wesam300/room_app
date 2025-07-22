@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const BET_AMOUNTS = [1000000, 50000, 10000, 5000, 1000];
 const ROUND_DURATION = 20; // seconds
-const SPIN_DURATION = 4; // seconds
+const SPIN_DURATION = 3; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
@@ -17,8 +17,8 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
 ];
 
-// User-defined spin sequence
-const CUSTOM_SPIN_SEQUENCE: FruitKey[] = ['apple', 'strawberry', 'pear', 'watermelon', 'cherry', 'orange', 'lemon', 'grapes'];
+// User-defined spin sequence - REVERSED
+const CUSTOM_SPIN_SEQUENCE: FruitKey[] = ['grapes', 'lemon', 'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple'];
 
 
 function formatNumber(num: number) {
