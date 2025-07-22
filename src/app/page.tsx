@@ -33,10 +33,10 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
                     <p className="font-bold text-lg">{name}</p>
                     {userId && (
                         <div className="flex items-center justify-end gap-1.5">
-                            <span className="text-sm text-muted-foreground">{userId}</span>
-                            <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                             <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
                                 <Copy className="h-3 w-3" />
                             </button>
+                            <span className="text-sm text-muted-foreground">{userId}</span>
                         </div>
                     )}
                 </div>
