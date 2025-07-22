@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -370,12 +370,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                            <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
                         </PopoverContent>
                     </Popover>
-                    <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                        <Share2 className="w-5 h-5 text-primary" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                        <Volume2 className="w-5 h-5 text-primary" />
-                    </Button>
+                     {/* Keep other buttons for now, user might want them later */}
                 </div>
                 {/* Right Info */}
                 <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
@@ -433,7 +428,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
                                     <span className="text-sm font-semibold text-foreground">{msg.user.name}</span>
                                 </div>
-                                <div className="leading-1.5 p-3 bg-muted/80 rounded-e-xl rounded-es-xl">
+                                <div className="leading-1.5 p-3 bg-muted/80 rounded-lg">
                                     <p className="text-sm font-normal text-foreground">{msg.text}</p>
                                 </div>
                             </div>
@@ -442,21 +437,29 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                 </div>
             </main>
 
-             {/* Chat Input */}
-            <footer className="absolute bottom-0 left-0 right-0 p-4 border-t-0 bg-transparent z-20">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="bg-black/30">
-                        <Gift className="w-5 h-5 text-primary" />
+            {/* Floating Game Button */}
+            <Link href="/project-885" passHref>
+                <Button variant="ghost" size="icon" className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20">
+                     <Gamepad2 className="w-8 h-8 text-primary" />
+                </Button>
+            </Link>
+
+
+             {/* New Footer Controls */}
+            <footer className="absolute bottom-0 left-0 right-0 p-4 bg-transparent z-20">
+                <div className="flex items-center justify-between gap-2">
+                     {/* Chat Button */}
+                    <Button variant="outline" className="flex-1 bg-background/80 rounded-full">
+                        قل مرحبا...
                     </Button>
-                    <Input 
-                        placeholder="اكتب رسالتك هنا..." 
-                        className="text-right bg-background/80"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    />
-                    <Button size="icon" onClick={handleSendMessage}>
-                        <Send className="w-5 h-5"/>
+                     {/* Emoji/Sticker Button */}
+                    <Button variant="ghost" size="icon" className="bg-background/80 rounded-full">
+                        <Smile className="text-primary"/>
+                    </Button>
+
+                    {/* Gift Button */}
+                    <Button variant="ghost" size="icon" className="w-16 h-16 bg-yellow-400 text-black rounded-full border-4 border-yellow-200 shadow-lg">
+                        <Gift className="w-8 h-8" />
                     </Button>
                 </div>
             </footer>
@@ -665,5 +668,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
