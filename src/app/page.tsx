@@ -63,10 +63,7 @@ for (const key in FRUITS) {
 // This avoids re-calculating the entire history on every render.
 const deterministicWinnerCache = new Map<number, { winner: FruitKey, isBigWin: boolean }>();
 
-function getWinnerForRound(
-    roundId: number, 
-    betsForRound: Record<FruitKey, number> = {}
-): { winner: FruitKey, isBigWin: boolean } {
+function getWinnerForRound(roundId: number): { winner: FruitKey, isBigWin: boolean } {
     if (deterministicWinnerCache.has(roundId)) {
         return deterministicWinnerCache.get(roundId)!;
     }
@@ -89,44 +86,24 @@ function getWinnerForRound(
         return result;
     }
 
-    // Every 10 rounds, the lowest bet wins
+    // Every 10 rounds, a low-tier fruit wins (simulates "lowest bet wins")
     if (roundId > 0 && displayRoundId > 0 && displayRoundId % 10 === 0) {
-        const betAmounts = FRUIT_KEYS.map(key => ({ key, amount: betsForRound[key] || 0 }));
-        
-        // If no bets are placed, fall back to probability logic
-        if (betAmounts.every(b => b.amount === 0)) {
-            // Fallthrough to standard probability logic
-        } else {
-            let minBet = Infinity;
-            betAmounts.forEach(b => {
-                if (b.amount > 0 && b.amount < minBet) { // Only consider non-zero bets
-                    minBet = b.amount;
-                }
-            });
-
-            // If all bets are zero, fall through
-            if(minBet === Infinity) {
-                // Fallthrough
-            } else {
-                 const lowestBetFruits = betAmounts.filter(b => b.amount === minBet).map(b => b.key);
-                 const winner = lowestBetFruits[Math.floor(pseudoRandom() * lowestBetFruits.length)];
-                 const isBigWin = FRUITS[winner].multiplier > 5;
-                 const result = { winner, isBigWin };
-                 deterministicWinnerCache.set(roundId, result);
-                 return result;
-            }
-        }
+         const lowestTierFruits = FRUITS_BY_MULTIPLIER[5];
+         const winner = lowestTierFruits[Math.floor(pseudoRandom() * lowestTierFruits.length)];
+         const result = { winner, isBigWin: false }; // 5x is not a big win
+         deterministicWinnerCache.set(roundId, result);
+         return result;
     }
 
 
     // --- Standard Probability Logic ---
     let roundsSinceBigWin = 0;
-    // To calculate roundsSinceBigWin, we must check previous rounds
+    // To calculate roundsSinceBigWin, we must check previous rounds deterministically
     let checkRound = roundId - 1;
-    while(checkRound >= 0) { // check until round 0
-        const previousRoundResult = getWinnerForRound(checkRound, {}); // Pass empty bets for historical checks
+    while(checkRound >= 0) {
+        const previousRoundResult = getWinnerForRound(checkRound); // Recursive call to get historical data
         if (previousRoundResult.isBigWin) {
-            break;
+            break; // Found the last big win
         }
         roundsSinceBigWin++;
         checkRound--;
@@ -158,7 +135,7 @@ function getWinnerForRound(
     // Get all fruits with that multiplier
     const possibleWinners = FRUITS_BY_MULTIPLIER[winningMultiplier];
     if (!possibleWinners || possibleWinners.length === 0) {
-         // Fallback if a multiplier has no fruits
+         // Fallback if a multiplier has no fruits (should not happen with current config)
         const fallbackWinners = FRUITS_BY_MULTIPLIER[5];
         winningMultiplier = 5;
         const winner = fallbackWinners[Math.floor(pseudoRandom() * fallbackWinners.length)];
@@ -272,33 +249,45 @@ export default function FruityFortunePage() {
         setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
     }
     
-    // --- Load History ---
+    // --- Load History & Sync Missed Rounds ---
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
     let loadedHistory : FruitKey[] = [];
     if (savedHistory) {
-      try {
-        const parsedHistory = JSON.parse(savedHistory);
-        if(Array.isArray(parsedHistory)) {
-            loadedHistory = parsedHistory;
+        try {
+            const parsedHistory = JSON.parse(savedHistory);
+            if(Array.isArray(parsedHistory)) {
+                loadedHistory = parsedHistory;
+            }
+        } catch {
+            // ignore parsing errors
         }
-      } catch {
-        // ignore parsing errors
-      }
     } 
 
-    const latestHistory = [];
-    const lastSyncedRound = loadedHistory.length > 0 ? (parseInt(localStorage.getItem('fruityFortuneLastSyncedRound') || '0')) : currentRoundId - 6;
-
-    if (currentRoundId > lastSyncedRound) {
-        // Sync history since last visit
-        for (let i = Math.max(lastSyncedRound + 1, currentRoundId - 4); i <= currentRoundId; i++) {
-            const { winner } = getWinnerForRound(i - 1); // get winner of previous round
-            latestHistory.push(winner);
+    const lastSyncedRound = parseInt(localStorage.getItem('fruityFortuneLastSyncedRound') || '0');
+    
+    // Sync history if the user has been away for one or more full rounds
+    if (currentRoundId > lastSyncedRound && lastSyncedRound > 0) {
+        const roundsToSync = [];
+        // Sync up to the 5 most recent rounds missed
+        for (let i = Math.max(lastSyncedRound + 1, currentRoundId - 4); i < currentRoundId; i++) {
+            const { winner } = getWinnerForRound(i);
+            roundsToSync.push(winner);
         }
-        // Combine old history with new history
-        const finalHistory = [...latestHistory, ...loadedHistory].slice(0, 5);
+        // Combine newly synced history with the most recent saved history
+        const finalHistory = [...roundsToSync, ...loadedHistory].slice(0, 5);
         setHistory(finalHistory);
+    } else if (loadedHistory.length === 0) {
+        // If no history, create it from the last 5 rounds
+        const initialHistory = [];
+        for (let i = currentRoundId - 5; i < currentRoundId; i++) {
+            if (i >= 0) {
+                const { winner } = getWinnerForRound(i);
+                initialHistory.push(winner);
+            }
+        }
+        setHistory(initialHistory);
     } else {
+        // Player is up to date, just load the history
         setHistory(loadedHistory.slice(0, 5));
     }
     
@@ -312,7 +301,7 @@ export default function FruityFortunePage() {
             const { bets: savedBets, roundId: savedRoundId } = JSON.parse(savedBetsData);
             if (savedBets && typeof savedRoundId === 'number' && savedRoundId < currentRoundId) {
                 // Round is over, calculate offline winnings
-                const { winner } = getWinnerForRound(savedRoundId, savedBets);
+                const { winner } = getWinnerForRound(savedRoundId);
                 const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
                 if (payout > 0) {
                     const newBalance = (parseInt(localStorage.getItem('fruityFortuneBalance') || '0', 10)) + payout;
@@ -320,7 +309,7 @@ export default function FruityFortunePage() {
                     localStorage.setItem('fruityFortuneBalance', newBalance.toString());
                     toast({
                         title: "ربح أثناء غيابك!",
-                        description: `لقد ربحت ${formatNumber(payout)} من جولة سابقة. الفائز كان ${FRUITS[winner].name}`,
+                        description: `لقد ربحت ${formatNumber(payout)}. الفائز كان ${FRUITS[winner].name}`,
                         variant: "default"
                     });
                 }
@@ -349,6 +338,7 @@ export default function FruityFortunePage() {
       }
       if (history.length > 0) {
           localStorage.setItem('fruityFortuneHistory', JSON.stringify(history.slice(0, 50))); // Save more history
+          localStorage.setItem('fruityFortuneLastSyncedRound', roundId.toString());
       }
       // Save bets along with the current round ID
       if (Object.keys(bets).length > 0) {
@@ -430,12 +420,11 @@ const handleClaimReward = () => {
         if (roundId !== currentRoundId) {
              // ---- NEW ROUND LOGIC ----
             setRoundId(currentRoundId);
-             localStorage.setItem('fruityFortuneLastSyncedRound', currentRoundId.toString());
 
             // On a new round, the winner of the *previous* round is determined
-            const { winner: previousWinner } = getWinnerForRound(currentRoundId - 1, bets);
+            const { winner: previousWinner } = getWinnerForRound(currentRoundId - 1);
             
-            // Update history and the big win counter
+            // Update history
             setHistory(prev => [previousWinner, ...prev.slice(0, 4)]);
             
             // Reset bets for the new round
@@ -454,7 +443,7 @@ const handleClaimReward = () => {
             if (!isSpinning) {
                 // ---- START OF SPIN PHASE ----
                 setIsSpinning(true);
-                const { winner } = getWinnerForRound(currentRoundId, bets);
+                const { winner } = getWinnerForRound(currentRoundId);
 
                 // 1. Generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -471,10 +460,12 @@ const handleClaimReward = () => {
                 
                 // 2. Schedule results to appear *after* the spin
                 setTimeout(() => {
-                    const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
+                    // We get the winner again to be 100% sure, though it should be the same.
+                    const { winner: finalWinner } = getWinnerForRound(currentRoundId);
+                    const payout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
                     if (payout > 0) {
                         setBalance(prev => prev + payout);
-                        setWinnerScreenInfo({ fruit: winner, payout: payout });
+                        setWinnerScreenInfo({ fruit: finalWinner, payout: payout });
                         setTimeout(() => setWinnerScreenInfo(null), 4000); // Show winner screen for 4s
                     }
                 }, SPIN_DURATION * 1000); // Delay equals spin duration
@@ -746,5 +737,3 @@ const handleClaimReward = () => {
     </div>
   );
 }
-
-    
