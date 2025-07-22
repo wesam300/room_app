@@ -6,7 +6,7 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
-const BET_AMOUNTS = [10000, 50000, 100000, 500000, 1000000];
+const BET_AMOUNTS = [1000000, 500000, 100000, 50000, 10000];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
@@ -31,6 +31,11 @@ export default function FruityFortunePage() {
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
   const [lastWin, setLastWin] = useState<FruitKey | null>(null);
+
+  const betsRef = useRef(bets);
+  useEffect(() => {
+      betsRef.current = bets;
+  }, [bets]);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
@@ -58,9 +63,8 @@ export default function FruityFortunePage() {
     const allFruits = Object.keys(FRUITS) as FruitKey[];
     const winningFruit = allFruits[Math.floor(Math.random() * allFruits.length)];
     
-    // Create a spinning animation sequence that ends on the winning fruit
     const winnerIndex = SPIN_SEQUENCE_MAP.indexOf(winningFruit);
-    const rotationCount = 3; // How many times to loop through all fruits
+    const rotationCount = 3; 
     const totalSteps = (rotationCount * SPIN_SEQUENCE_MAP.length) + winnerIndex;
 
     const spinAnimationSequence = Array.from(
@@ -75,12 +79,12 @@ export default function FruityFortunePage() {
         spinIndex++;
       } else {
         clearInterval(spinInterval);
-        setHighlightedFruit(winningFruit); // Ensure final highlight is the winner
+        setHighlightedFruit(winningFruit);
         setLastWin(winningFruit);
         setHistory(prev => [winningFruit, ...prev.slice(0, 4)]);
         
         let totalWinnings = 0;
-        const winningBetAmount = bets[winningFruit] || 0;
+        const winningBetAmount = betsRef.current[winningFruit] || 0;
 
         if (winningBetAmount > 0) {
             const payout = winningBetAmount * FRUITS[winningFruit].multiplier;
@@ -101,7 +105,7 @@ export default function FruityFortunePage() {
       }
     }, 150);
 
-  }, [bets]);
+  }, []);
 
   useEffect(() => {
     if (!isSpinning && timer > 0) {
@@ -211,7 +215,7 @@ export default function FruityFortunePage() {
         </div>
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
-          <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
+          <span className="text-sm font-bold text-yellow-300 ml-2">الجولات:</span>
           <div className="flex flex-grow justify-around items-center">
             {history.length > 0 ? history.map((fruitKey, index) => (
               <div key={`${fruitKey}-${index}-${Math.random()}`} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
@@ -224,4 +228,3 @@ export default function FruityFortunePage() {
     </div>
   );
 }
-
