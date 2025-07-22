@@ -8,18 +8,18 @@ import { useToast } from "@/hooks/use-toast";
 
 const BET_AMOUNTS = [1000000, 50000, 10000, 5000, 1000];
 const ROUND_DURATION = 20; // seconds
-const SPIN_DURATION = 3; // seconds
+const SPIN_DURATION = 2; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'orange', 'cherry', 'watermelon', 'lemon', 'timer', 'pear', 'grapes', 'apple', 'strawberry'
+    'strawberry', 'apple', 'grapes', 'lemon', 'timer', 'pear', 'watermelon', 'cherry', 'orange'
 ];
 
 // This defines the visual, clockwise path for the spinning animation
 const VISUAL_SPIN_ORDER: FruitKey[] = [
-    'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple', 'grapes', 'lemon'
+    'strawberry', 'apple', 'grapes', 'pear', 'orange', 'cherry', 'watermelon', 'lemon'
 ];
 
 
