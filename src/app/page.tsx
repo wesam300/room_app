@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from 'framer-motion';
 
-const BET_AMOUNTS = [1000, 5000, 10000, 50000, 1000000];
+const BET_AMOUNTS = [10000, 50000, 500000, 5000000, 10000000];
 const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
@@ -78,7 +78,7 @@ const FallingCoins = () => {
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
   const [balance, setBalance] = useState(10000000);
-  const [activeBet, setActiveBet] = useState(BET_AMOUNTS[4]);
+  const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
   // Game state driven by time
   const [roundId, setRoundId] = useState(0);
@@ -204,6 +204,8 @@ const handleClaimReward = () => {
   // The main game loop, driven by a simple interval
   useEffect(() => {
     const updateGameState = () => {
+        if (winnerScreenInfo) return; // Pause game updates while winner screen is shown
+
         const now = Date.now();
         const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
         const timeInCycle = (now / 1000) % TOTAL_DURATION;
@@ -244,7 +246,8 @@ const handleClaimReward = () => {
 
                 // 3. Schedule results to appear *after* the spin
                 setTimeout(() => {
-                    const payout = (roundBetsRef.current[winner] || 0) * FRUITS[winner].multiplier;
+                    const roundResult = roundBetsRef.current;
+                    const payout = (roundResult[winner] || 0) * FRUITS[winner].multiplier;
                     if (payout > 0) {
                         setBalance(prev => prev + payout);
                         setWinnerScreenInfo({ fruit: winner, payout: payout });
@@ -289,7 +292,7 @@ const handleClaimReward = () => {
     return () => {
       clearInterval(interval)
     };
-}, [roundId, isSpinning, bets]); // `bets` is needed to correctly capture them before the spin
+}, [roundId, isSpinning, bets, winnerScreenInfo]); // `winnerScreenInfo` is key to pausing the loop
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -515,3 +518,5 @@ const handleClaimReward = () => {
     </div>
   );
 }
+
+    
