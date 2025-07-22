@@ -10,4 +10,5 @@ export interface GameState {
   bets: Record<FruitKey, number>;
   lastUpdate: number;
   spinStartTime?: number;
+  resetTime?: number;
 }

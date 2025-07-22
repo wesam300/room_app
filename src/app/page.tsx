@@ -52,7 +52,7 @@ export default function FruityFortunePage() {
     
     const interval = setInterval(async () => {
       try {
-        const state = await getGameState({});
+        const state = await getGameState(undefined);
         
         // Payout logic when a round ends
         if (gameState && gameState.isSpinning && !state.isSpinning) {
@@ -66,7 +66,7 @@ export default function FruityFortunePage() {
                 setLastWin(winningFruit);
                 setTimeout(() => {
                   setLastWin(null)
-                }, 1000); 
+                }, 2000); 
             }
         }
         setGameState(state);

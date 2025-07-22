@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A server-side game engine for Fruity Fortune.
@@ -17,6 +18,7 @@ const ROUND_DURATION = 20;
 const SPIN_DURATION_MS = 5000;
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 const SPIN_SEQUENCE_MAP: FruitKey[] = ['lemon', 'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple', 'grapes'];
+const RESET_DELAY_MS = 2000;
 
 // In-memory state. In a real production app, this would be a persistent database.
 let gameState: GameState = {
@@ -36,7 +38,7 @@ const PlaceBetSchema = z.object({
   amount: z.number().positive(),
 });
 
-const EmptySchema = z.object({});
+const EmptySchema = z.undefined();
 
 /**
  * The main game engine. Runs on the server and updates the state.
@@ -59,34 +61,36 @@ function gameEngine() {
             const winner = gameState.winningFruit!;
             const winnerIndex = SPIN_SEQUENCE_MAP.indexOf(winner);
             const totalRevolutions = 3;
-            // Total steps available in the animation sequence
             const totalSteps = (totalRevolutions * SPIN_SEQUENCE_MAP.length) + winnerIndex;
-            // Progress of the spin animation (0 to 1)
             const progress = spinElapsedTime / SPIN_DURATION_MS;
-            // Current step in the animation sequence
             const currentStep = Math.floor(progress * totalSteps);
-            // Get the fruit to highlight from the sequence map
             gameState.highlightedFruit = SPIN_SEQUENCE_MAP[currentStep % SPIN_SEQUENCE_MAP.length];
         } else {
-            // End of spin, reset for next round
-            gameState.isSpinning = false;
-            gameState.history = [gameState.winningFruit!, ...gameState.history].slice(0, 5);
-            // The client will handle the payout, so we just reset the server state
-            gameState.bets = {} as Record<FruitKey, number>;
-            gameState.timer = ROUND_DURATION;
-            gameState.highlightedFruit = gameState.winningFruit; // Keep winner highlighted briefly
-            gameState.winningFruit = null;
-            gameState.spinStartTime = undefined;
-            gameState.lastUpdate = now;
+            // End of spin, start reset timer
+            if(!gameState.resetTime) {
+              gameState.highlightedFruit = gameState.winningFruit;
+              gameState.history = [gameState.winningFruit!, ...gameState.history].slice(0, 5);
+              gameState.resetTime = now;
+            }
+
+            if(now - gameState.resetTime > RESET_DELAY_MS) {
+              // The client will handle the payout, so we just reset the server state
+              gameState.isSpinning = false;
+              gameState.bets = {} as Record<FruitKey, number>;
+              gameState.timer = ROUND_DURATION;
+              gameState.winningFruit = null;
+              gameState.spinStartTime = undefined;
+              gameState.resetTime = undefined;
+              gameState.lastUpdate = now;
+            }
         }
     } else {
         // Betting phase
+        if(gameState.highlightedFruit) {
+            gameState.highlightedFruit = null;
+        }
+
         if (elapsedSeconds > 0) {
-            // If the round just ended, there might be a brief moment where winningFruit is null
-            // but the timer reset is pending. We clear the highlight here.
-            if(gameState.highlightedFruit) {
-                gameState.highlightedFruit = null;
-            }
             gameState.timer -= elapsedSeconds;
             gameState.lastUpdate = now;
         }
