@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 
@@ -27,18 +27,20 @@ export default function FruityFortunePage() {
   const [lastWin, setLastWin] = useState<{ fruit: FruitKey; amount: number } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
+  // Load state from localStorage only once
   useEffect(() => {
     setIsClient(true);
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
     if (savedBalance && parseInt(savedBalance, 10) > 0) {
         setBalance(parseInt(savedBalance, 10));
     } else {
-        setBalance(10000000);
+        setBalance(10000000); // Initial balance if nothing is saved or it's zero
     }
     const initialHistory = Array.from({ length: 5 }, () => ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)]);
     setHistory(initialHistory);
   }, []);
 
+  // Save balance to localStorage whenever it changes
   useEffect(() => {
     if (isClient) {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
@@ -47,11 +49,9 @@ export default function FruityFortunePage() {
   
   const handleRoundEnd = useCallback(() => {
     setIsSpinning(true);
-    setLastWin(null);
 
     setTimeout(() => {
         const winningFruit = ALL_FRUITS[Math.floor(Math.random() * ALL_FRUITS.length)];
-        
         const payout = (bets[winningFruit] || 0) * FRUITS[winningFruit].multiplier;
 
         if (payout > 0) {
@@ -64,26 +64,31 @@ export default function FruityFortunePage() {
         setHistory(prev => [winningFruit, ...prev.slice(0, 4)]);
         setBets({} as Record<FruitKey, number>);
         setIsSpinning(false);
-        setTimer(20);
+        setTimer(20); 
     }, 3000);
   }, [bets]);
 
+  // Dedicated effect for the timer logic
   useEffect(() => {
-    if (!isClient || isSpinning) return;
-
-    if (timer > 0) {
-        const interval = setInterval(() => {
-            setTimer(prev => prev - 1);
-        }, 1000);
-        return () => clearInterval(interval);
-    } else {
-        handleRoundEnd();
+    if (!isClient || isSpinning) {
+      return;
     }
+
+    if (timer === 0) {
+      handleRoundEnd();
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      setTimer(prev => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(intervalId);
   }, [timer, isClient, isSpinning, handleRoundEnd]);
 
 
   useEffect(() => {
-    // When timer starts for a new round (and not spinning), clear the previous win highlight
+    // When a new round starts, clear the previous win highlight
     if (timer === 20 && !isSpinning) {
       setLastWin(null);
     }
@@ -193,3 +198,5 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+
+    
