@@ -249,8 +249,7 @@ export default function FruityFortunePage() {
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
                      isSpinningAndHighlighted && "bg-white/20 ring-2 ring-white/80 scale-110",
-                     isSpinning && !isSpinningAndHighlighted && "opacity-60",
-                     isMomentaryWinner && "bg-white/20"
+                     isSpinning && !isSpinningAndHighlighted && "opacity-60"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
