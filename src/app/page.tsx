@@ -57,7 +57,7 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
 
     return (
         <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+             <Button variant="ghost" size="icon" onClick={onBack}>
                 <ChevronLeft className="w-6 h-6" />
             </Button>
             <div className="flex items-center gap-3">
@@ -370,7 +370,6 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                            <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
                         </PopoverContent>
                     </Popover>
-                     {/* Keep other buttons for now, user might want them later */}
                 </div>
                 {/* Right Info */}
                 <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
@@ -416,8 +415,8 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
 
 
             {/* Chat Area */}
-             <main className="absolute bottom-0 left-0 right-0 h-1/2 p-4 flex flex-col-reverse bg-gradient-to-t from-background/80 via-background/40 to-transparent">
-                <div className="flex flex-col gap-3 overflow-y-auto pr-2">
+             <main className="absolute bottom-20 left-0 right-0 h-1/2 p-4 flex flex-col-reverse bg-gradient-to-t from-background/80 via-background/40 to-transparent pointer-events-none">
+                <div className="flex flex-col gap-3 overflow-y-auto pr-2 pointer-events-auto">
                     {messages.slice().reverse().map(msg => (
                         <div key={msg.id} className="flex items-start gap-2.5">
                             <Avatar className="w-8 h-8">
@@ -447,20 +446,25 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
 
              {/* New Footer Controls */}
             <footer className="absolute bottom-0 left-0 right-0 p-4 bg-transparent z-20">
-                <div className="flex items-center justify-between gap-2">
-                     {/* Chat Button */}
-                    <Button variant="outline" className="flex-1 bg-background/80 rounded-full">
-                        قل مرحبا...
-                    </Button>
-                     {/* Emoji/Sticker Button */}
-                    <Button variant="ghost" size="icon" className="bg-background/80 rounded-full">
-                        <Smile className="text-primary"/>
-                    </Button>
-
-                    {/* Gift Button */}
-                    <Button variant="ghost" size="icon" className="w-16 h-16 bg-yellow-400 text-black rounded-full border-4 border-yellow-200 shadow-lg">
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="bg-yellow-400 text-black rounded-full w-16 h-16 border-4 border-yellow-200 shadow-lg">
                         <Gift className="w-8 h-8" />
                     </Button>
+                     <Button variant="ghost" size="icon" className="bg-background/80 rounded-full">
+                        <Smile className="text-primary"/>
+                    </Button>
+                    <div className="flex-1 relative">
+                        <Input
+                            placeholder="قل مرحبا..."
+                            className="bg-background/80 rounded-full pr-12 text-right"
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        />
+                        <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full" onClick={handleSendMessage}>
+                            <Send className="w-5 h-5 text-primary"/>
+                        </Button>
+                    </div>
                 </div>
             </footer>
         </div>
@@ -485,7 +489,6 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     };
     
     const handleProfileClick = () => {
-      // This function will now trigger the onReset to go to the edit screen
       if (activeTab === 'profile') {
           onReset();
       } else {
@@ -493,7 +496,6 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
       }
     }
     
-    // If in a room, render only the room screen
     if (roomView === 'in_room' && currentRoom) {
         return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} />;
     }
@@ -512,7 +514,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     return (
         <div className="flex flex-col h-screen">
             {activeTab === 'profile' && (
-                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={onReset} />
+                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={handleProfileClick} />
             )}
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
@@ -608,11 +610,10 @@ export default function HomePage() {
   
   const handleReset = () => {
     setUser(null); 
-    // Do not remove userId, it should persist
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userImage");
-    setName(null);
-    setImage(null);
+    const savedName = localStorage.getItem("userName");
+    const savedImage = localStorage.getItem("userImage");
+    setName(savedName);
+    setImage(savedImage);
   }
   
   if (isLoading) {
@@ -668,3 +669,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
