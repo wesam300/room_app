@@ -51,7 +51,6 @@ export default function FruityFortunePage() {
   const [timer, setTimer] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [momentaryWinner, setMomentaryWinner] = useState<FruitKey | null>(null);
-  const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({});
@@ -127,6 +126,7 @@ export default function FruityFortunePage() {
                 if (winnerTimeoutRef.current) {
                   clearTimeout(winnerTimeoutRef.current);
                 }
+                setHighlightPosition(null); 
                 const winner = getWinnerForRound(currentRoundId -1);
                 const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
           
@@ -187,7 +187,6 @@ export default function FruityFortunePage() {
               const currentFruit = sequence[Math.min(highlightIndex, sequence.length - 1)];
 
               if (currentFruit) {
-                setHighlightedFruit(currentFruit);
                  if (gridRef.current) {
                     const fruitElement = gridRef.current.querySelector(`[data-fruit-id="${currentFruit}"]`) as HTMLElement;
                     if (fruitElement) {
@@ -215,7 +214,7 @@ export default function FruityFortunePage() {
   }, [isSpinning, bets, roundId, momentaryWinner]); 
 
   const handlePlaceBet = (fruit: FruitKey) => {
-    if (isSpinning || timer <= 3) {
+    if (isSpinning || timer <= 0) {
       toast({ title: "انتهى وقت الرهان", description: "انتظر حتى الجولة القادمة", variant: "destructive" });
       return;
     }
@@ -294,7 +293,7 @@ export default function FruityFortunePage() {
                 data-fruit-id={fruitKey}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                     isSpinning && highlightedFruit !== fruitKey && "opacity-60",
+                     isSpinning && highlightPosition && "opacity-60",
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -384,3 +383,4 @@ export default function FruityFortunePage() {
 
 
     
+
