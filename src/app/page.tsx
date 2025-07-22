@@ -424,15 +424,22 @@ function GiftDialog({
     onOpenChange, 
     usersOnMics, 
     onSendGift, 
-    balance 
+    balance,
+    initialRecipient
 }: { 
     isOpen: boolean, 
     onOpenChange: (open: boolean) => void,
     usersOnMics: UserProfile[],
     onSendGift: (gift: GiftItem, recipient: UserProfile) => void,
     balance: number,
+    initialRecipient: UserProfile | null,
 }) {
-    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(initialRecipient);
+
+    // Sync selected recipient if the initial one changes
+    useEffect(() => {
+        setSelectedRecipient(initialRecipient);
+    }, [initialRecipient, isOpen]);
 
     // Reset recipient when dialog closes
     useEffect(() => {
@@ -518,7 +525,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     // --- Gift State ---
     const [balance, setBalance] = useState(10000000); // Example balance
     const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
-    const [selectedRecipientForGift, setSelectedRecipientForGift] = useState<UserProfile | null>(null);
+    const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
     const [activeGiftAnimation, setActiveGiftAnimation] = useState<{ sender: UserProfile, receiver: UserProfile, gift: GiftItem } | null>(null);
 
      useEffect(() => {
@@ -630,12 +637,10 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         setIsGiftDialogOpen(false);
     };
 
-    const handleMicClick = (slot: MicSlot) => {
-        if (slot.user && slot.user.userId !== user.userId) {
-            setSelectedRecipientForGift(slot.user);
-            setIsGiftDialogOpen(true);
-        }
-    }
+    const handleOpenGiftDialog = (recipient: UserProfile) => {
+        setInitialRecipientForGift(recipient);
+        setIsGiftDialogOpen(true);
+    };
 
     const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
@@ -643,14 +648,17 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         const isCurrentUser = slot.user?.userId === user.userId;
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
         const isBot = slot.user?.userId === BOT_USER.userId;
+        const popoverContentRef = useRef<HTMLDivElement>(null);
+
+        const handleCopyUserId = (id: string) => {
+            navigator.clipboard.writeText(id);
+            toast({ title: "تم نسخ ID المستخدم" });
+        };
 
         return (
              <Popover>
                 <PopoverTrigger asChild>
-                    <div 
-                        className="flex flex-col items-center gap-1 cursor-pointer"
-                        onClick={() => handleMicClick(slot)}
-                    >
+                    <div className="flex flex-col items-center gap-1 cursor-pointer">
                         <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
                              {slot.user ? (
                                 <div className="relative w-full h-full">
@@ -692,15 +700,14 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             )}
                         </div>
                         <div className="flex items-center gap-1">
-                          
                            <span className="text-xs text-muted-foreground truncate max-w-16">
                              {slot.user ? slot.user.name : `no.${index + 1}`}
                            </span>
                         </div>
                     </div>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" dir="rtl">
-                    <div className="flex flex-col gap-2 p-2">
+                <PopoverContent ref={popoverContentRef} className="w-auto p-2" dir="rtl">
+                    <div className="flex flex-col gap-2">
                         {isCurrentUser ? (
                             <>
                                 <Button variant="outline" onClick={handleToggleMute}>
@@ -721,17 +728,24 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             ) : ( // Non-owner sees ascend only
                                  <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
                             )
-                        ) : isOwner ? ( // Mic is occupied, and current user is owner
-                             <>
-                                <Button onClick={() => { setSelectedRecipientForGift(slot.user); setIsGiftDialogOpen(true); }}>
-                                    إرسال هدية
-                                </Button>
-                                <Button variant="destructive" onClick={() => handleDescend(index)}>طرد من المايك</Button>
-                            </>
-                        ): ( // Mic is occupied, and current user is NOT owner
-                             <Button onClick={() => { setSelectedRecipientForGift(slot.user); setIsGiftDialogOpen(true); }}>
-                                إرسال هدية
-                            </Button>
+                        ) : ( // Mic is occupied by another user
+                           <div className="flex flex-col items-center gap-3 text-center">
+                               <Avatar className="w-16 h-16">
+                                   <AvatarImage src={slot.user.image} alt={slot.user.name} />
+                                   <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
+                               </Avatar>
+                               <p className="font-bold">{slot.user.name}</p>
+                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                   <span>ID: {slot.user.userId}</span>
+                                   <button onClick={() => handleCopyUserId(slot.user!.userId)}>
+                                       <Copy className="w-3 h-3" />
+                                   </button>
+                               </div>
+                               <Button onClick={() => handleOpenGiftDialog(slot.user!)}>إرسال هدية</Button>
+                               {isOwner && (
+                                   <Button variant="destructive" size="sm" onClick={() => handleDescend(index)}>طرد من المايك</Button>
+                               )}
+                           </div>
                         )}
                     </div>
                 </PopoverContent>
@@ -802,6 +816,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                 usersOnMics={usersOnMics}
                 onSendGift={handleSendGift}
                 balance={balance}
+                initialRecipient={initialRecipientForGift}
             />
 
             <RoomHeader />
@@ -887,7 +902,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
                         <Send className="w-5 h-5"/>
                     </Button>
-                    <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => setIsGiftDialogOpen(true)}>
+                    <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => { setInitialRecipientForGift(null); setIsGiftDialogOpen(true)}}>
                         <Gift className="w-5 h-5 text-primary"/>
                     </Button>
                 </div>
