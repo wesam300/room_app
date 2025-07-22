@@ -43,6 +43,40 @@ function getWinnerForRound(roundId: number): FruitKey {
     return FRUIT_KEYS[roundId % FRUIT_KEYS.length];
 }
 
+
+// A fun component for the winner screen background
+const FallingCoins = () => {
+    const coins = Array.from({ length: 20 }).map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      animationDuration: `${Math.random() * 3 + 2}s`,
+      animationDelay: `${Math.random() * 3}s`,
+      fontSize: `${Math.random() * 1.5 + 1}rem`,
+    }));
+  
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {coins.map(coin => (
+          <motion.div
+            key={coin.id}
+            className="absolute -top-10 text-yellow-400"
+            style={{ left: coin.left, fontSize: coin.fontSize }}
+            animate={{ top: '110%' }}
+            transition={{
+              duration: parseFloat(coin.animationDuration),
+              delay: parseFloat(coin.animationDelay),
+              repeat: Infinity,
+              ease: 'linear',
+            }}
+          >
+            💰
+          </motion.div>
+        ))}
+      </div>
+    );
+};
+  
+
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
   const [balance, setBalance] = useState(10000000);
@@ -65,7 +99,6 @@ export default function FruityFortunePage() {
   
   const { toast } = useToast();
 
-  const winnerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationSequenceRef = useRef<FruitKey[]>([]);
   
   const gridRef = useRef<HTMLDivElement>(null);
@@ -193,9 +226,6 @@ const handleClaimReward = () => {
           if (timeInCycle < ROUND_DURATION) {
               // Betting phase
               if(isSpinning) { // Process results only once when spinning stops
-                if (winnerTimeoutRef.current) {
-                  clearTimeout(winnerTimeoutRef.current);
-                }
                 setHighlightPosition(null);
                 
                 const winner = getWinnerForRound(currentRoundId - 1);
@@ -204,7 +234,7 @@ const handleClaimReward = () => {
                 if (payout > 0) {
                     setBalance(prev => prev + payout);
                     setWinnerScreenInfo({ fruit: winner, payout: payout });
-                    setTimeout(() => setWinnerScreenInfo(null), 3000);
+                    setTimeout(() => setWinnerScreenInfo(null), 4000); // Keep winner screen for 4s
                 }
                 setHistory(prev => [winner, ...prev.slice(0, 4)]);
                 setBets({}); // Clear bets for the new round
@@ -219,10 +249,6 @@ const handleClaimReward = () => {
           } else {
               // Spinning phase
               if (!isSpinning) {
-                if (winnerTimeoutRef.current) {
-                  clearTimeout(winnerTimeoutRef.current);
-                }
-
                 // Generate animation sequence ONCE at the start of the spin
                 const winner = getWinnerForRound(currentRoundId);
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -274,9 +300,6 @@ const handleClaimReward = () => {
       
       return () => {
         clearInterval(interval)
-        if (winnerTimeoutRef.current) {
-          clearTimeout(winnerTimeoutRef.current);
-        }
       };
   }, [isSpinning, bets, roundId, winnerScreenInfo]); 
 
@@ -317,26 +340,63 @@ const handleClaimReward = () => {
     );
   }
   
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.3,
+      },
+    },
+    exit: { opacity: 0 },
+  };
+  
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 },
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
        <AnimatePresence>
-        {winnerScreenInfo && (
-            <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
-            >
-                <div className="bg-gradient-to-br from-purple-800 to-indigo-900 p-8 rounded-2xl border-2 border-yellow-400 shadow-2xl text-center">
-                    <h2 className="text-3xl font-bold text-white mb-4">لقد ظهر {FRUITS[winnerScreenInfo.fruit].name}!</h2>
-                    <div className="my-4">
-                        <FruitDisplay fruitType={winnerScreenInfo.fruit} size="large" />
-                    </div>
-                    <p className="text-2xl font-semibold text-yellow-300">
-                        لقد ربحت {formatNumber(winnerScreenInfo.payout)} كوينز
-                    </p>
-                </div>
-            </motion.div>
+       {winnerScreenInfo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          >
+            <div className="relative w-full max-w-md h-auto">
+              <FallingCoins />
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="bg-gradient-to-br from-yellow-400/10 via-purple-900 to-indigo-950 p-6 sm:p-8 rounded-3xl border-4 border-yellow-400 shadow-[0_0_30px_#facc15] text-center flex flex-col items-center gap-4"
+              >
+                <motion.h2 variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-white mb-2 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                  مبروووك!
+                </motion.h2>
+                <motion.div
+                  variants={itemVariants}
+                  initial={{ scale: 0.5, opacity: 0, rotate: -180 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ type: 'spring', damping: 10, stiffness: 100, delay: 0.3 }}
+                  className="my-2"
+                >
+                  <FruitDisplay fruitType={winnerScreenInfo.fruit} size="large" />
+                </motion.div>
+                <motion.p variants={itemVariants} className="text-2xl sm:text-3xl font-semibold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                  لقد ربحت
+                </motion.p>
+                <motion.p variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                  {formatNumber(winnerScreenInfo.payout)} كوينز
+                </motion.p>
+              </motion.div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
