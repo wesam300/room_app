@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import FruityFortunePage from "./project-885/page";
 
 
 // --- Types ---
@@ -328,6 +329,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false, isLocked: false }));
      const [isSpeaking, setIsSpeaking] = useState(false);
+     const [isGameVisible, setIsGameVisible] = useState(false);
      
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
      const isOwner = user.userId === room.ownerId;
@@ -435,7 +437,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
-        const isCurrentUserOwner = isCurrentUser && isOwner;
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
 
         return (
@@ -444,7 +445,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     <div className="flex flex-col items-center gap-1 cursor-pointer">
                         <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
                              {slot.user ? (
-                                <>
+                                <div className="relative w-full h-full">
                                     <AnimatePresence>
                                         {showSpeakingAnimation && (
                                              <motion.div
@@ -475,7 +476,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                             OWNER
                                         </div>
                                     )}
-                                </>
+                                </div>
                             ) : slot.isLocked ? (
                                 <Lock className="w-8 h-8 text-primary/50" />
                             ) : (
@@ -568,7 +569,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     }
 
     return (
-         <div className="flex flex-col h-screen bg-background text-foreground">
+         <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
             <RoomHeader />
 
             {/* Sub-header */}
@@ -593,6 +594,31 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                 {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
                 {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
             </div>
+
+            <AnimatePresence>
+                {isGameVisible && (
+                    <motion.div 
+                        className="absolute inset-x-0 bottom-0 top-1/4 bg-background z-20 rounded-t-2xl overflow-hidden"
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    >
+                       <div className="relative h-full w-full">
+                           <FruityFortunePage />
+                           <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="absolute top-4 right-4 bg-black/50 rounded-full text-white hover:bg-black/70 z-30"
+                                onClick={() => setIsGameVisible(false)}
+                            >
+                                <X className="w-6 h-6" />
+                            </Button>
+                       </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
 
             {/* Chat Area */}
             <div className="flex-1 flex flex-col justify-end p-4 pt-0 overflow-hidden">
@@ -635,11 +661,14 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
 
             {/* Floating Game Button */}
-            <Link href="/project-885" passHref>
-                <Button variant="ghost" size="icon" className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20">
-                     <Gamepad2 className="w-8 h-8 text-primary" />
-                </Button>
-            </Link>
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
+                onClick={() => setIsGameVisible(true)}
+            >
+                 <Gamepad2 className="w-8 h-8 text-primary" />
+            </Button>
 
         </div>
     );
@@ -850,3 +879,4 @@ export default function HomePage() {
     </div>
   );
 }
+
