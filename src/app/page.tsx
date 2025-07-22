@@ -101,7 +101,6 @@ export default function FruityFortunePage() {
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
-  const previousIsSpinningRef = useRef(false);
   const roundBetsRef = useRef<Record<FruitKey, number>>({});
 
 
@@ -204,95 +203,93 @@ const handleClaimReward = () => {
   
   // The main game loop, driven by a simple interval
   useEffect(() => {
-      const updateGameState = () => {
-          const now = Date.now();
-          const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
-          const timeInCycle = (now / 1000) % TOTAL_DURATION;
-          
-          if (roundId !== currentRoundId) {
-            setRoundId(currentRoundId);
-          }
+    const updateGameState = () => {
+        const now = Date.now();
+        const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
+        const timeInCycle = (now / 1000) % TOTAL_DURATION;
 
-          if (timeInCycle < ROUND_DURATION) {
-              // Betting phase
-              if(isSpinning) { // Spin just finished
+        if (roundId !== currentRoundId) {
+            setRoundId(currentRoundId);
+        }
+
+        if (timeInCycle < ROUND_DURATION) {
+            // --- BETTING PHASE ---
+            if (isSpinning) { // Spin just finished, new round starts
                 setBets({});
                 roundBetsRef.current = {};
-              }
-              setIsSpinning(false);
-              setTimer(ROUND_DURATION - Math.floor(timeInCycle));
-              setHighlightPosition(null);
-          } else {
-              // Spinning phase
-              if (!isSpinning) {
+            }
+            setIsSpinning(false);
+            setTimer(ROUND_DURATION - Math.floor(timeInCycle));
+            setHighlightPosition(null);
+        } else {
+            // --- SPINNING PHASE ---
+            if (!isSpinning) {
                 // ---- START OF SPIN PHASE ----
                 // 1. Finalize bets for this round
                 roundBetsRef.current = { ...bets };
-                
-                // 2. Determine winner and process results
                 const winner = getWinnerForRound(currentRoundId);
-                const payout = (roundBetsRef.current[winner] || 0) * FRUITS[winner].multiplier;
-                
-                if (payout > 0) {
-                    setBalance(prev => prev + payout);
-                    setWinnerScreenInfo({ fruit: winner, payout: payout });
-                    setTimeout(() => setWinnerScreenInfo(null), 4000); // Show for 4 seconds
-                }
-                
-                setHistory(prev => [winner, ...prev.slice(0, 4)]);
 
-                // 3. Generate animation sequence
+                // 2. Determine winner and generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
-                
-                if (winnerIndex === -1) { 
-                    animationSequenceRef.current = [winner]; 
+                if (winnerIndex === -1) {
+                    animationSequenceRef.current = [winner];
                 } else {
                     const spins = 3; // How many full loops
                     const totalLength = (VISUAL_SPIN_ORDER.length * spins) + winnerIndex + 1;
-    
                     const sequence = Array.from({ length: totalLength }, (_, i) => {
                         return VISUAL_SPIN_ORDER[i % VISUAL_SPIN_ORDER.length];
                     });
                     animationSequenceRef.current = sequence;
                 }
-              }
 
-              setIsSpinning(true);
-              setTimer(0);
-              
-              const spinTime = timeInCycle - ROUND_DURATION; // time elapsed in spin
-              const sequence = animationSequenceRef.current;
-              
-              if(sequence.length === 0) return;
-
-              const highlightDuration = SPIN_DURATION / sequence.length;
-              const highlightIndex = Math.floor(spinTime / highlightDuration);
-              
-              const currentFruit = sequence[Math.min(highlightIndex, sequence.length - 1)];
-
-              if (currentFruit) {
-                 if (gridRef.current) {
-                    const fruitElement = gridRef.current.querySelector(`[data-fruit-id="${currentFruit}"]`) as HTMLElement;
-                    if (fruitElement) {
-                        setHighlightPosition({
-                            top: fruitElement.offsetTop,
-                            left: fruitElement.offsetLeft,
-                            width: fruitElement.offsetWidth,
-                            height: fruitElement.offsetHeight
-                        });
+                // 3. Schedule results to appear *after* the spin
+                setTimeout(() => {
+                    const payout = (roundBetsRef.current[winner] || 0) * FRUITS[winner].multiplier;
+                    if (payout > 0) {
+                        setBalance(prev => prev + payout);
+                        setWinnerScreenInfo({ fruit: winner, payout: payout });
+                        setTimeout(() => setWinnerScreenInfo(null), 4000); // Show winner screen for 4s
                     }
-                }
-              }
-          }
-      };
+                    setHistory(prev => [winner, ...prev.slice(0, 4)]);
+                }, SPIN_DURATION * 1000); // Delay equals spin duration
 
-      updateGameState();
-      const interval = setInterval(updateGameState, 50); 
-      
-      return () => {
-        clearInterval(interval)
-      };
-  }, [roundId, isSpinning, bets]); // `bets` is needed to correctly capture them before the spin
+                setIsSpinning(true);
+            }
+            
+            // --- Handle spinning animation ---
+            setTimer(0);
+            const spinTime = timeInCycle - ROUND_DURATION; // time elapsed in spin
+            const sequence = animationSequenceRef.current;
+            
+            if(sequence.length === 0) return;
+
+            const highlightDuration = SPIN_DURATION / sequence.length;
+            const highlightIndex = Math.floor(spinTime / highlightDuration);
+            const currentFruit = sequence[Math.min(highlightIndex, sequence.length - 1)];
+
+            if (currentFruit) {
+               if (gridRef.current) {
+                  const fruitElement = gridRef.current.querySelector(`[data-fruit-id="${currentFruit}"]`) as HTMLElement;
+                  if (fruitElement) {
+                      setHighlightPosition({
+                          top: fruitElement.offsetTop,
+                          left: fruitElement.offsetLeft,
+                          width: fruitElement.offsetWidth,
+                          height: fruitElement.offsetHeight
+                      });
+                  }
+              }
+            }
+        }
+    };
+
+    updateGameState();
+    const interval = setInterval(updateGameState, 50); 
+    
+    return () => {
+      clearInterval(interval)
+    };
+}, [roundId, isSpinning, bets]); // `bets` is needed to correctly capture them before the spin
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
