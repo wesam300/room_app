@@ -25,7 +25,7 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
 
     return (
         <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-            <Button variant="ghost" size="icon" onClick={onBack}>
+             <Button variant="ghost" size="icon" onClick={onBack}>
                 <ChevronLeft className="w-6 h-6" />
             </Button>
             <div className="flex items-center gap-3">
@@ -91,7 +91,7 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
                 {renderContent()}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
-                <button 
+                 <button 
                     onClick={() => setActiveTab('rooms')} 
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
