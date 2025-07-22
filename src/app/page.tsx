@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -486,9 +486,11 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const [roomSupporters, setRoomSupporters] = useState<Supporter[]>([]);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
+    const [isRoomMuted, setIsRoomMuted] = useState(false);
+
 
      useEffect(() => {
-        if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
+        if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted && !isRoomMuted) {
              const interval = setInterval(() => {
                 setIsSpeaking(true);
                 setTimeout(() => setIsSpeaking(false), 1500);
@@ -500,7 +502,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         } else {
             setIsSpeaking(false);
         }
-     }, [myMicIndex, micSlots]);
+     }, [myMicIndex, micSlots, isRoomMuted]);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -615,7 +617,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
-        const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
+        const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted && !isRoomMuted;
 
         const handleCopyUserId = (id: string) => {
             navigator.clipboard.writeText(id);
@@ -647,11 +649,11 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                 <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                 <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                             </Avatar>
-                             {isCurrentUser && slot.isMuted && (
+                             {(isCurrentUser && slot.isMuted) || isRoomMuted ? (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                                     <XCircle className="w-8 h-8 text-red-500"/>
                                 </div>
-                            )}
+                            ) : null }
                              {isOwner && slot.user.userId === user.userId && (
                                 <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
                                     OWNER
@@ -884,7 +886,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
                 <div className="flex-grow"></div>
 
-                <div className="flex-shrink-0 px-4 pb-4">
+                 <div className="flex-shrink-0 px-4 pb-4">
                      <div 
                         ref={chatContainerRef}
                         className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
@@ -905,36 +907,44 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             </div>
                         ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Input 
-                            placeholder="اكتب رسالتك..."
-                            className="flex-1 bg-black/30 border-primary/50 text-right"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        />
-                        <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
-                            <Send className="w-5 h-5"/>
+                     <div className="flex items-center gap-2">
+                        <Button 
+                            variant="outline" 
+                            className="bg-black/40 border-primary/50 rounded-full px-4 text-sm"
+                            onClick={() => { /* Open chat dialog later */ }}
+                        >
+                            <MessageCircle className="ml-2 h-4 w-4" />
+                            رسالة
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full"
+                            onClick={() => setIsRoomMuted(prev => !prev)}
+                        >
+                            {isRoomMuted ? <VolumeX className="w-5 h-5 text-primary" /> : <Volume2 className="w-5 h-5 text-primary" />}
+                        </Button>
+                        
+                        <div className="flex-grow"></div> 
+
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full"
+                            onClick={() => handleOpenGiftDialog(null)}
+                        >
+                             <Gift className="w-6 h-6 text-primary" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full"
+                            onClick={() => setIsGameVisible(true)}
+                        >
+                             <Gamepad2 className="w-6 h-6 text-primary" />
                         </Button>
                     </div>
                 </div>
-
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute bottom-4 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
-                     onClick={() => handleOpenGiftDialog(null)}
-                >
-                     <Gift className="w-8 h-8 text-primary" />
-                </Button>
-                 <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute bottom-4 right-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
-                    onClick={() => setIsGameVisible(true)}
-                >
-                     <Gamepad2 className="w-8 h-8 text-primary" />
-                </Button>
             </div>
         </div>
     );
