@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-
-function ProfileScreen({ name, image, userId, onReset }: { name: string | null, image: string | null, userId: string | null, onReset: () => void }) {
+function TopBar({ name, image, userId, onBack }: { name: string | null, image: string | null, userId: string | null, onBack: () => void }) {
     const { toast } = useToast();
 
     const handleCopyId = () => {
@@ -25,30 +24,42 @@ function ProfileScreen({ name, image, userId, onReset }: { name: string | null, 
     };
 
     return (
-        <div className="flex flex-col items-center justify-center flex-1 p-4">
-            <Card className="w-full max-w-md text-center p-6">
-                <CardHeader>
-                    <div className="flex justify-center mb-4">
-                        <Avatar className="w-24 h-24">
-                            <AvatarImage src={image || ''} alt={name || ''} />
-                            <AvatarFallback>{name ? name.charAt(0) : 'U'}</AvatarFallback>
-                        </Avatar>
-                    </div>
-                    <CardTitle className="text-2xl">مرحباً بك يا {name}!</CardTitle>
+        <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+            <Button variant="ghost" size="icon" onClick={onBack}>
+                <ChevronLeft className="w-6 h-6" />
+            </Button>
+            <div className="flex items-center gap-3">
+                <div className="text-right">
+                    <p className="font-bold text-lg">{name}</p>
                     {userId && (
-                        <div className="flex items-center justify-center gap-2 pt-2">
-                             <CardDescription className="text-sm text-muted-foreground">
-                                ID: {userId}
-                            </CardDescription>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopyId}>
-                                <Copy className="h-4 w-4" />
-                            </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                            <span className="text-sm text-muted-foreground">{userId}</span>
+                            <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                                <Copy className="h-3 w-3" />
+                            </button>
                         </div>
                     )}
+                </div>
+                <Avatar className="w-12 h-12">
+                    <AvatarImage src={image || ''} alt={name || ''} />
+                    <AvatarFallback>{name ? name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                </Avatar>
+            </div>
+        </header>
+    );
+}
+
+
+function ProfileScreen({ onReset }: { onReset: () => void }) {
+    return (
+        <div className="flex flex-col items-center justify-center flex-1 p-4 text-center">
+            <Card className="w-full max-w-md p-6">
+                <CardHeader>
+                    <CardTitle className="text-2xl">منطقة الملف الشخصي</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground mb-6">
-                        أنت الآن جاهز للانطلاق في مشاريعك.
+                       مرحبًا بك! يمكنك إدارة حسابك من هنا.
                     </p>
                     <Button onClick={onReset} variant="link">إعادة تعيين الملف الشخصي</Button>
                 </CardContent>
@@ -63,7 +74,7 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
     const renderContent = () => {
         switch (activeTab) {
             case 'profile':
-                return <ProfileScreen name={name} image={image} userId={userId} onReset={onReset} />;
+                return <ProfileScreen onReset={onReset} />;
             case 'rooms':
                 return <div className="flex-1 p-4"><h1 className="text-center text-2xl">الغرف</h1></div>;
             default:
@@ -73,6 +84,9 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
 
     return (
         <div className="flex flex-col h-screen" dir="rtl">
+            {activeTab === 'profile' && (
+                <TopBar name={name} image={image} userId={userId} onBack={() => setActiveTab('rooms')} />
+            )}
             <main className="flex-1 overflow-y-auto">
                 {renderContent()}
             </main>
@@ -117,6 +131,7 @@ export default function HomePage() {
   const [isProfileSet, setIsProfileSet] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   // Load profile from localStorage on initial mount
   useEffect(() => {
@@ -154,8 +169,16 @@ export default function HomePage() {
       localStorage.setItem("userImage", image);
       setUserId(currentUserId);
       setIsProfileSet(true);
+      toast({
+          title: "تم حفظ الملف الشخصي",
+          description: "مرحبًا بك في التطبيق!",
+      });
     } else {
-      alert("يرجى إدخال الاسم واختيار صورة.");
+       toast({
+          variant: "destructive",
+          title: "بيانات غير مكتملة",
+          description: "يرجى إدخال الاسم واختيار صورة.",
+      });
     }
   };
   
@@ -186,6 +209,9 @@ export default function HomePage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl">إنشاء ملفك الشخصي</CardTitle>
+          <CardDescription className="text-center">
+            أدخل اسمك واختر صورة للبدء
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
           <div className="relative">
