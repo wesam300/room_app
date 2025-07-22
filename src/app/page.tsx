@@ -490,7 +490,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
 
      useEffect(() => {
-        if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted && !isRoomMuted) {
+        if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
              const interval = setInterval(() => {
                 setIsSpeaking(true);
                 setTimeout(() => setIsSpeaking(false), 1500);
@@ -502,7 +502,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         } else {
             setIsSpeaking(false);
         }
-     }, [myMicIndex, micSlots, isRoomMuted]);
+     }, [myMicIndex, micSlots]);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -616,8 +616,9 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
-        const isCurrentUser = slot.user?.userId === user.userId;
-        const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted && !isRoomMuted;
+        const isCurrentUserOnThisMic = slot.user?.userId === user.userId;
+        const isMutedForMe = isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted;
+        const showSpeakingAnimation = !isMutedForMe && ((isCurrentUserOnThisMic && isSpeaking) || (!isCurrentUserOnThisMic && slot.user && isSpeaking));
 
         const handleCopyUserId = (id: string) => {
             navigator.clipboard.writeText(id);
@@ -649,7 +650,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                 <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                 <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                             </Avatar>
-                             {(isCurrentUser && slot.isMuted) || isRoomMuted ? (
+                             {isMutedForMe ? (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                                     <XCircle className="w-8 h-8 text-red-500"/>
                                 </div>
@@ -676,7 +677,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
         const popoverContent = (
             <div className="flex flex-col gap-2">
-                {isCurrentUser ? (
+                {isCurrentUserOnThisMic ? (
                     <>
                         <Button variant="outline" onClick={handleToggleMute}>
                             {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
@@ -783,7 +784,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     return (
          <div className="relative flex flex-col h-screen bg-background text-foreground overflow-hidden">
-             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://img.freepik.com/free-photo/glowing-spaceship-orbits-planet-in-starry-galaxy-generated-by-ai_188544-9655.jpg)" }}>
+             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://img.freepik.com/free-photo/glowing-spaceship-orbits-planet-in-starry-galaxy-generated-by-ai_188544-9655.jpg?w=1380)" }}>
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              <div className="relative z-10 flex flex-col h-full">
