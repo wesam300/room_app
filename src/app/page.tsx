@@ -781,7 +781,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     return (
          <div className="relative flex flex-col h-screen bg-background text-foreground overflow-hidden">
-             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://placehold.co/1080x1920/1a013b/1a013b.png)" }}>
+             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://img.freepik.com/free-photo/glowing-spaceship-orbits-planet-in-starry-galaxy-generated-by-ai_188544-9655.jpg)" }}>
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              <div className="relative z-10 flex flex-col h-full">
@@ -882,10 +882,12 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     )}
                 </AnimatePresence>
 
-                <div className="flex-1 flex flex-col justify-end p-4 pt-0 overflow-hidden">
-                    <div 
+                <div className="flex-grow"></div>
+
+                <div className="flex-shrink-0 px-4 pb-4">
+                     <div 
                         ref={chatContainerRef}
-                        className="flex-1 overflow-y-auto pr-2 space-y-3"
+                        className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
                     >
                         {chatMessages.map(msg => (
@@ -903,7 +905,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             </div>
                         ))}
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                         <Input 
                             placeholder="اكتب رسالتك..."
                             className="flex-1 bg-black/30 border-primary/50 text-right"
@@ -914,16 +916,21 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                         <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
                             <Send className="w-5 h-5"/>
                         </Button>
-                        <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => handleOpenGiftDialog(null)}>
-                            <Gift className="w-5 h-5 text-primary"/>
-                        </Button>
                     </div>
                 </div>
 
                 <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
+                    className="absolute bottom-4 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
+                     onClick={() => handleOpenGiftDialog(null)}
+                >
+                     <Gift className="w-8 h-8 text-primary" />
+                </Button>
+                 <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute bottom-4 right-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
                     onClick={() => setIsGameVisible(true)}
                 >
                      <Gamepad2 className="w-8 h-8 text-primary" />
