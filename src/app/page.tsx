@@ -112,13 +112,11 @@ export default function FruityFortunePage() {
       
       const winnerIndexInSequence = spinSequence.indexOf(winningFruit);
       if (winnerIndexInSequence === -1) { // Fallback if winner not in sequence
-          // This should ideally not happen if all fruits are in spin sequence
-          setWinningFruit(spinSequence[0]); // Default to first item
-          return;
+          spinSequence.push(winningFruit);
       }
       
       const totalSpins = 3; // How many full loops
-      const totalSteps = (totalSpins * spinSequence.length) + winnerIndexInSequence;
+      const totalSteps = (totalSpins * spinSequence.length) + spinSequence.indexOf(winningFruit);
 
       const spinAnimationSequence = Array.from(
         { length: totalSteps + 1 },
@@ -217,7 +215,7 @@ export default function FruityFortunePage() {
                 key={`${fruitKey}-${index}`}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                    isHighlighted && "bg-purple-700/80 ring-2 ring-purple-400",
+                    isHighlighted && !isWinning && "bg-purple-700/80 ring-2 ring-purple-400",
                     isWinning && "bg-yellow-500/50 ring-2 ring-yellow-300",
                     isSpinning && !isHighlighted && !isWinning && "opacity-50"
                 )}
@@ -245,7 +243,7 @@ export default function FruityFortunePage() {
                     'px-4 py-1.5 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
                     activeBet === amount
                         ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]'
-                        : 'bg-black/30 text-white border-yellow-400/50 hover:bg-black/50'
+                        : 'bg-black/30 text-white border-yellow-400/50'
                 )}
             >
               {formatNumber(amount)}
@@ -254,7 +252,7 @@ export default function FruityFortunePage() {
         </div>
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
-          <span className="text-sm font-bold text-yellow-300 ml-2">التاريخ:</span>
+          <span className="text-sm font-bold text-yellow-300 ml-2">الجولات:</span>
           <div className="flex flex-grow justify-around items-center">
             {history.length > 0 ? history.map((fruitKey, index) => (
               <div key={`${fruitKey}-${index}-${Math.random()}`} className="bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center">
@@ -266,6 +264,8 @@ export default function FruityFortunePage() {
       </footer>
     </div>
   );
+
+    
 
     
 
