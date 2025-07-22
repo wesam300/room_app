@@ -139,7 +139,6 @@ export default function FruityFortunePage() {
                 
                 // Show winner briefly
                 setMomentaryWinner(winner);
-                 setHighlightedFruit(winner); // Keep highlight on winner
                 winnerTimeoutRef.current = setTimeout(() => {
                     setMomentaryWinner(null);
                     setHighlightedFruit(null);
@@ -254,7 +253,7 @@ export default function FruityFortunePage() {
             <AnimatePresence>
               {highlightPosition && (
                 <motion.div
-                  className="absolute z-10 rounded-2xl ring-2 ring-white/50 shadow-[0_0_15px_white]"
+                  className="absolute z-10 rounded-2xl ring-2 ring-white/50 shadow-[0_0_15px_rgba(255,255,255,0.7)] pointer-events-none"
                   initial={{ opacity: 0 }}
                   animate={{
                     top: highlightPosition.top,
@@ -375,5 +374,8 @@ export default function FruityFortunePage() {
     
 
     
+
+    
+
 
     
