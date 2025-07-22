@@ -51,6 +51,8 @@ export default function FruityFortunePage() {
   const [timer, setTimer] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
   const [momentaryWinner, setMomentaryWinner] = useState<FruitKey | null>(null);
+  const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number} | null>(null);
+
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({});
@@ -132,7 +134,8 @@ export default function FruityFortunePage() {
           
                 if (payout > 0) {
                     setBalance(prev => prev + payout);
-                    toast({ title: `🎉 ربحت ${formatNumber(payout)}`, description: `هبطت على ${FRUITS[winner].name}!` });
+                    setWinnerScreenInfo({ fruit: winner, payout: payout });
+                    setTimeout(() => setWinnerScreenInfo(null), 3000);
                 }
                 setHistory(prev => [winner, ...prev.slice(0, 4)]);
                 setBets({}); // Clear bets for the new round
@@ -240,6 +243,31 @@ export default function FruityFortunePage() {
   
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
+       <AnimatePresence>
+        {winnerScreenInfo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center text-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.5, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+            >
+              <FruitDisplay fruitType={winnerScreenInfo.fruit} size="large" />
+              <h2 className="text-3xl font-bold text-white mt-4">
+                ظهرت {FRUITS[winnerScreenInfo.fruit].name}!
+              </h2>
+              <p className="text-4xl font-bold text-yellow-400 mt-2">
+                لقد ربحت {formatNumber(winnerScreenInfo.payout)}!
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="w-full max-w-sm flex justify-between items-center mb-4">
         <div className="bg-black/30 px-6 py-2 rounded-full border border-yellow-400/50">
           <span className="text-white font-bold">الرصيد: {formatNumber(balance)}</span>
@@ -293,7 +321,7 @@ export default function FruityFortunePage() {
                 data-fruit-id={fruitKey}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                     isSpinning && highlightPosition && "opacity-60",
+                     isSpinning && "opacity-60",
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -304,7 +332,7 @@ export default function FruityFortunePage() {
                     </div>
                 )}
                  {isMomentaryWinner && (
-                    <div className="absolute inset-0 rounded-2xl " />
+                    <div className="absolute inset-0 rounded-2xl ring-2 ring-yellow-400" />
                 )}
               </div>
             );
@@ -383,4 +411,5 @@ export default function FruityFortunePage() {
 
 
     
+
 
