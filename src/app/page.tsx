@@ -332,11 +332,16 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
      const isOwner = user.userId === room.ownerId;
      
+     // --- Chat State ---
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const [chatInput, setChatInput] = useState("");
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
      useEffect(() => {
         // This effect simulates speaking. In a real app, this would be driven
         // by a voice activity detection system.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
-            const interval = setInterval(() => {
+             const interval = setInterval(() => {
                 setIsSpeaking(true);
                 setTimeout(() => setIsSpeaking(false), 1500); // Speak for 1.5s
             }, 4000); // "Speak" every 4 seconds
@@ -349,6 +354,13 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
             setIsSpeaking(false);
         }
      }, [myMicIndex, micSlots]);
+
+      // Auto-scroll chat to bottom
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [chatMessages]);
 
 
      const handleCopyId = () => {
@@ -410,6 +422,17 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         }
     }
     
+    const handleSendMessage = () => {
+        if (chatInput.trim() === "") return;
+        const newMessage: ChatMessage = {
+            id: Date.now().toString(),
+            user: user,
+            text: chatInput.trim(),
+        };
+        setChatMessages(prev => [...prev, newMessage]);
+        setChatInput("");
+    };
+
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
         const isCurrentUserOwner = isCurrentUser && isOwner;
@@ -447,7 +470,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                             <XCircle className="w-8 h-8 text-red-500"/>
                                         </div>
                                     )}
-                                     {isCurrentUserOwner && (
+                                     {isOwner && isCurrentUser && (
                                         <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
                                             OWNER
                                         </div>
@@ -570,6 +593,46 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                 {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
                 {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
             </div>
+
+            {/* Chat Area */}
+            <div className="flex-1 flex flex-col justify-end p-4 pt-0 overflow-hidden">
+                <div 
+                    ref={chatContainerRef}
+                    className="flex-1 overflow-y-auto pr-2 space-y-3"
+                    style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
+                >
+                    {chatMessages.map(msg => (
+                        <div key={msg.id} className="flex items-start gap-2.5">
+                            <Avatar className="w-8 h-8">
+                                <AvatarImage src={msg.user.image} />
+                                <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col items-start">
+                                <span className="text-sm text-muted-foreground">{msg.user.name}</span>
+                                <div className="bg-primary/20 p-2 rounded-lg rounded-tl-none">
+                                    <p className="text-sm text-foreground">{msg.text}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                    <Input 
+                        placeholder="اكتب رسالتك..."
+                        className="flex-1 bg-black/30 border-primary/50 text-right"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
+                        <Send className="w-5 h-5"/>
+                    </Button>
+                     <Button size="icon" variant="ghost" className="rounded-full bg-primary/20">
+                        <Gift className="w-5 h-5 text-primary"/>
+                    </Button>
+                </div>
+            </div>
+
 
             {/* Floating Game Button */}
             <Link href="/project-885" passHref>
