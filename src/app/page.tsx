@@ -303,7 +303,7 @@ const handleClaimReward = () => {
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
-      toast({ title: "انتهى وقت الرهان", description: "انتظر حتى الجولة القادمة", variant: "destructive" });
+      toast({ title: "انتهى وقت الرهان", description: "انتظر حتى الجولة القادمة", variant: "destructive", duration: 2000 });
       return;
     }
     
