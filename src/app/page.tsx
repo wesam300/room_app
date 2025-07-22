@@ -264,29 +264,27 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
 function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onExit: () => void }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false }));
+     const [isSpeaking, setIsSpeaking] = useState(false);
+     
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
-     const [isSpeaking, setIsSpeaking] = useState(false); 
      
      useEffect(() => {
-        // This effect will only run if the current user is on a mic and is not muted.
-        // In a real app, you'd replace this with a voice activity detection library.
-        // For now, we simulate speaking to show the animation.
+        // This effect simulates voice activity detection for the current user.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
-             // In a real app, you'd use a voice activity detection library
-             // to set isSpeaking to true when the user talks and false when they stop.
-             // For this demo, we'll just toggle it to show the animation.
-             const interval = setInterval(() => {
+            // In a real app, you'd use a voice activity detection library
+            // to set isSpeaking to true when the user talks and false when they stop.
+            // For this demo, we'll just toggle it to show the animation.
+            const interval = setInterval(() => {
                 setIsSpeaking(true);
-                // The animation will show for 1.5 seconds, then stop.
-                setTimeout(() => setIsSpeaking(false), 1500); 
+                setTimeout(() => setIsSpeaking(false), 1500); // Animation lasts 1.5s
             }, 4000); // Trigger speaking animation every 4 seconds.
             return () => {
-                clearInterval(interval)
+                clearInterval(interval);
                 setIsSpeaking(false);
             };
         } else {
-             // Ensure speaking animation is off if the user mutes or descends.
-             setIsSpeaking(false);
+            // Ensure speaking animation is off if the user mutes, descends, or is not on a mic.
+            setIsSpeaking(false);
         }
      }, [myMicIndex, micSlots]);
 
@@ -324,9 +322,10 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
     
     const handleToggleMute = () => {
          if (myMicIndex !== -1) {
-             setMicSlots(prev => {
-                const newSlots = [...prev];
-                newSlots[myMicIndex].isMuted = !newSlots[myMicIndex].isMuted;
+            setMicSlots(prevSlots => {
+                const newSlots = [...prevSlots];
+                const currentSlot = newSlots[myMicIndex];
+                newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
                 return newSlots;
             });
         }
@@ -510,7 +509,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     return (
         <div className="flex flex-col h-screen">
             {activeTab === 'profile' ? (
-                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={handleReset} />
+                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={onReset} />
             ) : null }
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
