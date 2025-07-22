@@ -722,7 +722,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         );
 
         return (
-             <header className="flex items-start justify-between p-3 z-10">
+             <header className="flex items-start justify-between p-3">
                 <div className="flex items-center gap-2">
                     <Popover>
                         <PopoverTrigger asChild>
@@ -747,16 +747,8 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     }
 
     return (
-         <div className="relative flex flex-col h-screen text-foreground overflow-hidden bg-background">
-            {/* Background Image */}
-            <div 
-                className="absolute inset-0 z-0 bg-cover bg-center"
-                style={{backgroundImage: `url('https://storage.googleapis.com/stey-kr/85e4e75d7e5d263b860645069f532a76.png')`}}
-                data-ai-hint="beach sunset"
-            />
-            <div className="absolute inset-0 z-0 bg-black/50" />
-            
-            <div className="relative z-10 flex flex-col h-full">
+         <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+             <div className="flex flex-col h-full">
                 <AnimatePresence>
                     {activeGiftAnimation && (
                         <GiftAnimationOverlay
