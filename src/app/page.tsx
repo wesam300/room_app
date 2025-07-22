@@ -402,7 +402,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     }
     
     const handleToggleMute = () => {
-         if (myMicIndex !== -1) {
+        if (myMicIndex !== -1) {
             setMicSlots(prevSlots => {
                 const newSlots = [...prevSlots];
                 const currentSlot = newSlots[myMicIndex];
@@ -412,7 +412,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                 return newSlots;
             });
         }
-    }
+    };
 
     const handleToggleLock = (index: number) => {
         if (isOwner) {
@@ -741,7 +741,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
                 </button>
                  <Link href="/project-885" passHref>
                     <div className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
+                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground cursor-pointer",
                         "hover:text-foreground"
                     )}>
                         <Gamepad2 className="w-6 h-6" />
@@ -879,4 +879,3 @@ export default function HomePage() {
     </div>
   );
 }
-
