@@ -50,7 +50,6 @@ export default function FruityFortunePage() {
   const [roundId, setRoundId] = useState(0);
   const [timer, setTimer] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [momentaryWinner, setMomentaryWinner] = useState<FruitKey | null>(null);
   const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number} | null>(null);
 
 
@@ -128,8 +127,8 @@ export default function FruityFortunePage() {
                 if (winnerTimeoutRef.current) {
                   clearTimeout(winnerTimeoutRef.current);
                 }
-                setHighlightPosition(null); 
-                const winner = getWinnerForRound(currentRoundId -1);
+                
+                const winner = getWinnerForRound(currentRoundId - 1);
                 const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
           
                 if (payout > 0) {
@@ -140,16 +139,13 @@ export default function FruityFortunePage() {
                 setHistory(prev => [winner, ...prev.slice(0, 4)]);
                 setBets({}); // Clear bets for the new round
                 
-                // Show winner briefly
-                setMomentaryWinner(winner);
                 winnerTimeoutRef.current = setTimeout(() => {
-                    setMomentaryWinner(null);
                     setHighlightPosition(null);
-                }, 1000); // Show for 1 second
+                }, 1000); // Hide highlight after 1 second
               }
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
-               if (!momentaryWinner) {
+               if (!winnerScreenInfo) {
                  setHighlightPosition(null);
                }
 
@@ -160,7 +156,6 @@ export default function FruityFortunePage() {
                 if (winnerTimeoutRef.current) {
                   clearTimeout(winnerTimeoutRef.current);
                 }
-                setMomentaryWinner(null);
 
                 // Generate animation sequence ONCE at the start of the spin
                 const winner = getWinnerForRound(currentRoundId);
@@ -214,7 +209,7 @@ export default function FruityFortunePage() {
           clearTimeout(winnerTimeoutRef.current);
         }
       };
-  }, [isSpinning, bets, roundId, momentaryWinner]); 
+  }, [isSpinning, bets, roundId, winnerScreenInfo]); 
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -313,8 +308,6 @@ export default function FruityFortunePage() {
             }
             const fruitKey = item as FruitKey;
             
-            const isMomentaryWinner = momentaryWinner === fruitKey;
-
             return (
               <div
                 key={`${fruitKey}-${index}`}
@@ -330,9 +323,6 @@ export default function FruityFortunePage() {
                     <div className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full shadow-lg">
                         {formatNumber(bets[fruitKey])}
                     </div>
-                )}
-                 {isMomentaryWinner && (
-                    <div className="absolute inset-0 rounded-2xl ring-2 ring-yellow-400" />
                 )}
               </div>
             );
@@ -411,5 +401,6 @@ export default function FruityFortunePage() {
 
 
     
+
 
 
