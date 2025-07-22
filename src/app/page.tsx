@@ -48,21 +48,27 @@ export default function FruityFortunePage() {
 
   // Fetch game state from server periodically
   useEffect(() => {
+    if (!isClient) return;
+    
     const interval = setInterval(async () => {
       try {
         const state = await getGameState({});
         
         // Payout logic when a round ends
-        if (gameState && gameState.isSpinning && !state.isSpinning && gameState.winningFruit) {
-            const userBetOnWinner = gameState.bets[gameState.winningFruit] || 0;
-            if (userBetOnWinner > 0) {
-                const payout = userBetOnWinner * FRUITS[gameState.winningFruit].multiplier;
-                setBalance(prev => prev + payout);
+        if (gameState && gameState.isSpinning && !state.isSpinning) {
+            const winningFruit = gameState.winningFruit;
+            if(winningFruit) {
+                const userBetOnWinner = gameState.bets[winningFruit] || 0;
+                if (userBetOnWinner > 0) {
+                    const payout = userBetOnWinner * FRUITS[winningFruit].multiplier;
+                    setBalance(prev => prev + payout);
+                }
+                setLastWin(winningFruit);
+                setTimeout(() => {
+                  setLastWin(null)
+                }, 1000); 
             }
-            setLastWin(gameState.winningFruit);
-            setTimeout(() => setLastWin(null), 1000);
         }
-
         setGameState(state);
       } catch (error) {
         console.error("Error fetching game state:", error);
@@ -70,7 +76,7 @@ export default function FruityFortunePage() {
     }, 1000); // Poll every second
 
     return () => clearInterval(interval);
-  }, [gameState, balance]);
+  }, [isClient, gameState, balance]);
 
   const placeBet = async (fruit: FruitKey) => {
     if (!gameState || gameState.isSpinning || gameState.timer <= 3) {
@@ -79,13 +85,23 @@ export default function FruityFortunePage() {
     }
     if (balance >= activeBet) {
       try {
-        // Optimistically deduct balance
-        setBalance(prev => prev - activeBet);
         // Tell server to place the bet
-        await placeBetOnServer({ fruit, amount: activeBet });
+        const { success } = await placeBetOnServer({ fruit, amount: activeBet });
+
+        if (success) {
+            // Optimistically deduct balance & update UI
+            setBalance(prev => prev - activeBet);
+            setGameState(prev => {
+                if (!prev) return null;
+                const newBets = {...prev.bets};
+                newBets[fruit] = (newBets[fruit] || 0) + activeBet;
+                return {...prev, bets: newBets};
+            });
+        } else {
+             toast({ title: "فشل الرهان", description: "انتهى وقت الرهان", variant: "destructive" });
+        }
+
       } catch (error) {
-         // Revert balance if server fails
-        setBalance(prev => prev + activeBet);
         toast({ title: "فشل الرهان", description: "لم يتمكن من الوصول للخادم", variant: "destructive" });
       }
     } else {
@@ -124,7 +140,7 @@ export default function FruityFortunePage() {
                   "relative flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900 rounded-2xl border-2 border-yellow-400 shadow-[inset_0_0_15px_rgba(255,215,0,0.5)] aspect-square"
                 )}>
                     <div className="flex flex-col items-center justify-center">
-                        <div className="text-5xl font-bold text-white z-10">{isSpinning ? '...' : timer}</div>
+                        <div className="text-5xl font-bold text-white z-10">{isSpinning ? '...' : (timer > 0 ? timer : 0)}</div>
                         <div className="text-sm text-yellow-300 mt-1">{isSpinning ? 'حظ موفق' : 'وقت الرهان'}</div>
                     </div>
                 </div>

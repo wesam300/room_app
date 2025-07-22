@@ -8,4 +8,6 @@ export interface GameState {
   highlightedFruit: FruitKey | null;
   history: FruitKey[];
   bets: Record<FruitKey, number>;
+  lastUpdate: number;
+  spinStartTime?: number;
 }

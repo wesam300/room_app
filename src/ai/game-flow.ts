@@ -27,6 +27,7 @@ let gameState: GameState = {
     highlightedFruit: null,
     history: [],
     bets: {} as Record<FruitKey, number>,
+    lastUpdate: Date.now(),
 };
 
 // Zod schemas for input/output validation
@@ -38,49 +39,56 @@ const PlaceBetSchema = z.object({
 const EmptySchema = z.object({});
 
 /**
- * The main game loop. Runs on the server and updates the state.
- * This function is self-invoking and creates a continuous loop.
+ * The main game engine. Runs on the server and updates the state.
+ * This function is called on every request to ensure the state is always current.
  */
-async function gameLoop() {
+function gameEngine() {
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - gameState.lastUpdate) / 1000);
+
     if (gameState.isSpinning) {
-        // Spin animation phase
-        const spinStartTime = Date.now();
-        const winner = gameState.winningFruit!;
-        const winnerIndex = SPIN_SEQUENCE_MAP.indexOf(winner);
-        const totalSteps = (3 * SPIN_SEQUENCE_MAP.length) + winnerIndex;
-        const stepDuration = SPIN_DURATION_MS / totalSteps;
-
-        for (let i = 0; i <= totalSteps; i++) {
-             gameState.highlightedFruit = SPIN_SEQUENCE_MAP[i % SPIN_SEQUENCE_MAP.length];
-             await new Promise(resolve => setTimeout(resolve, stepDuration));
+        const spinStartTime = gameState.spinStartTime ?? now;
+        if (!gameState.spinStartTime) {
+             gameState.spinStartTime = spinStartTime;
         }
-        gameState.highlightedFruit = winner;
         
-        // End of spin, reset for next round
-        gameState.isSpinning = false;
-        gameState.history = [winner, ...gameState.history].slice(0, 5);
-        gameState.winningFruit = null;
-        gameState.bets = {} as Record<FruitKey, number>;
-        gameState.timer = ROUND_DURATION;
-        gameState.highlightedFruit = null;
+        const spinElapsedTime = now - spinStartTime;
 
+        if (spinElapsedTime < SPIN_DURATION_MS) {
+            // Spin animation phase
+            const winner = gameState.winningFruit!;
+            const winnerIndex = SPIN_SEQUENCE_MAP.indexOf(winner);
+            // Ensure at least 3 full spins before landing on the winner
+            const totalSteps = (3 * SPIN_SEQUENCE_MAP.length) + winnerIndex;
+            const progress = spinElapsedTime / SPIN_DURATION_MS;
+            const currentStep = Math.floor(progress * totalSteps);
+            gameState.highlightedFruit = SPIN_SEQUENCE_MAP[currentStep % SPIN_SEQUENCE_MAP.length];
+        } else {
+            // End of spin, reset for next round
+            gameState.isSpinning = false;
+            gameState.history = [gameState.winningFruit!, ...gameState.history].slice(0, 5);
+            // The client will handle the payout, so we just reset the server state
+            gameState.bets = {} as Record<FruitKey, number>;
+            gameState.timer = ROUND_DURATION;
+            gameState.highlightedFruit = null;
+            gameState.winningFruit = null;
+            gameState.spinStartTime = undefined;
+        }
     } else {
         // Betting phase
-        if (gameState.timer > 0) {
-            gameState.timer--;
-        } else {
+        if (elapsedSeconds > 0) {
+            gameState.timer -= elapsedSeconds;
+            gameState.lastUpdate = now;
+        }
+
+        if (gameState.timer <= 0) {
             // Timer is 0, start spinning
             gameState.isSpinning = true;
-            const winningFruit = FRUIT_KEYS[Math.floor(Math.random() * FRUIT_KEYS.length)];
-            gameState.winningFruit = winningFruit;
+            gameState.winningFruit = FRUIT_KEYS[Math.floor(Math.random() * FRUIT_KEYS.length)];
+            gameState.spinStartTime = now;
         }
     }
-    // Schedule the next loop iteration
-    setTimeout(gameLoop, 1000);
 }
-
-// Start the game loop when the server starts.
-gameLoop();
 
 
 // Define the flows that the client can call
@@ -91,6 +99,7 @@ export const getGameState = ai.defineFlow(
     outputSchema: z.custom<GameState>(),
   },
   async () => {
+    gameEngine();
     return gameState;
   }
 );
@@ -102,6 +111,8 @@ export const placeBet = ai.defineFlow(
     outputSchema: z.object({ success: z.boolean() }),
   },
   async ({ fruit, amount }) => {
+    // Run the engine to make sure the timer is up-to-date before checking
+    gameEngine();
     if (gameState.isSpinning || gameState.timer <= 3) {
       console.warn("Bet placed on closed round.");
       return { success: false };
