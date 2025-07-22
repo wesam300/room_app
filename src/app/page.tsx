@@ -40,7 +40,7 @@ function formatNumber(num: number) {
 function getWinnerForRound(roundId: number): FruitKey {
     // A pseudo-random but deterministic way to select a winner
     // The sequence of winners will always be the same for the same sequence of roundIds
-    return FRUIT_KEYS[roundId % FRUITS.length];
+    return FRUIT_KEYS[roundId % FRUIT_KEYS.length];
 }
 
 export default function FruityFortunePage() {
@@ -321,50 +321,19 @@ const handleClaimReward = () => {
        <AnimatePresence>
         {winnerScreenInfo && (
             <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: { duration: 0.5 } }}
-                className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center overflow-hidden"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
             >
-                <motion.div 
-                    className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 opacity-80"
-                    initial={{ scale: 1.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 0.8, transition: { duration: 0.5, ease: "easeOut" } }}
-                    exit={{ scale: 1.5, opacity: 0, transition: { duration: 0.5, ease: "easeIn" } }}
-                />
-
-                <div className="relative text-center p-4 text-white">
-                    <motion.h2 
-                        className="text-5xl font-extrabold drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)]"
-                        initial={{ opacity: 0, y: -50 }}
-                        animate={{ opacity: 1, y: 0, transition: { delay: 0.2, duration: 0.5 } }}
-                    >
-                        مبروك!
-                    </motion.h2>
-
-                    <motion.div
-                        initial={{ scale: 0, rotate: -45 }}
-                        animate={{ scale: 1, rotate: 0, transition: { delay: 0.4, type: 'spring', stiffness: 260, damping: 15 } }}
-                        className="my-4 drop-shadow-[0_10px_15px_rgba(0,0,0,0.3)]"
-                    >
-                        <FruitDisplay fruitType={winnerScreenInfo.fruit} size="large" showMultiplier={false} />
-                    </motion.div>
-
-                    <motion.p 
-                        className="text-2xl font-semibold drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]"
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0, transition: { delay: 0.6, duration: 0.5 } }}
-                    >
-                        لقد ربحت
-                    </motion.p>
-                    <motion.p 
-                        className="text-6xl font-bold text-yellow-300 drop-shadow-[0_4px_4px_rgba(0,0,0,0.5)] mt-2"
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1, transition: { delay: 0.8, type: 'spring', stiffness: 300, damping: 20 } }}
-                    >
-                        {new Intl.NumberFormat().format(winnerScreenInfo.payout)}
-                        <span className="text-4xl ml-2">كوينز</span>
-                    </motion.p>
+                <div className="bg-gradient-to-br from-purple-800 to-indigo-900 p-8 rounded-2xl border-2 border-yellow-400 shadow-2xl text-center">
+                    <h2 className="text-3xl font-bold text-white mb-4">لقد ظهر {FRUITS[winnerScreenInfo.fruit].name}!</h2>
+                    <div className="my-4">
+                        <FruitDisplay fruitType={winnerScreenInfo.fruit} size="large" />
+                    </div>
+                    <p className="text-2xl font-semibold text-yellow-300">
+                        لقد ربحت {formatNumber(winnerScreenInfo.payout)} كوينز
+                    </p>
                 </div>
             </motion.div>
         )}
@@ -491,39 +460,5 @@ const handleClaimReward = () => {
     </div>
   );
 }
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-
-
-    
-
-    
-
-    
-
-
-    
-
-
-
-
-
 
     
