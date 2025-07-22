@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, MessageCircle } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -784,7 +784,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     return (
          <div className="relative flex flex-col h-screen bg-background text-foreground overflow-hidden">
-             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://img.freepik.com/free-photo/glowing-spaceship-orbits-planet-in-starry-galaxy-generated-by-ai_188544-9655.jpg?w=1380)" }}>
+             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://img.freepik.com/free-photo/vibrant-night-sky-with-stars-nebula-galaxy-deep-space-beauty-generative-ai_188544-15078.jpg?w=1380)" }}>
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              <div className="relative z-10 flex flex-col h-full">
@@ -908,41 +908,44 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             </div>
                         ))}
                     </div>
-                     <div className="flex items-center gap-2">
-                        <Button 
-                            variant="outline" 
-                            className="bg-black/40 border-primary/50 rounded-full px-4 text-sm"
-                            onClick={() => { /* Open chat dialog later */ }}
-                        >
-                            <MessageCircle className="ml-2 h-4 w-4" />
-                            رسالة
-                        </Button>
+                     <div className="relative">
+                        <div className="flex items-center gap-2">
+                            <div className="flex-grow flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                                <Input
+                                    placeholder="اكتب رسالتك..."
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                />
+                                <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary" onClick={handleSendMessage}>
+                                    <Send className="w-5 h-5" />
+                                </Button>
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-12 w-12"
+                                onClick={() => setIsRoomMuted(prev => !prev)}
+                            >
+                                {isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
+                            </Button>
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-12 w-12"
+                                onClick={() => handleOpenGiftDialog(null)}
+                            >
+                                 <Gift className="w-6 h-6 text-primary" />
+                            </Button>
+                        </div>
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="bg-black/40 rounded-full"
-                            onClick={() => setIsRoomMuted(prev => !prev)}
-                        >
-                            {isRoomMuted ? <VolumeX className="w-5 h-5 text-primary" /> : <Volume2 className="w-5 h-5 text-primary" />}
-                        </Button>
-                        
-                        <div className="flex-grow"></div> 
-
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="bg-black/40 rounded-full"
-                            onClick={() => handleOpenGiftDialog(null)}
-                        >
-                             <Gift className="w-6 h-6 text-primary" />
-                        </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="bg-black/40 rounded-full"
+                            className="bg-black/40 rounded-full absolute bottom-16 left-0 h-12 w-12"
                             onClick={() => setIsGameVisible(true)}
                         >
-                             <Gamepad2 className="w-6 h-6 text-primary" />
+                            <Gamepad2 className="w-6 h-6 text-primary" />
                         </Button>
                     </div>
                 </div>
