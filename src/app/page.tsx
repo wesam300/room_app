@@ -279,6 +279,15 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
 
     const handleSaveChanges = () => {
         const updatedRoom = { ...room, name: roomName, image: roomImage };
+        
+        // Update localStorage
+        const existingRooms: Room[] = JSON.parse(localStorage.getItem('userRooms') || '[]');
+        const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
+        if (roomIndex !== -1) {
+            existingRooms[roomIndex] = updatedRoom;
+            localStorage.setItem('userRooms', JSON.stringify(existingRooms));
+        }
+        
         onRoomUpdated(updatedRoom);
         toast({ title: "تم تحديث الغرفة!" });
     };
@@ -324,16 +333,19 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
      const isOwner = user.userId === room.ownerId;
      
      useEffect(() => {
+        // This effect simulates speaking. In a real app, this would be driven
+        // by a voice activity detection system.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
             const interval = setInterval(() => {
                 setIsSpeaking(true);
-                setTimeout(() => setIsSpeaking(false), 1500);
-            }, 4000); 
+                setTimeout(() => setIsSpeaking(false), 1500); // Speak for 1.5s
+            }, 4000); // "Speak" every 4 seconds
             return () => {
                 clearInterval(interval);
                 setIsSpeaking(false);
             };
         } else {
+            // If I'm not on a mic or I'm muted, I'm not speaking.
             setIsSpeaking(false);
         }
      }, [myMicIndex, micSlots]);
@@ -367,7 +379,10 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const handleDescend = (indexToDescend: number) => {
          setMicSlots(prev => {
             const newSlots = [...prev];
-            newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
+            // Only allow descending if the user exists on that slot
+            if (newSlots[indexToDescend].user) {
+                newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
+            }
             return newSlots;
         });
     }
@@ -432,6 +447,11 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                             <XCircle className="w-8 h-8 text-red-500"/>
                                         </div>
                                     )}
+                                     {isCurrentUserOwner && (
+                                        <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
+                                            OWNER
+                                        </div>
+                                    )}
                                 </>
                             ) : slot.isLocked ? (
                                 <Lock className="w-8 h-8 text-primary/50" />
@@ -440,12 +460,14 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             )}
                         </div>
                         <div className="flex items-center gap-1">
-                          {isCurrentUserOwner && <Crown className="w-3 h-3 text-yellow-400" />}
-                           <span className="text-xs text-muted-foreground">no.{index + 1}</span>
+                          
+                           <span className="text-xs text-muted-foreground truncate max-w-16">
+                             {slot.user ? slot.user.name : `no.${index + 1}`}
+                           </span>
                         </div>
                     </div>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
+                <PopoverContent className="w-auto p-0" dir="rtl">
                     <div className="flex flex-col gap-2 p-2">
                         {isCurrentUser ? (
                             <>
@@ -455,7 +477,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                 <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
                             </>
                         ) : !slot.user ? ( // Mic is empty
-                            isOwner ? ( // Owner sees lock/unlock
+                            isOwner ? ( // Owner sees lock/unlock and ascend
                                 slot.isLocked ? (
                                     <Button onClick={() => handleToggleLock(index)}>فتح المايك <Unlock className="mr-2"/></Button>
                                 ) : (
@@ -589,13 +611,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
         // Update the room in the main state
         setCurrentRoom(updatedRoom);
 
-        // Update the room in localStorage
-        const existingRooms: Room[] = JSON.parse(localStorage.getItem('userRooms') || '[]');
-        const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
-        if (roomIndex !== -1) {
-            existingRooms[roomIndex] = updatedRoom;
-            localStorage.setItem('userRooms', JSON.stringify(existingRooms));
-        }
+        // Update the room in localStorage is handled in EditRoomDialog to persist changes
     };
 
     if (roomView === 'in_room' && currentRoom) {
