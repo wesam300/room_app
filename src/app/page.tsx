@@ -17,7 +17,10 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
 ];
 
-const GRID_FRUITS_ORDER = GRID_LAYOUT.filter(f => f !== 'timer') as FruitKey[];
+// This defines the visual, clockwise path for the spinning animation
+const VISUAL_SPIN_ORDER: FruitKey[] = [
+    'watermelon', 'cherry', 'orange', 'lemon', 'grapes', 'apple', 'strawberry', 'pear'
+];
 
 
 function formatNumber(num: number) {
@@ -142,14 +145,18 @@ export default function FruityFortunePage() {
               if (!isSpinning) {
                 // Generate animation sequence ONCE at the start of the spin
                 const winner = getWinnerForRound(currentRoundId);
-                const winnerIndex = GRID_FRUITS_ORDER.indexOf(winner);
-                const spins = 3; // How many full loops
-                const totalLength = (GRID_FRUITS_ORDER.length * spins) + winnerIndex + 1;
-
-                const sequence = Array.from({ length: totalLength }, (_, i) => {
-                    return GRID_FRUITS_ORDER[i % GRID_FRUITS_ORDER.length];
-                });
-                animationSequenceRef.current = sequence;
+                const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
+                if (winnerIndex === -1) { // Fallback if winner not in visual order
+                    animationSequenceRef.current = [winner];
+                } else {
+                    const spins = 3; // How many full loops
+                    const totalLength = (VISUAL_SPIN_ORDER.length * spins) + winnerIndex + 1;
+    
+                    const sequence = Array.from({ length: totalLength }, (_, i) => {
+                        return VISUAL_SPIN_ORDER[i % VISUAL_SPIN_ORDER.length];
+                    });
+                    animationSequenceRef.current = sequence;
+                }
               }
 
               setIsSpinning(true);
@@ -301,6 +308,8 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+    
+
     
 
     
