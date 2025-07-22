@@ -14,7 +14,7 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import FruityFortunePage from "./project-885/page";
+import FruityFortunePage from "@/app/project-885/page";
 
 
 // --- Types ---
@@ -650,7 +650,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                 <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                 <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                             </Avatar>
-                             {isMutedForMe ? (
+                             {(isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted) ? (
                                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                                     <XCircle className="w-8 h-8 text-red-500"/>
                                 </div>
@@ -1285,4 +1285,3 @@ export default function HomePage() {
     </div>
   );
 }
-
