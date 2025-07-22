@@ -14,12 +14,12 @@ const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'pear', 'strawberry', 'apple', 'grapes', 'timer', 'lemon', 'orange', 'cherry', 'watermelon'
+    'lemon', 'strawberry', 'apple', 'grapes', 'timer', 'pear', 'orange', 'cherry', 'watermelon'
 ];
 
 // This defines the visual, clockwise path for the spinning animation, AFTER the swap
 const VISUAL_SPIN_ORDER: FruitKey[] = [
-    'pear', 'strawberry', 'apple', 'grapes', 'lemon', 'orange', 'cherry', 'watermelon'
+    'lemon', 'strawberry', 'apple', 'pear', 'watermelon', 'cherry', 'orange', 'grapes'
 ];
 
 
@@ -146,8 +146,10 @@ export default function FruityFortunePage() {
                 // Generate animation sequence ONCE at the start of the spin
                 const winner = getWinnerForRound(currentRoundId);
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
-                if (winnerIndex === -1) { // Fallback if winner not in visual order
-                    animationSequenceRef.current = [winner];
+                
+                // Fallback if winner not in visual order (should not happen)
+                if (winnerIndex === -1) { 
+                    animationSequenceRef.current = [winner]; 
                 } else {
                     const spins = 3; // How many full loops
                     const totalLength = (VISUAL_SPIN_ORDER.length * spins) + winnerIndex + 1;
@@ -250,7 +252,7 @@ export default function FruityFortunePage() {
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
                      isSpinningAndHighlighted && "ring-2 ring-white/80 scale-110",
                      isSpinning && !isSpinningAndHighlighted && "opacity-60",
-                     isMomentaryWinner && ""
+                     isMomentaryWinner && "ring-2 ring-yellow-400"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -308,6 +310,8 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+    
+
     
 
     
