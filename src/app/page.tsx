@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -50,6 +50,11 @@ interface GiftItem {
     image: string;
 }
 
+interface Supporter {
+    user: UserProfile;
+    totalGiftValue: number;
+}
+
 
 // --- Constants ---
 const BOT_USER: UserProfile = {
@@ -62,6 +67,11 @@ const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
 ];
 
+function formatNumber(num: number) {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}m`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}k`;
+    return num.toString();
+}
 
 // --- Rooms Feature Components ---
 
@@ -367,7 +377,6 @@ function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserP
     )
 }
 
-// --- New Gift Dialog Component ---
 function GiftDialog({ 
     isOpen, 
     onOpenChange, 
@@ -385,12 +394,10 @@ function GiftDialog({
 }) {
     const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(initialRecipient);
 
-    // Sync selected recipient if the initial one changes
     useEffect(() => {
         setSelectedRecipient(initialRecipient);
     }, [initialRecipient, isOpen]);
 
-    // Reset recipient when dialog closes
     useEffect(() => {
         if (!isOpen) {
             setSelectedRecipient(null);
@@ -411,7 +418,6 @@ function GiftDialog({
                 </DialogHeader>
                 
                 {!selectedRecipient ? (
-                    // Step 1: Select a recipient
                     <div className="py-4">
                         <h3 className="text-center text-lg mb-4">اختر مستلم الهدية</h3>
                         <div className="grid grid-cols-3 gap-4">
@@ -427,7 +433,6 @@ function GiftDialog({
                         </div>
                     </div>
                 ) : (
-                    // Step 2: Send the gift
                     <div className="py-4 text-right">
                          <p className="text-center mb-4">إرسال هدية إلى: <span className="font-bold text-primary">{selectedRecipient.name}</span></p>
                         {GIFTS.map(gift => (
@@ -453,11 +458,9 @@ function GiftDialog({
     );
 }
 
-
 function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
-        // Initialize with bot on mic 1
         Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
      );
      const [isSpeaking, setIsSpeaking] = useState(false);
@@ -466,36 +469,34 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
      const isOwner = user.userId === room.ownerId;
      
-     // --- Chat State ---
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState("");
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    // --- Gift State ---
-    const [balance, setBalance] = useState(10000000); // Example balance
+    const [balance, setBalance] = useState(10000000);
     const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
     const [activeGiftAnimation, setActiveGiftAnimation] = useState<{ sender: UserProfile, receiver: UserProfile, gift: GiftItem } | null>(null);
 
+    const [roomSupporters, setRoomSupporters] = useState<Supporter[]>([]);
+    const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
+
+
      useEffect(() => {
-        // This effect simulates speaking. In a real app, this would be driven
-        // by a voice activity detection system.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
              const interval = setInterval(() => {
                 setIsSpeaking(true);
-                setTimeout(() => setIsSpeaking(false), 1500); // Speak for 1.5s
-            }, 4000); // "Speak" every 4 seconds
+                setTimeout(() => setIsSpeaking(false), 1500);
+            }, 4000);
             return () => {
                 clearInterval(interval);
                 setIsSpeaking(false);
             };
         } else {
-            // If I'm not on a mic or I'm muted, I'm not speaking.
             setIsSpeaking(false);
         }
      }, [myMicIndex, micSlots]);
 
-      // Auto-scroll chat to bottom
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -531,7 +532,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const handleDescend = (indexToDescend: number) => {
          setMicSlots(prev => {
             const newSlots = [...prev];
-            // Only allow descending if the user exists on that slot
             if (newSlots[indexToDescend].user) {
                 newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
             }
@@ -581,6 +581,21 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
         setBalance(prev => prev - gift.price);
         setActiveGiftAnimation({ sender: user, receiver: recipient, gift });
+        
+        // Update room supporters state
+        setRoomSupporters(prev => {
+            const existingSupporterIndex = prev.findIndex(s => s.user.userId === user.userId);
+            let newSupporters = [...prev];
+            if (existingSupporterIndex !== -1) {
+                const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
+                updatedSupporter.totalGiftValue += gift.price;
+                newSupporters[existingSupporterIndex] = updatedSupporter;
+            } else {
+                newSupporters.push({ user, totalGiftValue: gift.price });
+            }
+            // Sort by total gift value descending and return
+            return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
+        });
 
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${gift.name} إلى ${recipient.name}.` });
         setIsGiftDialogOpen(false);
@@ -596,8 +611,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
-        const isBot = slot.user?.userId === BOT_USER.userId;
-        const popoverContentRef = useRef<HTMLDivElement>(null);
 
         const handleCopyUserId = (id: string) => {
             navigator.clipboard.writeText(id);
@@ -655,7 +668,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                         </div>
                     </div>
                 </PopoverTrigger>
-                <PopoverContent ref={popoverContentRef} className="w-auto p-2" dir="rtl">
+                <PopoverContent className="w-auto p-2" dir="rtl">
                     <div className="flex flex-col gap-2">
                         {isCurrentUser ? (
                             <>
@@ -664,8 +677,8 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                 </Button>
                                 <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
                             </>
-                        ) : !slot.user ? ( // Mic is empty
-                            isOwner ? ( // Owner sees lock/unlock and ascend
+                        ) : !slot.user ? (
+                            isOwner ? (
                                 slot.isLocked ? (
                                     <Button onClick={() => handleToggleLock(index)}>فتح المايك <Unlock className="mr-2"/></Button>
                                 ) : (
@@ -674,10 +687,10 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                                         <Button variant="secondary" onClick={() => handleToggleLock(index)}>قفل المايك <Lock className="mr-2"/></Button>
                                     </>
                                 )
-                            ) : ( // Non-owner sees ascend only
+                            ) : (
                                  <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
                             )
-                        ) : ( // Mic is occupied by another user
+                        ) : ( 
                            <div className="flex flex-col items-center gap-3 text-center">
                                <Avatar className="w-16 h-16">
                                    <AvatarImage src={slot.user.image} alt={slot.user.name} />
@@ -746,9 +759,19 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         )
     }
 
+    const LeaderboardMedal = ({ rank }: { rank: number }) => {
+        if (rank === 1) return <span role="img" aria-label="Gold Medal" className="text-2xl">🥇</span>;
+        if (rank === 2) return <span role="img" aria-label="Silver Medal" className="text-2xl">🥈</span>;
+        if (rank === 3) return <span role="img" aria-label="Bronze Medal" className="text-2xl">🥉</span>;
+        return <span className="text-sm font-bold w-6 text-center">{rank}</span>;
+    };
+
     return (
-         <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
-             <div className="flex flex-col h-full">
+         <div className="relative flex flex-col h-screen bg-background text-foreground overflow-hidden">
+             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://placehold.co/1080x1920/1a013b/1a013b.png)" }}>
+                <div className="absolute inset-0 bg-black/50"></div>
+             </div>
+             <div className="relative z-10 flex flex-col h-full">
                 <AnimatePresence>
                     {activeGiftAnimation && (
                         <GiftAnimationOverlay
@@ -771,7 +794,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
                 <RoomHeader />
 
-                {/* Sub-header */}
                 <div className="flex items-center justify-between px-4 mt-2">
                     <div className="flex items-center gap-2">
                        <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
@@ -782,13 +804,42 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                            </Avatar>
                        </div>
                     </div>
-                    <div className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500">
-                        <span className="font-bold text-sm">{balance.toLocaleString()}</span>
-                        <Trophy className="w-5 h-5 text-yellow-400"/>
-                    </div>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
+                                <span className="font-bold text-sm">{formatNumber(totalRoomSupport)}</span>
+                                <Trophy className="w-5 h-5 text-yellow-400"/>
+                            </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64" dir="rtl">
+                            <div className="flex flex-col gap-2">
+                                <h4 className="font-bold text-center">أكبر الداعمين</h4>
+                                <hr className="border-border/50 my-1"/>
+                                {roomSupporters.length === 0 ? (
+                                    <p className="text-sm text-center text-muted-foreground py-2">لا يوجد داعمين بعد</p>
+                                ) : (
+                                    roomSupporters.slice(0, 10).map((supporter, index) => (
+                                        <div key={supporter.user.userId} className="flex items-center justify-between gap-3 p-1 rounded-md hover:bg-accent/50">
+                                            <div className="flex items-center gap-2">
+                                                <LeaderboardMedal rank={index + 1} />
+                                                <Avatar className="w-8 h-8">
+                                                    <AvatarImage src={supporter.user.image} alt={supporter.user.name} />
+                                                    <AvatarFallback>{supporter.user.name.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-sm font-semibold truncate">{supporter.user.name}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 text-yellow-400">
+                                                <Trophy className="w-4 h-4" />
+                                                <span className="text-xs font-bold">{formatNumber(supporter.totalGiftValue)}</span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                 </div>
                 
-                {/* Mic Grid */}
                 <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
                     {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
                     {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
@@ -818,8 +869,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     )}
                 </AnimatePresence>
 
-
-                {/* Chat Area */}
                 <div className="flex-1 flex flex-col justify-end p-4 pt-0 overflow-hidden">
                     <div 
                         ref={chatContainerRef}
@@ -858,8 +907,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     </div>
                 </div>
 
-
-                {/* Floating Game Button */}
                 <Button 
                     variant="ghost" 
                     size="icon" 
@@ -873,8 +920,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     );
 }
 
-
-// --- Main App Shell ---
 function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) {
     const [roomView, setRoomView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
@@ -986,12 +1031,9 @@ export default function HomePage() {
   };
   
   const handleReset = () => {
-    // Clear user data from state and local storage for a clean "logout"
     setUser(null); 
     localStorage.removeItem("userName");
     localStorage.removeItem("userImage");
-    // We keep userId to allow the same user to log back in
-    // Resetting input fields to avoid showing stale data
     setName("");
     setImage(null);
     toast({ title: "تم تسجيل الخروج" });
@@ -1050,3 +1092,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
