@@ -12,6 +12,7 @@ const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 const DAILY_REWARD_AMOUNT = 10000000;
+const MAX_BET_SLOTS = 6;
 
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
@@ -283,6 +284,18 @@ const handleClaimReward = () => {
       toast({ title: "انتهى وقت الرهان", description: "انتظر حتى الجولة القادمة", variant: "destructive" });
       return;
     }
+    
+    const currentBetSlots = Object.keys(bets).length;
+    if (!bets[fruit] && currentBetSlots >= MAX_BET_SLOTS) {
+        toast({ 
+            title: "تم الوصول للحد الأقصى", 
+            description: `لا يمكنك المراهنة على أكثر من ${MAX_BET_SLOTS} خيارات.`, 
+            variant: "destructive",
+            duration: 2000,
+        });
+        return;
+    }
+
     if (balance < activeBet) {
        toast({ title: "رصيد غير كاف", description: "ليس لديك ما يكفي من الرصيد للقيام بهذا الرهان", variant: "destructive" });
        return;
@@ -484,3 +497,6 @@ const handleClaimReward = () => {
 
 
 
+
+
+    
