@@ -17,8 +17,7 @@ const GRID_LAYOUT: (FruitKey | 'timer')[] = [
     'watermelon', 'cherry', 'orange', 'pear', 'timer', 'lemon', 'strawberry', 'apple', 'grapes'
 ];
 
-// User-defined spin sequence - REVERSED
-const CUSTOM_SPIN_SEQUENCE: FruitKey[] = ['grapes', 'lemon', 'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple'];
+const GRID_FRUITS_ORDER = GRID_LAYOUT.filter(f => f !== 'timer') as FruitKey[];
 
 
 function formatNumber(num: number) {
@@ -44,7 +43,6 @@ export default function FruityFortunePage() {
   const [roundId, setRoundId] = useState(0);
   const [timer, setTimer] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [winningFruit, setWinningFruit] = useState<FruitKey | null>(null);
   const [momentaryWinner, setMomentaryWinner] = useState<FruitKey | null>(null);
   const [highlightedFruit, setHighlightedFruit] = useState<FruitKey | null>(null);
 
@@ -54,6 +52,7 @@ export default function FruityFortunePage() {
   const { toast } = useToast();
 
   const winnerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const animationSequenceRef = useRef<FruitKey[]>([]);
 
 
   // Load state from localStorage on initial mount
@@ -111,7 +110,9 @@ export default function FruityFortunePage() {
           const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
           const timeInCycle = (now / 1000) % TOTAL_DURATION;
 
-          setRoundId(currentRoundId);
+          if (roundId !== currentRoundId) {
+            setRoundId(currentRoundId);
+          }
 
           if (timeInCycle < ROUND_DURATION) {
               // Betting phase
@@ -135,23 +136,35 @@ export default function FruityFortunePage() {
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
               setHighlightedFruit(null);
-              setWinningFruit(null);
 
           } else {
               // Spinning phase
+              if (!isSpinning) {
+                // Generate animation sequence ONCE at the start of the spin
+                const winner = getWinnerForRound(currentRoundId);
+                const winnerIndex = GRID_FRUITS_ORDER.indexOf(winner);
+                const spins = 3; // How many full loops
+                const totalLength = (GRID_FRUITS_ORDER.length * spins) + winnerIndex + 1;
+
+                const sequence = Array.from({ length: totalLength }, (_, i) => {
+                    return GRID_FRUITS_ORDER[i % GRID_FRUITS_ORDER.length];
+                });
+                animationSequenceRef.current = sequence;
+              }
+
               setIsSpinning(true);
               setTimer(0);
               
-              const spinTime = timeInCycle - ROUND_DURATION;
-              const highlightDuration = SPIN_DURATION / CUSTOM_SPIN_SEQUENCE.length;
+              const spinTime = timeInCycle - ROUND_DURATION; // time elapsed in spin (0 to 3s)
+              const sequence = animationSequenceRef.current;
+              const highlightDuration = SPIN_DURATION / sequence.length;
               const highlightIndex = Math.floor(spinTime / highlightDuration);
 
-              if(highlightIndex < CUSTOM_SPIN_SEQUENCE.length) {
-                setHighlightedFruit(CUSTOM_SPIN_SEQUENCE[highlightIndex]);
+              if(highlightIndex < sequence.length) {
+                setHighlightedFruit(sequence[highlightIndex]);
               } else {
-                setHighlightedFruit(null);
+                setHighlightedFruit(sequence[sequence.length - 1]); // Should be the winner
               }
-              setWinningFruit(null); // Hide winner during spin
           }
       };
 
@@ -164,7 +177,7 @@ export default function FruityFortunePage() {
           clearTimeout(winnerTimeoutRef.current);
         }
       };
-  }, [isSpinning, bets]); 
+  }, [isSpinning, bets, roundId]); 
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 3) {
@@ -229,7 +242,8 @@ export default function FruityFortunePage() {
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
                      isSpinningAndHighlighted && "bg-white/20 ring-2 ring-white/80 scale-110",
-                     isSpinning && !isSpinningAndHighlighted && "opacity-60"
+                     isSpinning && !isSpinningAndHighlighted && "opacity-60",
+                     isMomentaryWinner && "bg-white/20"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -287,6 +301,8 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+    
+
     
 
     
