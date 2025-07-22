@@ -8,18 +8,18 @@ import { useToast } from "@/hooks/use-toast";
 
 const BET_AMOUNTS = [1000000, 50000, 10000, 5000, 1000];
 const ROUND_DURATION = 20; // seconds
-const SPIN_DURATION = 2; // seconds
+const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
 
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
 
 const GRID_LAYOUT: (FruitKey | 'timer')[] = [
-    'strawberry', 'apple', 'grapes', 'lemon', 'timer', 'pear', 'watermelon', 'cherry', 'orange'
+    'pear', 'apple', 'strawberry', 'lemon', 'timer', 'grapes', 'watermelon', 'cherry', 'orange'
 ];
 
 // This defines the visual, clockwise path for the spinning animation
 const VISUAL_SPIN_ORDER: FruitKey[] = [
-    'strawberry', 'apple', 'grapes', 'pear', 'orange', 'cherry', 'watermelon', 'lemon'
+    'pear', 'grapes', 'orange', 'lemon', 'strawberry', 'apple', 'cherry', 'watermelon'
 ];
 
 
@@ -162,7 +162,7 @@ export default function FruityFortunePage() {
               setIsSpinning(true);
               setTimer(0);
               
-              const spinTime = timeInCycle - ROUND_DURATION; // time elapsed in spin (0 to 3s)
+              const spinTime = timeInCycle - ROUND_DURATION; // time elapsed in spin
               const sequence = animationSequenceRef.current;
               const highlightDuration = SPIN_DURATION / sequence.length;
               const highlightIndex = Math.floor(spinTime / highlightDuration);
@@ -249,7 +249,8 @@ export default function FruityFortunePage() {
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
                      isSpinningAndHighlighted && "ring-2 ring-white/80 scale-110",
-                     isSpinning && !isSpinningAndHighlighted && "opacity-60"
+                     isSpinning && !isSpinningAndHighlighted && "opacity-60",
+                     isMomentaryWinner && "bg-white/20"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -307,6 +308,8 @@ export default function FruityFortunePage() {
     </div>
   );
 }
+    
+
     
 
     
