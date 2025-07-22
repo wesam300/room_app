@@ -9,9 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2 } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
+
 
 // --- Types ---
 interface UserProfile {
@@ -217,6 +219,27 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
      const [messages, setMessages] = useState<ChatMessage[]>([]);
      const [chatInput, setChatInput] = useState("");
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
+     const [speakingSlotIndex, setSpeakingSlotIndex] = useState<number | null>(null);
+     
+     // Simulate speaking
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const usersOnMics = micSlots
+                .map((slot, index) => (slot.user ? index : -1))
+                .filter(index => index !== -1);
+
+            if (usersOnMics.length > 0) {
+                const randomUserIndex = usersOnMics[Math.floor(Math.random() * usersOnMics.length)];
+                setSpeakingSlotIndex(randomUserIndex);
+                setTimeout(() => setSpeakingSlotIndex(null), 1500); // Speak for 1.5s
+            } else {
+                setSpeakingSlotIndex(null);
+            }
+        }, 3000); // Change speaker every 3s
+
+        return () => clearInterval(interval);
+    }, [micSlots]);
+
 
      const handleCopyId = () => {
         navigator.clipboard.writeText(room.id);
@@ -270,7 +293,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
         setChatInput("");
     }
     
-    const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
+    const RoomMic = ({slot, index, isSpeaking}: {slot: MicSlot, index: number, isSpeaking: boolean}) => {
         return (
              <Popover>
                 <PopoverTrigger asChild>
@@ -278,6 +301,22 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                         <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
                              {slot.user ? (
                                 <>
+                                    <AnimatePresence>
+                                        {isSpeaking && !slot.isMuted && (
+                                             <motion.div
+                                                className="absolute inset-0 rounded-full border-2 border-yellow-300"
+                                                animate={{
+                                                    scale: [1, 1.3, 1],
+                                                    opacity: [0.8, 0, 0.8],
+                                                }}
+                                                transition={{
+                                                    duration: 1.5,
+                                                    repeat: Infinity,
+                                                    ease: "easeInOut",
+                                                }}
+                                            />
+                                        )}
+                                    </AnimatePresence>
                                     <Avatar className="w-full h-full">
                                         <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                         <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
@@ -376,9 +415,10 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
             
             {/* Mic Grid */}
             <div className="grid grid-cols-5 gap-y-4 gap-x-2 p-4 z-10">
-                {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
-                {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
+                {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} isSpeaking={speakingSlotIndex === index} />)}
+                {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} isSpeaking={speakingSlotIndex === index + 5} />)}
             </div>
+
 
             {/* Chat Area */}
              <main className="absolute bottom-0 left-0 right-0 h-1/2 p-4 flex flex-col-reverse bg-gradient-to-t from-background/80 via-background/40 to-transparent">
@@ -405,6 +445,9 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
              {/* Chat Input */}
             <footer className="absolute bottom-0 left-0 right-0 p-4 border-t-0 bg-transparent z-20">
                 <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="icon" className="bg-black/30">
+                        <Gift className="w-5 h-5 text-primary" />
+                    </Button>
                     <Input 
                         placeholder="اكتب رسالتك هنا..." 
                         className="text-right bg-background/80"
@@ -439,6 +482,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     };
     
     const handleProfileClick = () => {
+      // This function will now trigger the onReset to go to the edit screen
       if (activeTab === 'profile') {
           onReset();
       } else {
@@ -561,9 +605,9 @@ export default function HomePage() {
   
   const handleReset = () => {
     setUser(null); 
+    // Do not remove userId, it should persist
     localStorage.removeItem("userName");
     localStorage.removeItem("userImage");
-    localStorage.removeItem("userId");
     setName(null);
     setImage(null);
   }
