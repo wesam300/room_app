@@ -94,17 +94,17 @@ export default function FruityFortunePage() {
               );
             }
             const fruitKey = item as FruitKey;
-            const isActuallyWinning = isSpinning && winningFruit === fruitKey;
-            const isHighlightedForSpin = highlightedFruit === fruitKey;
+            const isActuallyWinning = highlightedFruit === fruitKey && !isSpinning;
+            const isHighlightedForSpin = highlightedFruit === fruitKey && isSpinning;
 
             return (
               <div
                 key={`${fruitKey}-${index}`}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                     isSpinning && isHighlightedForSpin && !isActuallyWinning && "bg-purple-700/80 ring-2 ring-purple-400",
+                     isHighlightedForSpin && "bg-purple-700/80 ring-2 ring-purple-400",
                      isActuallyWinning && "bg-yellow-500/50 ring-2 ring-yellow-300",
-                     isSpinning && !isHighlightedForSpin && !isActuallyWinning && "opacity-50"
+                     isSpinning && !isHighlightedForSpin && "opacity-50"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >

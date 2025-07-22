@@ -50,8 +50,7 @@ export function useGameEngine(balance: number, setBalance: (balance: number | ((
                         lastUpdated: Date.now(),
                     };
                     transaction.set(docRef, initialGameState);
-                    setGameState(initialGameState);
-                    isMasterClient.current = true;
+                    isMasterClient.current = true; // The one who initializes becomes master
                 }
             });
         } catch (error) {
@@ -78,7 +77,7 @@ export function useGameEngine(balance: number, setBalance: (balance: number | ((
 
   // Main Game Loop Logic (runs only on master client)
   useEffect(() => {
-    if (!isMasterClient.current || !gameState) return;
+    if (!isMasterClient.current || !gameState || !gameState.id) return;
 
     if (localTimerRef.current) clearInterval(localTimerRef.current);
 
@@ -122,7 +121,7 @@ export function useGameEngine(balance: number, setBalance: (balance: number | ((
                    transaction.update(docRef, {
                        isSpinning: false,
                        winningFruit: null,
-                       history: [freshGameState.winningFruit, ...freshGameState.history.slice(0, 4)],
+                       history: [freshGameState.winningFruit!, ...freshGameState.history.slice(0, 4)],
                        bets: {},
                        timer: ROUND_DURATION,
                        lastUpdated: Date.now()
@@ -170,8 +169,10 @@ export function useGameEngine(balance: number, setBalance: (balance: number | ((
                 
                 // Payout logic
                 const bets = gameState.bets || {};
-                const payout = (bets[gameState.winningFruit!] || 0) * FRUITS[gameState.winningFruit!].multiplier;
-                if (payout > 0) {
+                const userBetsOnWinner = bets[gameState.winningFruit!] || 0;
+
+                if (userBetsOnWinner > 0) {
+                    const payout = userBetsOnWinner * FRUITS[gameState.winningFruit!].multiplier;
                     setBalance(prev => prev + payout);
                 }
 
@@ -185,7 +186,7 @@ export function useGameEngine(balance: number, setBalance: (balance: number | ((
     } else {
         setHighlightedFruit(null);
     }
-  }, [gameState?.isSpinning, gameState?.winningFruit]);
+  }, [gameState?.isSpinning, gameState?.winningFruit, gameState?.bets, setBalance]);
 
   const placeBet = useCallback(async (fruit: FruitKey, amount: number) => {
     if (gameState && !gameState.isSpinning && gameState.timer > 3 && balance >= amount) {
