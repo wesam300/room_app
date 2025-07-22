@@ -59,7 +59,7 @@ const BOT_USER: UserProfile = {
 };
 
 const GIFTS: GiftItem[] = [
-    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://placehold.co/200x200/FFD700/000000.png' }
+    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://storage.googleapis.com/stey-kr/lion_gift.png' }
 ];
 
 // --- TopBar Component ---
