@@ -168,7 +168,8 @@ export default function FruityFortunePage() {
 const handleClaimReward = () => {
     if (canClaim) {
         setBalance(prev => prev + DAILY_REWARD_AMOUNT);
-        setLastClaimTimestamp(Date.now());
+        const now = Date.now();
+        setLastClaimTimestamp(now);
         setCanClaim(false);
         toast({ title: "تم استلام الجائزة!", description: `تمت إضافة ${formatNumber(DAILY_REWARD_AMOUNT)} إلى رصيدك.`, variant: "default" });
     } else {
