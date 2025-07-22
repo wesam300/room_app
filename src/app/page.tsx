@@ -29,6 +29,10 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
                 <ChevronLeft className="w-6 h-6" />
             </Button>
             <div className="flex items-center gap-3">
+                <Avatar className="w-12 h-12">
+                    <AvatarImage src={image || ''} alt={name || ''} />
+                    <AvatarFallback>{name ? name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
+                </Avatar>
                  <div className="text-right">
                     <p className="font-bold text-lg">{name}</p>
                     {userId && (
@@ -40,10 +44,6 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
                         </div>
                     )}
                 </div>
-                <Avatar className="w-12 h-12">
-                    <AvatarImage src={image || ''} alt={name || ''} />
-                    <AvatarFallback>{name ? name.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
-                </Avatar>
             </div>
         </header>
     );
@@ -53,17 +53,10 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
 function ProfileScreen({ onReset }: { onReset: () => void }) {
     return (
         <div className="flex flex-col items-center justify-center flex-1 p-4 text-center">
-            <Card className="w-full max-w-md p-6">
-                <CardHeader>
-                    <CardTitle className="text-2xl">منطقة الملف الشخصي</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-muted-foreground mb-6">
-                       مرحبًا بك! يمكنك إدارة حسابك من هنا.
-                    </p>
-                    <Button onClick={onReset} variant="link">إعادة تعيين الملف الشخصي</Button>
-                </CardContent>
-            </Card>
+             <p className="text-muted-foreground mb-6">
+               مرحبًا بك! يمكنك إدارة حسابك من هنا.
+            </p>
+            <Button onClick={onReset} variant="link">إعادة تعيين الملف الشخصي</Button>
         </div>
     );
 }
@@ -85,7 +78,7 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
     return (
         <div className="flex flex-col h-screen">
             {activeTab === 'profile' && (
-                <TopBar name={name} image={image} userId={userId} onBack={() => setActiveTab('rooms')} />
+                <TopBar name={name} image={image} userId={userId} onBack={onReset} />
             )}
             <main className="flex-1 overflow-y-auto">
                 {renderContent()}
@@ -103,7 +96,7 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
                  <Link href="/project-885" passHref>
                     <div className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                        activeTab === 'game' ? "text-primary" : "hover:text-foreground"
+                        "hover:text-foreground"
                     )}>
                         <Gamepad2 className="w-6 h-6" />
                         <span className="text-xs font-medium">اللعبة</span>
@@ -116,7 +109,6 @@ function MainApp({ name, image, userId, onReset }: { name: string | null, image:
                         activeTab === 'profile' ? "text-primary" : "hover:text-foreground"
                     )}>
                     <User className="w-6 h-6" />
-                    <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
         </div>
