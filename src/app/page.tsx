@@ -108,6 +108,7 @@ export default function FruityFortunePage() {
   // Load state from localStorage on initial mount
   useEffect(() => {
     setIsClient(true);
+    // Balance
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
     if (savedBalance) {
         setBalance(parseInt(savedBalance, 10));
@@ -115,6 +116,7 @@ export default function FruityFortunePage() {
         setBalance(1000000000); // Set initial balance to 1 billion if nothing is saved
     }
 
+    // History
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
     if (savedHistory) {
         try {
@@ -126,14 +128,45 @@ export default function FruityFortunePage() {
             setHistory([]);
         }
     }
-    
-    // Bets are ephemeral per session, so we don't load them.
-    setBets({});
 
+    // Daily Reward
     const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
     if (savedClaimTimestamp) {
         setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
     }
+
+    // Bets & Offline Payout Logic
+    const savedBetsData = localStorage.getItem('fruityFortuneBets');
+    const now = Date.now();
+    const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
+    
+    if (savedBetsData) {
+        try {
+            const { bets: savedBets, roundId: savedRoundId } = JSON.parse(savedBetsData);
+            if (savedRoundId < currentRoundId) {
+                // Round is over, calculate offline winnings
+                const winner = getWinnerForRound(savedRoundId);
+                const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
+                if (payout > 0) {
+                    const newBalance = (parseInt(savedBalance || '0', 10)) + payout;
+                    setBalance(newBalance);
+                    localStorage.setItem('fruityFortuneBalance', newBalance.toString());
+                    toast({
+                        title: "ربح أثناء غيابك!",
+                        description: `لقد ربحت ${formatNumber(payout)} من جولة سابقة.`,
+                        variant: "default"
+                    });
+                }
+                localStorage.removeItem('fruityFortuneBets');
+            } else {
+                // Round is still ongoing, restore bets
+                setBets(savedBets);
+            }
+        } catch(e) {
+            localStorage.removeItem('fruityFortuneBets');
+        }
+    }
+    
   }, []);
 
   // Save state to localStorage whenever it changes
@@ -141,12 +174,17 @@ export default function FruityFortunePage() {
     if (isClient) {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
       localStorage.setItem('fruityFortuneHistory', JSON.stringify(history));
-      // Do not save bets, they reset each round.
       if (lastClaimTimestamp) {
           localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
       }
+      // Save bets along with the current round ID
+      if (Object.keys(bets).length > 0) {
+          localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId }));
+      } else {
+          localStorage.removeItem('fruityFortuneBets');
+      }
     }
-  }, [balance, history, lastClaimTimestamp, isClient]);
+  }, [balance, history, lastClaimTimestamp, bets, roundId, isClient]);
 
 
    // Daily Reward Timer Logic
@@ -514,3 +552,5 @@ const handleClaimReward = () => {
     </div>
   );
 }
+
+    
