@@ -10,15 +10,21 @@ interface Fruit {
   multiplier: number;
 }
 
+// Updated multipliers to match the probability table
 export const FRUITS: Record<FruitKey, Fruit> = {
+  // 5x Multiplier
   watermelon: { id: 'watermelon', name: 'بطيخ',      emoji: '🍉', multiplier: 5 },
-  cherry:     { id: 'cherry',     name: 'كرز',       emoji: '🍒', multiplier: 45 },
-  orange:     { id: 'orange',     name: 'برتقال',     emoji: '🍊', multiplier: 25 },
   pear:       { id: 'pear',       name: 'كمثرى',      emoji: '🍐', multiplier: 5 },
-  lemon:      { id: 'lemon',      name: 'ليمون',      emoji: '🍋', multiplier: 15  },
   strawberry: { id: 'strawberry', name: 'فراولة',    emoji: '🍓', multiplier: 5 },
   apple:      { id: 'apple',      name: 'تفاح',       emoji: '🍎', multiplier: 5  },
+  // 10x Multiplier
   grapes:     { id: 'grapes',     name: 'عنب',       emoji: '🍇', multiplier: 10 },
+  // 15x Multiplier
+  lemon:      { id: 'lemon',      name: 'ليمون',      emoji: '🍋', multiplier: 15  },
+  // 25x Multiplier
+  orange:     { id: 'orange',     name: 'برتقال',     emoji: '🍊', multiplier: 25 },
+  // 45x Multiplier
+  cherry:     { id: 'cherry',     name: 'كرز',       emoji: '🍒', multiplier: 45 },
 };
 
 interface FruitDisplayProps {

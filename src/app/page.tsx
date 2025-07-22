@@ -28,19 +28,91 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
     'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple', 'grapes', 'lemon'
 ];
 
+// --- New Probability-based Winner Generation ---
+
+// 1. Define the probability matrix based on the user's table
+const PROBABILITY_MATRIX = [
+  // Level 0: 0 rounds since big win
+  { 5: 0.70, 10: 0.08, 15: 0.04, 25: 0.002, 45: 0 },
+  // Level 1: 1 round
+  { 5: 0.60, 10: 0.12, 15: 0.06, 25: 0.005, 45: 0.001 },
+  // Level 2: 2 rounds
+  { 5: 0.55, 10: 0.15, 15: 0.08, 25: 0.01, 45: 0.002 },
+  // Level 3: 3 rounds
+  { 5: 0.50, 10: 0.18, 15: 0.10, 25: 0.015, 45: 0.003 },
+  // Level 4: 4 rounds
+  { 5: 0.45, 10: 0.20, 15: 0.12, 25: 0.02, 45: 0.005 },
+  // Level 5: 5+ rounds
+  { 5: 0.40, 10: 0.22, 15: 0.14, 25: 0.03, 45: 0.01 },
+];
+
+// 2. Group fruits by their multiplier
+const FRUITS_BY_MULTIPLIER: Record<number, FruitKey[]> = {};
+for (const key in FRUITS) {
+    const fruitKey = key as FruitKey;
+    const fruit = FRUITS[fruitKey];
+    if (!FRUITS_BY_MULTIPLIER[fruit.multiplier]) {
+        FRUITS_BY_MULTIPLIER[fruit.multiplier] = [];
+    }
+    FRUITS_BY_MULTIPLIER[fruit.multiplier].push(fruitKey);
+}
+
+
+// 3. The new function to get a winner
+function getWinnerForRound(roundId: number, roundsSinceBigWin: number): { winner: FruitKey, isBigWin: boolean } {
+    // A pseudo-random but deterministic seed for this round
+    let seed = roundId;
+    const pseudoRandom = () => {
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    };
+    
+    // Determine the probability level, maxing out at the last level
+    const level = Math.min(roundsSinceBigWin, PROBABILITY_MATRIX.length - 1);
+    const probabilities = PROBABILITY_MATRIX[level];
+    
+    let random = pseudoRandom();
+    let winningMultiplier: number | null = null;
+    
+    // Select a multiplier category based on the probabilities
+    for (const multiplierStr in probabilities) {
+        const multiplier = parseInt(multiplierStr, 10);
+        const chance = probabilities[multiplier as keyof typeof probabilities];
+        if (random < chance) {
+            winningMultiplier = multiplier;
+            break;
+        }
+        random -= chance;
+    }
+    
+    // Fallback to 5x if no category was chosen (due to floating point inaccuracies)
+    if (winningMultiplier === null) {
+        winningMultiplier = 5;
+    }
+    
+    // Get all fruits with that multiplier
+    const possibleWinners = FRUITS_BY_MULTIPLIER[winningMultiplier];
+    if (!possibleWinners || possibleWinners.length === 0) {
+        // Fallback if a multiplier has no fruits (should not happen)
+        const fallbackWinners = FRUITS_BY_MULTIPLIER[5];
+        winningMultiplier = 5;
+        const winner = fallbackWinners[Math.floor(pseudoRandom() * fallbackWinners.length)];
+        return { winner, isBigWin: false };
+    }
+    
+    // Select a random fruit from the chosen category
+    const winner = possibleWinners[Math.floor(pseudoRandom() * possibleWinners.length)];
+    const isBigWin = winningMultiplier > 5;
+
+    return { winner, isBigWin };
+}
+
 
 function formatNumber(num: number) {
     if (num === null || num === undefined) return '0';
     if (num >= 1000000) return `${(num / 1000000).toFixed(0)}m`;
     if (num >= 1000) return `${(num / 1000).toFixed(0)}k`;
     return num.toLocaleString('en-US');
-}
-
-// Deterministic function to get the winner for a given roundId
-function getWinnerForRound(roundId: number): FruitKey {
-    // A pseudo-random but deterministic way to select a winner
-    // The sequence of winners will always be the same for the same sequence of roundIds
-    return FRUIT_KEYS[roundId % FRUIT_KEYS.length];
 }
 
 
@@ -92,7 +164,9 @@ export default function FruityFortunePage() {
   const [lastClaimTimestamp, setLastClaimTimestamp] = useState<number | null>(null);
   const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
   const [canClaim, setCanClaim] = useState(false);
-
+  
+  // New state for strategic probabilities
+  const [roundsSinceBigWin, setRoundsSinceBigWin] = useState(0);
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({});
@@ -121,6 +195,12 @@ export default function FruityFortunePage() {
         setBalance(1000000000); // Set initial balance to 1 billion if nothing is saved
     }
 
+    // --- Load Rounds Since Big Win ---
+    const savedRounds = localStorage.getItem('fruityFortuneRoundsSinceBigWin');
+    if (savedRounds) {
+        setRoundsSinceBigWin(parseInt(savedRounds, 10));
+    }
+
     // --- Load Daily Reward ---
     const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
     if (savedClaimTimestamp) {
@@ -137,8 +217,16 @@ export default function FruityFortunePage() {
     } else {
       // Set initial history based on current global time if none is saved
       const latestHistory = [];
-      for (let i = 0; i < 5; i++) {
-          latestHistory.unshift(getWinnerForRound(currentRoundId - 1 - i));
+      let tempRoundsSinceBigWin = 0; // temp counter for initial history
+      const savedRoundsVal = localStorage.getItem('fruityFortuneRoundsSinceBigWin');
+      if (savedRoundsVal) {
+          tempRoundsSinceBigWin = parseInt(savedRoundsVal, 10);
+      }
+      
+      for (let i = 5; i > 0; i--) {
+          // We need to simulate backwards, which is complex. Let's just create a plausible history.
+          const { winner } = getWinnerForRound(currentRoundId - i, tempRoundsSinceBigWin);
+          latestHistory.push(winner);
       }
       setHistory(latestHistory);
     }
@@ -147,10 +235,10 @@ export default function FruityFortunePage() {
     const savedBetsData = localStorage.getItem('fruityFortuneBets');
     if (savedBetsData) {
         try {
-            const { bets: savedBets, roundId: savedRoundId } = JSON.parse(savedBetsData);
+            const { bets: savedBets, roundId: savedRoundId, roundsSinceBigWin: savedRoundsCount } = JSON.parse(savedBetsData);
             if (savedBets && typeof savedRoundId === 'number' && savedRoundId < currentRoundId) {
                 // Round is over, calculate offline winnings
-                const winner = getWinnerForRound(savedRoundId);
+                const { winner } = getWinnerForRound(savedRoundId, savedRoundsCount || 0);
                 const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
                 if (payout > 0) {
                     const newBalance = (parseInt(localStorage.getItem('fruityFortuneBalance') || '0', 10)) + payout;
@@ -182,20 +270,21 @@ export default function FruityFortunePage() {
   useEffect(() => {
     if (isClient) {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
+      localStorage.setItem('fruityFortuneRoundsSinceBigWin', roundsSinceBigWin.toString());
       if (lastClaimTimestamp) {
           localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
       }
       if (history.length > 0) {
           localStorage.setItem('fruityFortuneHistory', JSON.stringify(history));
       }
-      // Save bets along with the current round ID
+      // Save bets along with the current round ID and strategy state
       if (Object.keys(bets).length > 0) {
-          localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId }));
+          localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId, roundsSinceBigWin }));
       } else {
           localStorage.removeItem('fruityFortuneBets');
       }
     }
-  }, [balance, lastClaimTimestamp, bets, roundId, isClient, history]);
+  }, [balance, lastClaimTimestamp, bets, roundId, isClient, history, roundsSinceBigWin]);
 
 
    // Daily Reward Timer Logic
@@ -264,13 +353,22 @@ const handleClaimReward = () => {
         const now = Date.now();
         const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
         const timeInCycle = (now / 1000) % TOTAL_DURATION;
-
+        
         if (roundId !== currentRoundId) {
-            setRoundId(currentRoundId);
              // ---- NEW ROUND LOGIC ----
-             // On a new round, the winner of the *previous* round is determined and added to history.
-            const previousWinner = getWinnerForRound(currentRoundId - 1);
+            setRoundId(currentRoundId);
+            // On a new round, the winner of the *previous* round is determined
+            const { winner: previousWinner, isBigWin: wasPreviousRoundBigWin } = getWinnerForRound(currentRoundId - 1, roundsSinceBigWin);
+            
+            // Update history and the big win counter
             setHistory(prev => [previousWinner, ...prev.slice(0, 4)]);
+            if (wasPreviousRoundBigWin) {
+                setRoundsSinceBigWin(0);
+            } else {
+                setRoundsSinceBigWin(prev => prev + 1);
+            }
+            
+            // Reset bets for the new round
             setBets({});
         }
         
@@ -286,7 +384,7 @@ const handleClaimReward = () => {
             if (!isSpinning) {
                 // ---- START OF SPIN PHASE ----
                 setIsSpinning(true);
-                const winner = getWinnerForRound(currentRoundId);
+                const { winner } = getWinnerForRound(currentRoundId, roundsSinceBigWin);
 
                 // 1. Generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -344,7 +442,7 @@ const handleClaimReward = () => {
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, roundsSinceBigWin]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -570,5 +668,3 @@ const handleClaimReward = () => {
     </div>
   );
 }
-
-    
