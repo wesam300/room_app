@@ -392,12 +392,17 @@ function GiftDialog({
     balance: number,
     initialRecipient: UserProfile | null,
 }) {
-    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(initialRecipient);
+    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
 
+    // This effect runs when the dialog is opened or the initialRecipient changes.
+    // It sets the initial recipient if one is provided.
     useEffect(() => {
-        setSelectedRecipient(initialRecipient);
+        if (isOpen) {
+            setSelectedRecipient(initialRecipient);
+        }
     }, [initialRecipient, isOpen]);
 
+    // This effect resets the selected recipient when the dialog is closed.
     useEffect(() => {
         if (!isOpen) {
             setSelectedRecipient(null);
@@ -601,7 +606,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
         setIsGiftDialogOpen(false);
     };
 
-    const handleOpenGiftDialog = (recipient: UserProfile) => {
+    const handleOpenGiftDialog = (recipient: UserProfile | null) => {
         setInitialRecipientForGift(recipient);
         setIsGiftDialogOpen(true);
     };
@@ -617,99 +622,107 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
             toast({ title: "تم نسخ ID المستخدم" });
         };
 
+        const triggerContent = (
+             <div className="flex flex-col items-center gap-1 cursor-pointer">
+                <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
+                     {slot.user ? (
+                        <div className="relative w-full h-full">
+                            <AnimatePresence>
+                                {showSpeakingAnimation && (
+                                     <motion.div
+                                        className="absolute inset-0 rounded-full border-2 border-yellow-300"
+                                        animate={{
+                                            scale: [1, 1.3, 1],
+                                            opacity: [0.8, 0, 0.8],
+                                        }}
+                                        transition={{
+                                            duration: 1.5,
+                                            repeat: Infinity,
+                                            ease: "easeInOut",
+                                        }}
+                                    />
+                                )}
+                            </AnimatePresence>
+                            <Avatar className="w-full h-full">
+                                <AvatarImage src={slot.user.image} alt={slot.user.name} />
+                                <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                             {isCurrentUser && slot.isMuted && (
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
+                                    <XCircle className="w-8 h-8 text-red-500"/>
+                                </div>
+                            )}
+                             {isOwner && slot.user.userId === user.userId && (
+                                <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
+                                    OWNER
+                                </div>
+                            )}
+                        </div>
+                    ) : slot.isLocked ? (
+                        <Lock className="w-8 h-8 text-primary/50" />
+                    ) : (
+                        <Mic className="w-8 h-8 text-primary" />
+                    )}
+                </div>
+                <div className="flex items-center gap-1">
+                   <span className="text-xs text-muted-foreground truncate max-w-16">
+                     {slot.user ? slot.user.name : `no.${index + 1}`}
+                   </span>
+                </div>
+            </div>
+        );
+
+        const popoverContent = (
+            <div className="flex flex-col gap-2">
+                {isCurrentUser ? (
+                    <>
+                        <Button variant="outline" onClick={handleToggleMute}>
+                            {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
+                        </Button>
+                        <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
+                    </>
+                ) : !slot.user ? (
+                    isOwner ? (
+                        slot.isLocked ? (
+                            <Button onClick={() => handleToggleLock(index)}>فتح المايك <Unlock className="mr-2"/></Button>
+                        ) : (
+                            <>
+                                <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
+                                <Button variant="secondary" onClick={() => handleToggleLock(index)}>قفل المايك <Lock className="mr-2"/></Button>
+                            </>
+                        )
+                    ) : (
+                         <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
+                    )
+                ) : ( 
+                   <div className="flex flex-col items-center gap-3 text-center">
+                       <Avatar className="w-16 h-16">
+                           <AvatarImage src={slot.user.image} alt={slot.user.name} />
+                           <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
+                       </Avatar>
+                       <p className="font-bold">{slot.user.name}</p>
+                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                           <span>ID: {slot.user.userId}</span>
+                           <button onClick={() => handleCopyUserId(slot.user!.userId)}>
+                               <Copy className="w-3 h-3" />
+                           </button>
+                       </div>
+                       <Button onClick={() => handleOpenGiftDialog(slot.user!)}>إرسال هدية</Button>
+                       {isOwner && (
+                           <Button variant="destructive" size="sm" onClick={() => handleDescend(index)}>طرد من المايك</Button>
+                       )}
+                   </div>
+                )}
+            </div>
+        );
+
         return (
              <Popover>
                 <PopoverTrigger asChild>
-                    <div className="flex flex-col items-center gap-1 cursor-pointer">
-                        <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
-                             {slot.user ? (
-                                <div className="relative w-full h-full">
-                                    <AnimatePresence>
-                                        {showSpeakingAnimation && (
-                                             <motion.div
-                                                className="absolute inset-0 rounded-full border-2 border-yellow-300"
-                                                animate={{
-                                                    scale: [1, 1.3, 1],
-                                                    opacity: [0.8, 0, 0.8],
-                                                }}
-                                                transition={{
-                                                    duration: 1.5,
-                                                    repeat: Infinity,
-                                                    ease: "easeInOut",
-                                                }}
-                                            />
-                                        )}
-                                    </AnimatePresence>
-                                    <Avatar className="w-full h-full">
-                                        <AvatarImage src={slot.user.image} alt={slot.user.name} />
-                                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                     {isCurrentUser && slot.isMuted && (
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                                            <XCircle className="w-8 h-8 text-red-500"/>
-                                        </div>
-                                    )}
-                                     {isOwner && slot.user.userId === user.userId && (
-                                        <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
-                                            OWNER
-                                        </div>
-                                    )}
-                                </div>
-                            ) : slot.isLocked ? (
-                                <Lock className="w-8 h-8 text-primary/50" />
-                            ) : (
-                                <Mic className="w-8 h-8 text-primary" />
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                           <span className="text-xs text-muted-foreground truncate max-w-16">
-                             {slot.user ? slot.user.name : `no.${index + 1}`}
-                           </span>
-                        </div>
-                    </div>
+                   {triggerContent}
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-2" dir="rtl">
-                    <div className="flex flex-col gap-2">
-                        {isCurrentUser ? (
-                            <>
-                                <Button variant="outline" onClick={handleToggleMute}>
-                                    {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
-                                </Button>
-                                <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
-                            </>
-                        ) : !slot.user ? (
-                            isOwner ? (
-                                slot.isLocked ? (
-                                    <Button onClick={() => handleToggleLock(index)}>فتح المايك <Unlock className="mr-2"/></Button>
-                                ) : (
-                                    <>
-                                        <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
-                                        <Button variant="secondary" onClick={() => handleToggleLock(index)}>قفل المايك <Lock className="mr-2"/></Button>
-                                    </>
-                                )
-                            ) : (
-                                 <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
-                            )
-                        ) : ( 
-                           <div className="flex flex-col items-center gap-3 text-center">
-                               <Avatar className="w-16 h-16">
-                                   <AvatarImage src={slot.user.image} alt={slot.user.name} />
-                                   <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
-                               </Avatar>
-                               <p className="font-bold">{slot.user.name}</p>
-                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                   <span>ID: {slot.user.userId}</span>
-                                   <button onClick={() => handleCopyUserId(slot.user!.userId)}>
-                                       <Copy className="w-3 h-3" />
-                                   </button>
-                               </div>
-                               <Button onClick={() => handleOpenGiftDialog(slot.user!)}>إرسال هدية</Button>
-                               {isOwner && (
-                                   <Button variant="destructive" size="sm" onClick={() => handleDescend(index)}>طرد من المايك</Button>
-                               )}
-                           </div>
-                        )}
-                    </div>
+                   {popoverContent}
                 </PopoverContent>
             </Popover>
         )
@@ -901,7 +914,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                         <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
                             <Send className="w-5 h-5"/>
                         </Button>
-                        <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => { setInitialRecipientForGift(null); setIsGiftDialogOpen(true)}}>
+                        <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => handleOpenGiftDialog(null)}>
                             <Gift className="w-5 h-5 text-primary"/>
                         </Button>
                     </div>
@@ -1092,5 +1105,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
