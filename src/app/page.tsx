@@ -25,11 +25,11 @@ function TopBar({ name, image, userId, onBack }: { name: string | null, image: s
 
     return (
         <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-             <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" onClick={onBack}>
                 <ChevronLeft className="w-6 h-6" />
             </Button>
             <div className="flex items-center gap-3">
-                <div className="text-right">
+                 <div className="text-right">
                     <p className="font-bold text-lg">{name}</p>
                     {userId && (
                         <div className="flex items-center justify-end gap-1.5">
