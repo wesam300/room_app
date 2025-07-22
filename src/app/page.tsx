@@ -519,5 +519,3 @@ const handleClaimReward = () => {
     </div>
   );
 }
-
-    
