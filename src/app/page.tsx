@@ -484,7 +484,7 @@ const handleClaimReward = () => {
                 key={amount} 
                 onClick={() => setActiveBet(amount)}
                 className={cn(
-                    'px-4 py-1.5 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
+                    'px-2 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
                     activeBet === amount
                         ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]'
                         : 'bg-black/30 text-white border-yellow-400/50'
