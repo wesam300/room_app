@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -216,22 +216,24 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
 function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onExit: () => void }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false }));
-     const [messages, setMessages] = useState<ChatMessage[]>([]);
-     const [chatInput, setChatInput] = useState("");
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
-     const [isSpeaking, setIsSpeaking] = useState(false); // Example state, should be driven by voice activity
+     const [isSpeaking, setIsSpeaking] = useState(false); 
      
-     // This is a placeholder to simulate speaking.
-     // In a real app, this would be controlled by a voice activity detection library.
      useEffect(() => {
-        const interval = setInterval(() => {
-             // Let's pretend the current user speaks sometimes if they are on a mic
-             if(myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
+        if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
+            // In a real app, this would be controlled by a voice activity detection library.
+            // For now, we simulate speaking for demonstration.
+            const interval = setInterval(() => {
                 setIsSpeaking(true);
-                setTimeout(() => setIsSpeaking(false), 1500); // "Speak" for 1.5s
-             }
-        }, 4000);
-        return () => clearInterval(interval);
+                setTimeout(() => setIsSpeaking(false), 1500); 
+            }, 4000);
+            return () => {
+                clearInterval(interval)
+                setIsSpeaking(false);
+            };
+        } else {
+             setIsSpeaking(false);
+        }
      }, [myMicIndex, micSlots]);
 
 
@@ -276,17 +278,6 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
         }
     }
     
-    const handleSendMessage = () => {
-        if (!chatInput.trim()) return;
-        const newMessage: ChatMessage = {
-            id: `msg_${Date.now()}`,
-            user: user,
-            text: chatInput,
-        };
-        setMessages(prev => [...prev, newMessage]);
-        setChatInput("");
-    }
-    
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
@@ -319,8 +310,8 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                         <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
                                     {isCurrentUser && slot.isMuted && (
-                                        <div className="absolute bottom-0 right-0 bg-red-600 p-1 rounded-full border-2 border-background">
-                                            <MicOff className="w-3 h-3 text-white"/>
+                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
+                                            <XCircle className="w-8 h-8 text-red-500"/>
                                         </div>
                                     )}
                                 </>
@@ -410,29 +401,6 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                 {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
             </div>
 
-
-            {/* Chat Area */}
-             <main className="absolute bottom-20 left-0 right-0 h-1/2 p-4 flex flex-col-reverse bg-gradient-to-t from-background/80 via-background/40 to-transparent pointer-events-none">
-                <div className="flex flex-col gap-3 overflow-y-auto pr-2 pointer-events-auto">
-                    {messages.slice().reverse().map(msg => (
-                        <div key={msg.id} className="flex items-start gap-2.5">
-                            <Avatar className="w-8 h-8">
-                                <AvatarImage src={msg.user.image} />
-                                <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col gap-1 items-start">
-                                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                                    <span className="text-sm font-semibold text-foreground">{msg.user.name}</span>
-                                </div>
-                                <div className="leading-1.5 p-3 bg-muted/80 rounded-lg">
-                                    <p className="text-sm font-normal text-foreground">{msg.text}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </main>
-
             {/* Floating Game Button */}
             <Link href="/project-885" passHref>
                 <Button variant="ghost" size="icon" className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20">
@@ -440,27 +408,6 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                 </Button>
             </Link>
 
-
-             {/* New Footer Controls */}
-            <footer className="absolute bottom-0 left-0 right-0 p-4 bg-transparent z-20">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="bg-yellow-400 text-black rounded-full w-16 h-16 border-4 border-yellow-200 shadow-lg">
-                        <Gift className="w-8 h-8" />
-                    </Button>
-                    <div className="flex-1 relative">
-                        <Input
-                            placeholder="قل مرحبا..."
-                            className="bg-background/80 rounded-full pr-12 text-right"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                             onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        />
-                        <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full" onClick={handleSendMessage}>
-                            <Send className="w-5 h-5 text-primary"/>
-                        </Button>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 }
@@ -663,3 +610,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
