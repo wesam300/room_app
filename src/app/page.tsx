@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BET_AMOUNTS = [1000, 5000, 10000, 50000, 1000000];
 const ROUND_DURATION = 20; // seconds
@@ -59,6 +60,9 @@ export default function FruityFortunePage() {
 
   const winnerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationSequenceRef = useRef<FruitKey[]>([]);
+  
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
 
 
   // Load state from localStorage on initial mount
@@ -135,13 +139,20 @@ export default function FruityFortunePage() {
                 
                 // Show winner briefly
                 setMomentaryWinner(winner);
+                 setHighlightedFruit(winner); // Keep highlight on winner
                 winnerTimeoutRef.current = setTimeout(() => {
                     setMomentaryWinner(null);
+                    setHighlightedFruit(null);
+                    setHighlightPosition(null);
                 }, 1000); // Show for 1 second
               }
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
-              setHighlightedFruit(null);
+               if (!momentaryWinner) {
+                 setHighlightedFruit(null);
+                 setHighlightPosition(null);
+               }
+
 
           } else {
               // Spinning phase
@@ -170,17 +181,28 @@ export default function FruityFortunePage() {
               const sequence = animationSequenceRef.current;
               const highlightDuration = SPIN_DURATION / sequence.length;
               const highlightIndex = Math.floor(spinTime / highlightDuration);
+              
+              const currentFruit = sequence[Math.min(highlightIndex, sequence.length - 1)];
 
-              if(highlightIndex < sequence.length) {
-                setHighlightedFruit(sequence[highlightIndex]);
-              } else {
-                setHighlightedFruit(sequence[sequence.length - 1]); // Should be the winner
+              if (currentFruit) {
+                setHighlightedFruit(currentFruit);
+                 if (gridRef.current) {
+                    const fruitElement = gridRef.current.querySelector(`[data-fruit-id="${currentFruit}"]`) as HTMLElement;
+                    if (fruitElement) {
+                        setHighlightPosition({
+                            top: fruitElement.offsetTop,
+                            left: fruitElement.offsetLeft,
+                            width: fruitElement.offsetWidth,
+                            height: fruitElement.offsetHeight
+                        });
+                    }
+                }
               }
           }
       };
 
       updateGameState();
-      const interval = setInterval(updateGameState, 100); 
+      const interval = setInterval(updateGameState, 50); 
       
       return () => {
         clearInterval(interval)
@@ -188,7 +210,7 @@ export default function FruityFortunePage() {
           clearTimeout(winnerTimeoutRef.current);
         }
       };
-  }, [isSpinning, bets, roundId]); 
+  }, [isSpinning, bets, roundId, momentaryWinner]); 
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 3) {
@@ -228,7 +250,25 @@ export default function FruityFortunePage() {
       </header>
 
       <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="relative grid grid-cols-3 gap-3" ref={gridRef}>
+            <AnimatePresence>
+              {highlightPosition && (
+                <motion.div
+                  className="absolute z-10 rounded-2xl ring-2 ring-white/80 shadow-[0_0_20px_white]"
+                  initial={{ opacity: 0 }}
+                  animate={{
+                    top: highlightPosition.top,
+                    left: highlightPosition.left,
+                    width: highlightPosition.width,
+                    height: highlightPosition.height,
+                    opacity: 1,
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 1200, damping: 60, mass: 0.5 }}
+                />
+              )}
+            </AnimatePresence>
+
           {GRID_LAYOUT.map((item, index) => {
             if (item === 'timer') {
               return (
@@ -250,10 +290,10 @@ export default function FruityFortunePage() {
             return (
               <div
                 key={`${fruitKey}-${index}`}
+                data-fruit-id={fruitKey}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                     isSpinningAndHighlighted && "ring-2 ring-white/80 scale-110",
-                     isSpinning && !isSpinningAndHighlighted && "opacity-60"
+                     isSpinning && highlightedFruit !== fruitKey && "opacity-60",
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -331,5 +371,7 @@ export default function FruityFortunePage() {
 
 
 
+
+    
 
     
