@@ -31,6 +31,9 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
 
 function formatNumber(num: number) {
     if (num === null || num === undefined) return '0';
+    if (num >= 1000000000) return `${(num / 1000000000).toFixed(1).replace(/\.0$/, '')}ب`;
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace(/\.0$/, '')}م`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1).replace(/\.0$/, '')}أ`;
     return num.toLocaleString('en-US');
 }
 
@@ -382,7 +385,7 @@ const handleClaimReward = () => {
                   لقد ربحت
                 </motion.p>
                 <motion.p variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                  {formatNumber(winnerScreenInfo.payout)} كوينز
+                  {winnerScreenInfo.payout.toLocaleString('en-US')} كوينز
                 </motion.p>
               </motion.div>
             </div>
@@ -395,7 +398,7 @@ const handleClaimReward = () => {
         <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
             <div className="flex flex-col items-center justify-center">
                 <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
-                <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{formatNumber(balance)}</span>
+                <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
             </div>
         </div>
 
@@ -482,7 +485,7 @@ const handleClaimReward = () => {
                 key={amount} 
                 onClick={() => setActiveBet(amount)}
                 className={cn(
-                    'px-2 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
+                    'px-1 py-1 text-xs md:text-sm font-bold rounded-full transition-all duration-300 border-2',
                     activeBet === amount
                         ? 'bg-yellow-400 text-black border-yellow-200 scale-110 shadow-[0_0_15px_#facc15]'
                         : 'bg-black/30 text-white border-yellow-400/50'
