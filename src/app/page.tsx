@@ -121,29 +121,23 @@ export default function FruityFortunePage() {
         setBalance(1000000000); // Set initial balance to 1 billion if nothing is saved
     }
 
-    // History
-    const savedHistory = localStorage.getItem('fruityFortuneHistory');
-    if (savedHistory) {
-        try {
-            const parsedHistory = JSON.parse(savedHistory);
-            if (Array.isArray(parsedHistory)) {
-                setHistory(parsedHistory);
-            }
-        } catch (e) {
-            setHistory([]);
-        }
-    }
-
     // Daily Reward
     const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
     if (savedClaimTimestamp) {
         setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
     }
 
-    // Bets & Offline Payout Logic
+    // Bets & Offline Payout & History Logic
     const savedBetsData = localStorage.getItem('fruityFortuneBets');
     const now = Date.now();
     const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
+    
+    // Set initial history based on current global time
+    const latestHistory = [];
+    for (let i = 0; i < 5; i++) {
+        latestHistory.unshift(getWinnerForRound(currentRoundId - 1 - i));
+    }
+    setHistory(latestHistory);
     
     if (savedBetsData) {
         try {
@@ -182,7 +176,6 @@ export default function FruityFortunePage() {
   useEffect(() => {
     if (isClient) {
       localStorage.setItem('fruityFortuneBalance', balance.toString());
-      localStorage.setItem('fruityFortuneHistory', JSON.stringify(history));
       if (lastClaimTimestamp) {
           localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
       }
@@ -193,7 +186,7 @@ export default function FruityFortunePage() {
           localStorage.removeItem('fruityFortuneBets');
       }
     }
-  }, [balance, history, lastClaimTimestamp, bets, roundId, isClient]);
+  }, [balance, lastClaimTimestamp, bets, roundId, isClient]);
 
 
    // Daily Reward Timer Logic
@@ -251,7 +244,7 @@ const handleClaimReward = () => {
   
   // The main game loop, driven by a simple interval
   useEffect(() => {
-    if (winnerScreenInfo) return; // Pause game updates while winner screen is shown
+    if (!isClient) return;
 
     const updateGameState = () => {
         const now = Date.now();
@@ -260,13 +253,21 @@ const handleClaimReward = () => {
 
         if (roundId !== currentRoundId) {
             setRoundId(currentRoundId);
+             // ---- NEW ROUND LOGIC ----
+            const winner = getWinnerForRound(currentRoundId - 1);
+            setHistory(prev => [winner, ...prev.slice(0, 4)]);
+            setBets({});
+        }
+        
+        if (winnerScreenInfo) {
+            // Pause game updates while winner screen is shown
+            return;
         }
 
         if (timeInCycle < ROUND_DURATION) {
             // --- BETTING PHASE ---
-            if (isSpinning) { // Spin just finished, new round starts
+            if (isSpinning) { // Spin just finished
                 setIsSpinning(false);
-                setBets({});
             }
             setTimer(ROUND_DURATION - Math.floor(timeInCycle));
             setHighlightPosition(null);
@@ -274,9 +275,10 @@ const handleClaimReward = () => {
             // --- SPINNING PHASE ---
             if (!isSpinning) {
                 // ---- START OF SPIN PHASE ----
+                setIsSpinning(true);
                 const winner = getWinnerForRound(currentRoundId);
 
-                // 1. Determine winner and generate animation sequence
+                // 1. Generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
                 if (winnerIndex === -1) {
                     animationSequenceRef.current = [winner];
@@ -297,10 +299,7 @@ const handleClaimReward = () => {
                         setWinnerScreenInfo({ fruit: winner, payout: payout });
                         setTimeout(() => setWinnerScreenInfo(null), 4000); // Show winner screen for 4s
                     }
-                    setHistory(prev => [winner, ...prev.slice(0, 4)]);
                 }, SPIN_DURATION * 1000); // Delay equals spin duration
-
-                setIsSpinning(true);
             }
             
             // --- Handle spinning animation ---
@@ -335,7 +334,7 @@ const handleClaimReward = () => {
     return () => {
       clearInterval(interval)
     };
-}, [roundId, isSpinning, bets, winnerScreenInfo]); // `winnerScreenInfo` is key to pausing the loop
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo]); // `winnerScreenInfo` is key to pausing the loop
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -426,7 +425,7 @@ const handleClaimReward = () => {
                   لقد ربحت
                 </motion.p>
                 <motion.p variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                  {winnerScreenInfo.payout.toLocaleString('en-US')} كوينز
+                  {formatNumber(winnerScreenInfo.payout)} كوينز
                 </motion.p>
               </motion.div>
             </div>
