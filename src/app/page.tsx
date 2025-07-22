@@ -798,127 +798,136 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     }
 
     return (
-         <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
-            <AnimatePresence>
-                {activeGiftAnimation && (
-                    <GiftAnimationOverlay
-                        sender={activeGiftAnimation.sender}
-                        receiver={activeGiftAnimation.receiver}
-                        gift={activeGiftAnimation.gift}
-                        onEnd={() => setActiveGiftAnimation(null)}
-                    />
-                )}
-            </AnimatePresence>
-            
-            <GiftDialog 
-                isOpen={isGiftDialogOpen}
-                onOpenChange={setIsGiftDialogOpen}
-                usersOnMics={usersOnMics}
-                onSendGift={handleSendGift}
-                balance={balance}
-                initialRecipient={initialRecipientForGift}
+         <div className="relative flex flex-col h-screen text-foreground overflow-hidden">
+            {/* Background Image */}
+            <div 
+                className="absolute inset-0 z-0 bg-cover bg-center"
+                style={{backgroundImage: "url('https://storage.googleapis.com/stey-kr/85e4e75d7e5d263b860645069f532a76.png')"}}
+                data-ai-hint="beach sunset"
             />
-
-            <RoomHeader />
-
-            {/* Sub-header */}
-            <div className="flex items-center justify-between px-4 mt-2 z-10">
-                <div className="flex items-center gap-2">
-                   <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                   <div className="flex -space-x-4 rtl:space-x-reverse">
-                       <Avatar className="w-8 h-8 border-2 border-background">
-                           <AvatarImage src="https://placehold.co/100x100.png" />
-                           <AvatarFallback>A</AvatarFallback>
-                       </Avatar>
-                   </div>
-                </div>
-                <div className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500">
-                    <span className="font-bold text-sm">{balance.toLocaleString()}</span>
-                    <Trophy className="w-5 h-5 text-yellow-400"/>
-                </div>
-            </div>
+            <div className="absolute inset-0 z-0 bg-black/50" />
             
-            {/* Mic Grid */}
-            <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4 z-10">
-                {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
-                {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
-            </div>
+            <div className="relative z-10 flex flex-col h-full">
+                <AnimatePresence>
+                    {activeGiftAnimation && (
+                        <GiftAnimationOverlay
+                            sender={activeGiftAnimation.sender}
+                            receiver={activeGiftAnimation.receiver}
+                            gift={activeGiftAnimation.gift}
+                            onEnd={() => setActiveGiftAnimation(null)}
+                        />
+                    )}
+                </AnimatePresence>
+                
+                <GiftDialog 
+                    isOpen={isGiftDialogOpen}
+                    onOpenChange={setIsGiftDialogOpen}
+                    usersOnMics={usersOnMics}
+                    onSendGift={handleSendGift}
+                    balance={balance}
+                    initialRecipient={initialRecipientForGift}
+                />
 
-            <AnimatePresence>
-                {isGameVisible && (
-                    <motion.div 
-                        className="absolute inset-x-0 bottom-0 top-1/4 bg-background z-20 rounded-t-2xl overflow-hidden"
-                        initial={{ y: "100%" }}
-                        animate={{ y: 0 }}
-                        exit={{ y: "100%" }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    >
-                       <div className="relative h-full w-full">
-                           <FruityFortunePage />
-                           <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="absolute top-4 right-4 bg-black/50 rounded-full text-white hover:bg-black/70 z-30"
-                                onClick={() => setIsGameVisible(false)}
-                            >
-                                <X className="w-6 h-6" />
-                            </Button>
+                <RoomHeader />
+
+                {/* Sub-header */}
+                <div className="flex items-center justify-between px-4 mt-2">
+                    <div className="flex items-center gap-2">
+                       <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                       <div className="flex -space-x-4 rtl:space-x-reverse">
+                           <Avatar className="w-8 h-8 border-2 border-background">
+                               <AvatarImage src="https://placehold.co/100x100.png" />
+                               <AvatarFallback>A</AvatarFallback>
+                           </Avatar>
                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    </div>
+                    <div className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500">
+                        <span className="font-bold text-sm">{balance.toLocaleString()}</span>
+                        <Trophy className="w-5 h-5 text-yellow-400"/>
+                    </div>
+                </div>
+                
+                {/* Mic Grid */}
+                <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
+                    {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
+                    {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
+                </div>
+
+                <AnimatePresence>
+                    {isGameVisible && (
+                        <motion.div 
+                            className="absolute inset-x-0 bottom-0 top-1/4 bg-background z-20 rounded-t-2xl overflow-hidden"
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        >
+                           <div className="relative h-full w-full">
+                               <FruityFortunePage />
+                               <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="absolute top-4 right-4 bg-black/50 rounded-full text-white hover:bg-black/70 z-30"
+                                    onClick={() => setIsGameVisible(false)}
+                                >
+                                    <X className="w-6 h-6" />
+                                </Button>
+                           </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
 
-            {/* Chat Area */}
-            <div className="flex-1 flex flex-col justify-end p-4 pt-0 overflow-hidden">
-                <div 
-                    ref={chatContainerRef}
-                    className="flex-1 overflow-y-auto pr-2 space-y-3"
-                    style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
-                >
-                    {chatMessages.map(msg => (
-                        <div key={msg.id} className="flex items-start gap-2.5">
-                            <Avatar className="w-8 h-8">
-                                <AvatarImage src={msg.user.image} />
-                                <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col items-start">
-                                <span className="text-sm text-muted-foreground">{msg.user.name}</span>
-                                <div className="bg-primary/20 p-2 rounded-lg rounded-tl-none">
-                                    <p className="text-sm text-foreground">{msg.text}</p>
+                {/* Chat Area */}
+                <div className="flex-1 flex flex-col justify-end p-4 pt-0 overflow-hidden">
+                    <div 
+                        ref={chatContainerRef}
+                        className="flex-1 overflow-y-auto pr-2 space-y-3"
+                        style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
+                    >
+                        {chatMessages.map(msg => (
+                            <div key={msg.id} className="flex items-start gap-2.5">
+                                <Avatar className="w-8 h-8">
+                                    <AvatarImage src={msg.user.image} />
+                                    <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex flex-col items-start">
+                                    <span className="text-sm text-muted-foreground">{msg.user.name}</span>
+                                    <div className="bg-primary/20 p-2 rounded-lg rounded-tl-none">
+                                        <p className="text-sm text-foreground">{msg.text}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                        <Input 
+                            placeholder="اكتب رسالتك..."
+                            className="flex-1 bg-black/30 border-primary/50 text-right"
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        />
+                        <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
+                            <Send className="w-5 h-5"/>
+                        </Button>
+                        <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => { setInitialRecipientForGift(null); setIsGiftDialogOpen(true)}}>
+                            <Gift className="w-5 h-5 text-primary"/>
+                        </Button>
+                    </div>
                 </div>
-                <div className="mt-2 flex items-center gap-2">
-                    <Input 
-                        placeholder="اكتب رسالتك..."
-                        className="flex-1 bg-black/30 border-primary/50 text-right"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    />
-                    <Button size="icon" className="rounded-full bg-primary" onClick={handleSendMessage}>
-                        <Send className="w-5 h-5"/>
-                    </Button>
-                    <Button size="icon" variant="ghost" className="rounded-full bg-primary/20" onClick={() => { setInitialRecipientForGift(null); setIsGiftDialogOpen(true)}}>
-                        <Gift className="w-5 h-5 text-primary"/>
-                    </Button>
-                </div>
+
+
+                {/* Floating Game Button */}
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
+                    onClick={() => setIsGameVisible(true)}
+                >
+                     <Gamepad2 className="w-8 h-8 text-primary" />
+                </Button>
             </div>
-
-
-            {/* Floating Game Button */}
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                className="absolute bottom-24 left-4 w-14 h-14 bg-black/40 rounded-full border-2 border-primary z-20"
-                onClick={() => setIsGameVisible(true)}
-            >
-                 <Gamepad2 className="w-8 h-8 text-primary" />
-            </Button>
-
         </div>
     );
 }
