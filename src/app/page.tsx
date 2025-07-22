@@ -4,13 +4,26 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 
-function ProfileScreen({ name, image, onReset }: { name: string | null, image: string | null, onReset: () => void }) {
+function ProfileScreen({ name, image, userId, onReset }: { name: string | null, image: string | null, userId: string | null, onReset: () => void }) {
+    const { toast } = useToast();
+
+    const handleCopyId = () => {
+        if (userId) {
+            navigator.clipboard.writeText(userId);
+            toast({
+                title: "تم نسخ الـ ID",
+                description: "تم نسخ هوية المستخدم إلى الحافظة.",
+            });
+        }
+    };
+
     return (
         <div className="flex flex-col items-center justify-center flex-1 p-4">
             <Card className="w-full max-w-md text-center p-6">
@@ -22,6 +35,16 @@ function ProfileScreen({ name, image, onReset }: { name: string | null, image: s
                         </Avatar>
                     </div>
                     <CardTitle className="text-2xl">مرحباً بك يا {name}!</CardTitle>
+                    {userId && (
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                             <CardDescription className="text-sm text-muted-foreground">
+                                ID: {userId}
+                            </CardDescription>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopyId}>
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
                 </CardHeader>
                 <CardContent>
                     <p className="text-muted-foreground mb-6">
@@ -34,13 +57,13 @@ function ProfileScreen({ name, image, onReset }: { name: string | null, image: s
     );
 }
 
-function MainApp({ name, image, onReset }: { name: string | null, image: string | null, onReset: () => void }) {
+function MainApp({ name, image, userId, onReset }: { name: string | null, image: string | null, userId: string | null, onReset: () => void }) {
     const [activeTab, setActiveTab] = useState('rooms');
 
     const renderContent = () => {
         switch (activeTab) {
             case 'profile':
-                return <ProfileScreen name={name} image={image} onReset={onReset} />;
+                return <ProfileScreen name={name} image={image} userId={userId} onReset={onReset} />;
             case 'rooms':
                 return <div className="flex-1 p-4"><h1 className="text-center text-2xl">الغرف</h1></div>;
             default:
@@ -90,6 +113,7 @@ function MainApp({ name, image, onReset }: { name: string | null, image: string 
 export default function HomePage() {
   const [name, setName] = useState<string | null>(null);
   const [image, setImage] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isProfileSet, setIsProfileSet] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,9 +122,11 @@ export default function HomePage() {
   useEffect(() => {
     const savedName = localStorage.getItem("userName");
     const savedImage = localStorage.getItem("userImage");
-    if (savedName && savedImage) {
+    const savedUserId = localStorage.getItem("userId");
+    if (savedName && savedImage && savedUserId) {
       setName(savedName);
       setImage(savedImage);
+      setUserId(savedUserId);
       setIsProfileSet(true);
     }
     setIsLoading(false);
@@ -119,8 +145,14 @@ export default function HomePage() {
 
   const handleSave = () => {
     if (name && image) {
+      let currentUserId = localStorage.getItem("userId");
+      if (!currentUserId) {
+          currentUserId = Math.floor(100000 + Math.random() * 900000).toString();
+          localStorage.setItem("userId", currentUserId);
+      }
       localStorage.setItem("userName", name);
       localStorage.setItem("userImage", image);
+      setUserId(currentUserId);
       setIsProfileSet(true);
     } else {
       alert("يرجى إدخال الاسم واختيار صورة.");
@@ -130,8 +162,10 @@ export default function HomePage() {
   const handleReset = () => {
     localStorage.removeItem("userName");
     localStorage.removeItem("userImage");
+    localStorage.removeItem("userId");
     setName("");
     setImage(null);
+    setUserId(null);
     setIsProfileSet(false);
   }
   
@@ -144,7 +178,7 @@ export default function HomePage() {
   }
 
   if (isProfileSet) {
-    return <MainApp name={name} image={image} onReset={handleReset} />;
+    return <MainApp name={name} image={image} userId={userId} onReset={handleReset} />;
   }
 
   return (
