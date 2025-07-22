@@ -108,12 +108,8 @@ export default function FruityFortunePage() {
   // Load state from localStorage on initial mount
   useEffect(() => {
     setIsClient(true);
-    const savedBalance = localStorage.getItem('fruityFortuneBalance');
-    if (savedBalance && !isNaN(parseInt(savedBalance, 10)) && parseInt(savedBalance, 10) > 0) {
-        setBalance(parseInt(savedBalance, 10));
-    } else {
-        setBalance(1000000000);
-    }
+    // Force set balance to 1 billion for testing purposes, overriding saved value.
+    setBalance(1000000000);
 
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
     if (savedHistory) {
@@ -241,7 +237,7 @@ const handleClaimReward = () => {
                     });
                     animationSequenceRef.current = sequence;
                 }
-
+                
                 // 2. Schedule results to appear *after* the spin
                 setTimeout(() => {
                     const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
