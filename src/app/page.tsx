@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,10 @@ export default function FruityFortunePage() {
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [lastWin, setLastWin] = useState<FruitKey | null>(null);
+
+  // Use a ref to track the last processed round to prevent duplicate payouts
+  const processedRoundId = useRef<string | null>(null);
+  const userBets = useRef<Record<FruitKey, number>>({});
 
   const { toast } = useToast();
 
@@ -54,19 +58,21 @@ export default function FruityFortunePage() {
       try {
         const state = await getGameState(undefined);
         
-        // Payout logic when a round ends
-        if (gameState && gameState.isSpinning && !state.isSpinning) {
-            const winningFruit = gameState.winningFruit;
-            if(winningFruit) {
-                const userBetOnWinner = gameState.bets[winningFruit] || 0;
-                if (userBetOnWinner > 0) {
-                    const payout = userBetOnWinner * FRUITS[winningFruit].multiplier;
-                    setBalance(prev => prev + payout);
-                }
-                setLastWin(winningFruit);
-                setTimeout(() => {
-                  setLastWin(null)
-                }, 2000); 
+        // Payout logic when a new round starts (meaning the previous one just ended)
+        if (gameState && state.id !== gameState.id) {
+            if(processedRoundId.current !== gameState.id) {
+              const winningFruit = gameState.winningFruit;
+              if (winningFruit) {
+                  const userBetOnWinner = userBets.current[winningFruit] || 0;
+                  if (userBetOnWinner > 0) {
+                      const payout = userBetOnWinner * FRUITS[winningFruit].multiplier;
+                      setBalance(prev => prev + payout);
+                  }
+                  setLastWin(winningFruit);
+                  setTimeout(() => setLastWin(null), 2000);
+              }
+              userBets.current = {}; // Reset user bets for the new round
+              processedRoundId.current = gameState.id;
             }
         }
         setGameState(state);
@@ -91,6 +97,8 @@ export default function FruityFortunePage() {
         if (success) {
             // Optimistically deduct balance & update UI
             setBalance(prev => prev - activeBet);
+            userBets.current[fruit] = (userBets.current[fruit] || 0) + activeBet;
+             // We'll get the global bet state from the server soon, but we can update a local copy for display
             setGameState(prev => {
                 if (!prev) return null;
                 const newBets = {...prev.bets};
