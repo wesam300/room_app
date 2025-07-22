@@ -101,6 +101,7 @@ export default function FruityFortunePage() {
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
+  const previousIsSpinningRef = useRef<boolean>();
 
 
   // Load state from localStorage on initial mount
@@ -208,6 +209,32 @@ const handleClaimReward = () => {
     }
 };
 
+  // Effect to process round results when spinning stops
+  useEffect(() => {
+    // We only want to run this when `isSpinning` changes from true to false
+    const justStoppedSpinning = previousIsSpinningRef.current && !isSpinning;
+
+    if (justStoppedSpinning) {
+        // roundId is for the *current* round, winner is for the *previous* round
+        const winner = getWinnerForRound(roundId - 1);
+        const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
+
+        if (payout > 0) {
+            setBalance(prev => prev + payout);
+            setWinnerScreenInfo({ fruit: winner, payout: payout });
+            setTimeout(() => setWinnerScreenInfo(null), 4000); // Keep winner screen for 4s
+        }
+
+        setHistory(prev => [winner, ...prev.slice(0, 4)]);
+        setBets({}); // Clear bets for the new round
+        setHighlightPosition(null);
+    }
+    
+    // Update the ref for the next render
+    previousIsSpinningRef.current = isSpinning;
+
+  }, [isSpinning, roundId, bets]);
+
 
   // The main game loop, driven by a simple interval
   useEffect(() => {
@@ -216,34 +243,18 @@ const handleClaimReward = () => {
           const now = Date.now();
           const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
           const timeInCycle = (now / 1000) % TOTAL_DURATION;
-
+          
           if (roundId !== currentRoundId) {
             setRoundId(currentRoundId);
           }
 
           if (timeInCycle < ROUND_DURATION) {
               // Betting phase
-              if(isSpinning) { // Process results only once when spinning stops
-                setHighlightPosition(null);
-                
-                const winner = getWinnerForRound(currentRoundId - 1);
-                const payout = (bets[winner] || 0) * FRUITS[winner].multiplier;
-          
-                if (payout > 0) {
-                    setBalance(prev => prev + payout);
-                    setWinnerScreenInfo({ fruit: winner, payout: payout });
-                    setTimeout(() => setWinnerScreenInfo(null), 4000); // Keep winner screen for 4s
-                }
-                setHistory(prev => [winner, ...prev.slice(0, 4)]);
-                setBets({}); // Clear bets for the new round
-              }
               setIsSpinning(false);
               setTimer(ROUND_DURATION - Math.floor(timeInCycle));
-               if (!winnerScreenInfo) {
+               if (!winnerScreenInfo) { // Don't clear highlight if winner screen is up
                  setHighlightPosition(null);
                }
-
-
           } else {
               // Spinning phase
               if (!isSpinning) {
@@ -299,7 +310,7 @@ const handleClaimReward = () => {
       return () => {
         clearInterval(interval)
       };
-  }, [isSpinning, bets, roundId, winnerScreenInfo]); 
+  }, [roundId, isSpinning, winnerScreenInfo]); 
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
