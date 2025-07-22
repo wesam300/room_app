@@ -63,49 +63,54 @@ export default function FruityFortunePage() {
     setTimeout(() => {
         const currentBets = betsRef.current;
         const payout = (currentBets[winner] || 0) * FRUITS[winner].multiplier;
+        
+        setHighlightedFruit(winner);
 
         if (payout > 0) {
             setBalance(prev => prev + payout);
             setLastWin({ fruit: winner, amount: payout });
-            setTimeout(() => setLastWin(null), 1000); // Clear win after 1 second
         } else {
             setLastWin(null);
         }
-
-        setHistory(prev => [winner, ...prev.slice(0, 4)]);
-        setBets({} as Record<FruitKey, number>);
-        setIsSpinning(false);
-        setWinningFruit(null);
-        setTimer(20); 
+        
+        setTimeout(() => {
+            setLastWin(null);
+            setHighlightedFruit(null);
+            setHistory(prev => [winner, ...prev.slice(0, 4)]);
+            setBets({} as Record<FruitKey, number>);
+            setIsSpinning(false);
+            setWinningFruit(null);
+            setTimer(20); 
+        }, 1000);
     }, 4000);
   }, []);
 
   useEffect(() => {
     if (isSpinning && winningFruit) {
-      const spinSequence = [...SPIN_SEQUENCE];
-      const winnerIndex = spinSequence.indexOf(winningFruit);
+      let spinSequence = [...SPIN_SEQUENCE];
+      // Ensure the sequence is not predictable
       const randomStart = Math.floor(Math.random() * spinSequence.length);
-      const reorderedSequence = [...spinSequence.slice(randomStart), ...spinSequence.slice(0, randomStart)];
+      spinSequence = [...spinSequence.slice(randomStart), ...spinSequence.slice(0, randomStart)];
       
-      const totalSteps = 24 + (reorderedSequence.length - winnerIndex + reorderedSequence.indexOf(winningFruit)) % reorderedSequence.length;
+      const winnerIndexInSequence = spinSequence.indexOf(winningFruit);
+      
+      const totalSteps = 24 + winnerIndexInSequence;
 
       const spinAnimationSequence = Array.from(
-        { length: totalSteps },
-        (_, i) => reorderedSequence[i % reorderedSequence.length]
+        { length: totalSteps + 1 },
+        (_, i) => spinSequence[i % spinSequence.length]
       );
-      spinAnimationSequence[totalSteps - 1] = winningFruit;
+      spinAnimationSequence[totalSteps] = winningFruit;
 
       let spinIndex = 0;
       const spinInterval = setInterval(() => {
         if(spinIndex < spinAnimationSequence.length) {
           setHighlightedFruit(spinAnimationSequence[spinIndex]);
           spinIndex++;
+        } else {
+          clearInterval(spinInterval);
         }
       }, 150);
-
-      setTimeout(() => {
-        clearInterval(spinInterval);
-      }, 4000);
 
       return () => clearInterval(spinInterval);
     }
@@ -184,7 +189,7 @@ export default function FruityFortunePage() {
                 key={`${fruitKey}-${index}`}
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
-                    isHighlighted && "bg-purple-700/80 ring-2 ring-purple-400",
+                    isHighlighted && !isWinning && "bg-purple-700/80 ring-2 ring-purple-400",
                     isWinning && "bg-yellow-500/50 ring-2 ring-yellow-300 animate-pulse",
                     isSpinning && !isHighlighted && !isWinning && "opacity-50"
                 )}
