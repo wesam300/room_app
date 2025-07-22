@@ -113,7 +113,7 @@ export default function FruityFortunePage() {
   useEffect(() => {
     if (!isClient) return;
 
-    // Balance
+    // --- Load Balance ---
     const savedBalance = localStorage.getItem('fruityFortuneBalance');
     if (savedBalance) {
         setBalance(parseInt(savedBalance, 10));
@@ -121,24 +121,30 @@ export default function FruityFortunePage() {
         setBalance(1000000000); // Set initial balance to 1 billion if nothing is saved
     }
 
-    // Daily Reward
+    // --- Load Daily Reward ---
     const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
     if (savedClaimTimestamp) {
         setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
     }
-
-    // Bets & Offline Payout & History Logic
-    const savedBetsData = localStorage.getItem('fruityFortuneBets');
+    
+    // --- Load History ---
+    const savedHistory = localStorage.getItem('fruityFortuneHistory');
     const now = Date.now();
     const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
     
-    // Set initial history based on current global time
-    const latestHistory = [];
-    for (let i = 0; i < 5; i++) {
-        latestHistory.unshift(getWinnerForRound(currentRoundId - 1 - i));
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    } else {
+      // Set initial history based on current global time if none is saved
+      const latestHistory = [];
+      for (let i = 0; i < 5; i++) {
+          latestHistory.unshift(getWinnerForRound(currentRoundId - 1 - i));
+      }
+      setHistory(latestHistory);
     }
-    setHistory(latestHistory);
     
+    // --- Bets & Offline Payout Logic ---
+    const savedBetsData = localStorage.getItem('fruityFortuneBets');
     if (savedBetsData) {
         try {
             const { bets: savedBets, roundId: savedRoundId } = JSON.parse(savedBetsData);
@@ -179,6 +185,9 @@ export default function FruityFortunePage() {
       if (lastClaimTimestamp) {
           localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
       }
+      if (history.length > 0) {
+          localStorage.setItem('fruityFortuneHistory', JSON.stringify(history));
+      }
       // Save bets along with the current round ID
       if (Object.keys(bets).length > 0) {
           localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId }));
@@ -186,7 +195,7 @@ export default function FruityFortunePage() {
           localStorage.removeItem('fruityFortuneBets');
       }
     }
-  }, [balance, lastClaimTimestamp, bets, roundId, isClient]);
+  }, [balance, lastClaimTimestamp, bets, roundId, isClient, history]);
 
 
    // Daily Reward Timer Logic
@@ -247,6 +256,11 @@ const handleClaimReward = () => {
     if (!isClient) return;
 
     const updateGameState = () => {
+        if (winnerScreenInfo) {
+            // Pause game updates while winner screen is shown
+            return;
+        }
+
         const now = Date.now();
         const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
         const timeInCycle = (now / 1000) % TOTAL_DURATION;
@@ -254,16 +268,12 @@ const handleClaimReward = () => {
         if (roundId !== currentRoundId) {
             setRoundId(currentRoundId);
              // ---- NEW ROUND LOGIC ----
-            const winner = getWinnerForRound(currentRoundId - 1);
-            setHistory(prev => [winner, ...prev.slice(0, 4)]);
+             // On a new round, the winner of the *previous* round is determined and added to history.
+            const previousWinner = getWinnerForRound(currentRoundId - 1);
+            setHistory(prev => [previousWinner, ...prev.slice(0, 4)]);
             setBets({});
         }
         
-        if (winnerScreenInfo) {
-            // Pause game updates while winner screen is shown
-            return;
-        }
-
         if (timeInCycle < ROUND_DURATION) {
             // --- BETTING PHASE ---
             if (isSpinning) { // Spin just finished
@@ -334,7 +344,7 @@ const handleClaimReward = () => {
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo]); // `winnerScreenInfo` is key to pausing the loop
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
