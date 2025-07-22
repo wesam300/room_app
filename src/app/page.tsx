@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -170,7 +170,6 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
     const [myRooms, setMyRooms] = useState<Room[]>([]);
     
     useEffect(() => {
-        // This useEffect ensures that we read from localStorage only on the client side.
         const rooms = JSON.parse(localStorage.getItem('userRooms') || '[]') as Room[];
         setMyRooms(rooms);
     }, []);
@@ -270,76 +269,120 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
         setMessages(prev => [...prev, newMessage]);
         setChatInput("");
     }
+    
+    const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
+        return (
+             <Popover>
+                <PopoverTrigger asChild>
+                    <div className="flex flex-col items-center gap-1 cursor-pointer">
+                        <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
+                             {slot.user ? (
+                                <>
+                                    <Avatar className="w-full h-full">
+                                        <AvatarImage src={slot.user.image} alt={slot.user.name} />
+                                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    {slot.isMuted && (
+                                        <div className="absolute bottom-0 right-0 bg-red-600 p-1 rounded-full border-2 border-background">
+                                            <MicOff className="w-3 h-3 text-white"/>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <Mic className="w-8 h-8 text-primary" />
+                            )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">no.{index + 1}</span>
+                    </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                    <div className="flex flex-col gap-2 p-2">
+                        {slot.user?.userId === user.userId ? (
+                            <>
+                                <Button variant="outline" onClick={handleToggleMute}>
+                                    {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
+                                </Button>
+                                <Button variant="destructive" onClick={handleDescend}>النزول من المايك</Button>
+                            </>
+                        ) : !slot.user ? (
+                            <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
+                        ) : (
+                            <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
+                        )}
+                    </div>
+                </PopoverContent>
+            </Popover>
+        )
+    }
 
     return (
-         <div className="flex flex-col h-full bg-background">
-            <header className="flex items-center justify-between p-3 border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-                <Button variant="ghost" size="icon" onClick={onExit}>
-                    <ChevronLeft className="w-6 h-6" />
-                </Button>
-                <div className="flex items-center gap-3">
+         <div className="flex flex-col h-screen bg-background text-foreground">
+            {/* Header */}
+            <header className="flex items-start justify-between p-3 z-10">
+                {/* Left controls */}
+                <div className="flex items-center gap-2">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                                <Power className="w-5 h-5 text-primary" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto">
+                           <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
+                        </PopoverContent>
+                    </Popover>
+                    <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                        <Share2 className="w-5 h-5 text-primary" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                        <Volume2 className="w-5 h-5 text-primary" />
+                    </Button>
+                </div>
+                {/* Right Info */}
+                <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
                      <div className="text-right">
-                        <p className="font-bold text-lg">{room.name}</p>
+                        <p className="font-bold text-sm">{room.name}</p>
                          <div className="flex items-center justify-end gap-1.5">
                              <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
                                 <Copy className="h-3 w-3" />
                             </button>
-                            <span className="text-sm text-muted-foreground">{room.id}</span>
+                            <span className="text-xs text-muted-foreground">{room.id}</span>
                         </div>
                     </div>
-                    <Avatar className="w-12 h-12">
+                    <Avatar className="w-10 h-10">
                         <AvatarImage src={room.image} alt={room.name} />
                         <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                 </div>
             </header>
+
+            {/* Sub-header */}
+            <div className="flex items-center justify-between px-4 mt-2 z-10">
+                <div className="flex items-center gap-2">
+                   <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                   <div className="flex -space-x-4 rtl:space-x-reverse">
+                       {/* Placeholder for connected users */}
+                       <Avatar className="w-8 h-8 border-2 border-background">
+                           <AvatarImage src="https://placehold.co/100x100.png" />
+                           <AvatarFallback>A</AvatarFallback>
+                       </Avatar>
+                   </div>
+                </div>
+                <div className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500">
+                    <span className="font-bold text-sm">0</span>
+                    <Trophy className="w-5 h-5 text-yellow-400"/>
+                </div>
+            </div>
             
             {/* Mic Grid */}
-            <div className="grid grid-cols-5 gap-4 p-4">
-                {micSlots.map((slot, index) => (
-                    <Popover key={index}>
-                        <PopoverTrigger asChild>
-                             <div className="aspect-square bg-muted rounded-full flex items-center justify-center cursor-pointer relative">
-                                {slot.user ? (
-                                    <>
-                                        <Avatar className="w-full h-full">
-                                            <AvatarImage src={slot.user.image} alt={slot.user.name} />
-                                            <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        {slot.isMuted && (
-                                            <div className="absolute bottom-0 right-0 bg-red-600 p-1 rounded-full">
-                                                <MicOff className="w-3 h-3 text-white"/>
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <Mic className="w-8 h-8 text-muted-foreground" />
-                                )}
-                            </div>
-                        </PopoverTrigger>
-                         <PopoverContent className="w-auto p-0">
-                           <div className="flex flex-col gap-2 p-2">
-                               {slot.user?.userId === user.userId ? (
-                                   <>
-                                       <Button variant="outline" onClick={handleToggleMute}>
-                                            {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
-                                       </Button>
-                                       <Button variant="destructive" onClick={handleDescend}>النزول من المايك</Button>
-                                   </>
-                               ) : !slot.user ? (
-                                   <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
-                               ) : (
-                                   <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
-                               )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                ))}
+            <div className="grid grid-cols-5 gap-y-4 gap-x-2 p-4 z-10">
+                {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
+                {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
             </div>
 
             {/* Chat Area */}
-             <main className="flex-1 p-4 overflow-y-auto flex flex-col-reverse">
-                <div className="flex flex-col gap-3">
+             <main className="absolute bottom-0 left-0 right-0 h-1/2 p-4 flex flex-col-reverse bg-gradient-to-t from-background/80 via-background/40 to-transparent">
+                <div className="flex flex-col gap-3 overflow-y-auto pr-2">
                     {messages.slice().reverse().map(msg => (
                         <div key={msg.id} className="flex items-start gap-2.5">
                             <Avatar className="w-8 h-8">
@@ -350,22 +393,21 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
                                     <span className="text-sm font-semibold text-foreground">{msg.user.name}</span>
                                 </div>
-                                <div className="leading-1.5 p-3 border-gray-200 bg-muted rounded-e-xl rounded-es-xl">
+                                <div className="leading-1.5 p-3 bg-muted/80 rounded-e-xl rounded-es-xl">
                                     <p className="text-sm font-normal text-foreground">{msg.text}</p>
                                 </div>
                             </div>
                         </div>
                     ))}
-                     {messages.length === 0 && <p className="text-center text-muted-foreground">لا توجد رسائل بعد. ابدأ المحادثة!</p>}
                 </div>
             </main>
 
              {/* Chat Input */}
-            <footer className="p-4 border-t bg-background">
+            <footer className="absolute bottom-0 left-0 right-0 p-4 border-t-0 bg-transparent z-20">
                 <div className="flex items-center gap-2">
                     <Input 
                         placeholder="اكتب رسالتك هنا..." 
-                        className="text-right"
+                        className="text-right bg-background/80"
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -397,13 +439,16 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     };
     
     const handleProfileClick = () => {
-      // If we are in a room, the back button should exit the room.
-      // Otherwise, it should go to profile edit.
       if (activeTab === 'profile') {
           onReset();
       } else {
          setActiveTab('profile');
       }
+    }
+    
+    // If in a room, render only the room screen
+    if (roomView === 'in_room' && currentRoom) {
+        return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} />;
     }
 
     const renderContent = () => {
@@ -411,12 +456,8 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
             case 'profile':
                 return <ProfileScreen onReset={onReset} />;
             case 'rooms':
-                if (roomView === 'in_room' && currentRoom) {
-                    return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} />;
-                }
                 return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} />;
             default:
-                 // Default to rooms list if no specific view is active
                 return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} />;
         }
     }
@@ -580,3 +621,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
