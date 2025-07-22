@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -784,7 +784,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
     return (
          <div className="relative flex flex-col h-screen bg-background text-foreground overflow-hidden">
-             <div className="absolute inset-0 bg-cover bg-center z-0" style={{ backgroundImage: "url(https://img.freepik.com/free-photo/vibrant-night-sky-with-stars-nebula-galaxy-deep-space-beauty-generative-ai_188544-15078.jpg?w=1380)" }}>
+             <div className="absolute inset-0 bg-cover bg-center z-0">
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              <div className="relative z-10 flex flex-col h-full">
@@ -954,36 +954,187 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     );
 }
 
-function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) {
-    const [roomView, setRoomView] = useState<'list' | 'in_room'>('list');
+// --- NEW PROFILE SCREEN & EDIT COMPONENTS ---
+
+function EditProfileNameDialog({ user, onUserUpdate, onDialogChange }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, onDialogChange: (open: boolean) => void }) {
+    const [name, setName] = useState(user.name);
+    const { toast } = useToast();
+
+    const handleSave = () => {
+        if (!name.trim()) {
+            toast({ variant: "destructive", title: "الاسم لا يمكن أن يكون فارغًا" });
+            return;
+        }
+        const updatedUser = { ...user, name };
+        onUserUpdate(updatedUser);
+        toast({ title: "تم تحديث الاسم بنجاح" });
+        onDialogChange(false);
+    };
+
+    return (
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle className="text-right">تعديل الاسم</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <Input
+                    placeholder="أدخل اسمك الجديد"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="text-right"
+                />
+            </div>
+            <Button onClick={handleSave}>حفظ</Button>
+        </DialogContent>
+    )
+}
+
+function EditProfileImageDialog({ user, onUserUpdate, onDialogChange }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, onDialogChange: (open: boolean) => void }) {
+    const [image, setImage] = useState(user.image);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => setImage(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+    
+    const handleSave = () => {
+        const updatedUser = { ...user, image };
+        onUserUpdate(updatedUser);
+        toast({ title: "تم تحديث الصورة بنجاح" });
+        onDialogChange(false);
+    };
+
+    return (
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle className="text-right">تعديل الصورة</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 place-items-center">
+                 <Avatar className="w-32 h-32 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                    <AvatarImage src={image} />
+                    <AvatarFallback><Camera className="w-12 h-12" /></AvatarFallback>
+                </Avatar>
+                <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>اختر صورة</Button>
+            </div>
+            <Button onClick={handleSave}>حفظ</Button>
+        </DialogContent>
+    )
+}
+
+function ProfileScreen({ user, onUserUpdate, onReset }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, onReset: () => void }) {
+    const { toast } = useToast();
+    const [editMode, setEditMode] = useState<'name' | 'image' | null>(null);
+
+    const handleCopyId = () => {
+        navigator.clipboard.writeText(user.userId);
+        toast({ title: "تم نسخ ID الحساب" });
+    };
+
+    return (
+        <div className="p-4 text-right flex flex-col h-full bg-background">
+             <Dialog onOpenChange={(open) => !open && setEditMode(null)}>
+                <Card>
+                    <CardContent className="p-4 flex items-center justify-between">
+                         <DialogTrigger asChild>
+                             <Button variant="ghost" size="icon">
+                                <ChevronLeft className="w-6 h-6" />
+                            </Button>
+                         </DialogTrigger>
+
+                        <div className="flex items-center gap-3 text-right">
+                           <div>
+                                <p className="font-bold text-lg">{user.name}</p>
+                                <div className="flex items-center gap-1.5 text-muted-foreground cursor-pointer" onClick={handleCopyId}>
+                                    <Copy className="w-4 h-4" />
+                                    <span>{user.userId}</span>
+                                </div>
+                            </div>
+                             <Avatar className="w-16 h-16">
+                                <AvatarImage src={user.image} alt={user.name} />
+                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* This is the first dialog to choose what to edit */}
+                {!editMode && (
+                     <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle className="text-right">تعديل الملف الشخصي</DialogTitle>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <Button variant="outline" onClick={() => setEditMode('name')}>تعديل الاسم</Button>
+                            <Button variant="outline" onClick={() => setEditMode('image')}>تعديل الصورة</Button>
+                        </div>
+                    </DialogContent>
+                )}
+
+                 {/* This dialog will be rendered conditionally based on the choice */}
+                <Dialog open={editMode === 'name'} onOpenChange={(open) => !open && setEditMode(null)}>
+                    <EditProfileNameDialog user={user} onUserUpdate={onUserUpdate} onDialogChange={(open) => !open && setEditMode(null)} />
+                </Dialog>
+                 <Dialog open={editMode === 'image'} onOpenChange={(open) => !open && setEditMode(null)}>
+                     <EditProfileImageDialog user={user} onUserUpdate={onUserUpdate} onDialogChange={(open) => !open && setEditMode(null)} />
+                </Dialog>
+
+            </Dialog>
+
+            <div className="mt-8 flex-grow">
+                {/* Other profile options can go here */}
+            </div>
+
+             <Button variant="destructive" onClick={onReset} className="mt-auto">
+                <LogOut className="ml-2" />
+                تسجيل الخروج
+            </Button>
+        </div>
+    );
+}
+
+function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void }) {
+    const [view, setView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+    const [activeTab, setActiveTab] = useState<'rooms' | 'profile'>('rooms');
 
     const handleEnterRoom = (room: Room) => {
         setCurrentRoom(room);
-        setRoomView('in_room');
+        setView('in_room');
     };
 
     const handleExitRoom = () => {
         setCurrentRoom(null);
-        setRoomView('list');
+        setView('list');
     };
 
     const handleRoomUpdated = (updatedRoom: Room) => {
         setCurrentRoom(updatedRoom);
     };
 
-    if (roomView === 'in_room' && currentRoom) {
+    if (view === 'in_room' && currentRoom) {
         return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} />;
     }
 
     return (
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
-                 <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated}/>
+                 {activeTab === 'rooms' && <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated} />}
+                 {activeTab === 'profile' && <ProfileScreen user={user} onUserUpdate={onUserUpdate} onReset={onReset} />}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
-                    className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-primary">
+                    onClick={() => setActiveTab('rooms')}
+                    className={cn(
+                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                        activeTab === 'rooms' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    )}>
                     <MessageSquare className="w-6 h-6" />
                     <span className="text-xs font-medium">الغرف</span>
                 </button>
@@ -997,10 +1148,13 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
                     </div>
                 </Link>
                 <button 
-                     onClick={onReset}
-                    className="flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground">
+                     onClick={() => setActiveTab('profile')}
+                    className={cn(
+                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                         activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    )}>
                     <User className="w-6 h-6" />
-                    <span className="text-xs font-medium">الخروج</span>
+                    <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
         </div>
@@ -1027,6 +1181,12 @@ export default function HomePage() {
     }
     setIsLoading(false);
   }, []);
+  
+  const handleUserUpdate = (updatedUser: UserProfile) => {
+        localStorage.setItem("userName", updatedUser.name);
+        localStorage.setItem("userImage", updatedUser.image);
+        setUser(updatedUser);
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -1046,10 +1206,8 @@ export default function HomePage() {
           currentUserId = Math.floor(100000 + Math.random() * 900000).toString();
           localStorage.setItem("userId", currentUserId);
       }
-      localStorage.setItem("userName", name);
-      localStorage.setItem("userImage", image);
-      
-      setUser({ name, image, userId: currentUserId });
+      const newUser = { name, image, userId: currentUserId };
+      handleUserUpdate(newUser);
 
       toast({
           title: "تم حفظ الملف الشخصي",
@@ -1068,7 +1226,8 @@ export default function HomePage() {
     setUser(null); 
     localStorage.removeItem("userName");
     localStorage.removeItem("userImage");
-    setName("");
+    // We keep the userId so the user doesn't lose their ID on logout
+    setName(null);
     setImage(null);
     toast({ title: "تم تسجيل الخروج" });
   }
@@ -1081,7 +1240,7 @@ export default function HomePage() {
   }
 
   if (user) {
-    return <MainApp user={user} onReset={handleReset} />;
+    return <MainApp user={user} onReset={handleReset} onUserUpdate={handleUserUpdate} />;
   }
 
   return (
@@ -1126,3 +1285,4 @@ export default function HomePage() {
     </div>
   );
 }
+
