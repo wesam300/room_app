@@ -59,7 +59,7 @@ const BOT_USER: UserProfile = {
 };
 
 const GIFTS: GiftItem[] = [
-    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://storage.googleapis.com/stey-kr/lion_gift.png' }
+    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
 ];
 
 
