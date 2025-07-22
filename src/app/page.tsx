@@ -219,26 +219,20 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
      const [messages, setMessages] = useState<ChatMessage[]>([]);
      const [chatInput, setChatInput] = useState("");
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
-     const [speakingSlotIndex, setSpeakingSlotIndex] = useState<number | null>(null);
+     const [isSpeaking, setIsSpeaking] = useState(false); // Example state, should be driven by voice activity
      
-     // Simulate speaking
-    useEffect(() => {
+     // This is a placeholder to simulate speaking.
+     // In a real app, this would be controlled by a voice activity detection library.
+     useEffect(() => {
         const interval = setInterval(() => {
-            const usersOnMics = micSlots
-                .map((slot, index) => (slot.user ? index : -1))
-                .filter(index => index !== -1);
-
-            if (usersOnMics.length > 0) {
-                const randomUserIndex = usersOnMics[Math.floor(Math.random() * usersOnMics.length)];
-                setSpeakingSlotIndex(randomUserIndex);
-                setTimeout(() => setSpeakingSlotIndex(null), 1500); // Speak for 1.5s
-            } else {
-                setSpeakingSlotIndex(null);
-            }
-        }, 3000); // Change speaker every 3s
-
+             // Let's pretend the current user speaks sometimes if they are on a mic
+             if(myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
+                setIsSpeaking(true);
+                setTimeout(() => setIsSpeaking(false), 1500); // "Speak" for 1.5s
+             }
+        }, 4000);
         return () => clearInterval(interval);
-    }, [micSlots]);
+     }, [myMicIndex, micSlots]);
 
 
      const handleCopyId = () => {
@@ -293,7 +287,10 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
         setChatInput("");
     }
     
-    const RoomMic = ({slot, index, isSpeaking}: {slot: MicSlot, index: number, isSpeaking: boolean}) => {
+    const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
+        const isCurrentUser = slot.user?.userId === user.userId;
+        const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
+
         return (
              <Popover>
                 <PopoverTrigger asChild>
@@ -302,7 +299,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                              {slot.user ? (
                                 <>
                                     <AnimatePresence>
-                                        {isSpeaking && !slot.isMuted && (
+                                        {showSpeakingAnimation && (
                                              <motion.div
                                                 className="absolute inset-0 rounded-full border-2 border-yellow-300"
                                                 animate={{
@@ -321,7 +318,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                         <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                         <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    {slot.isMuted && (
+                                    {isCurrentUser && slot.isMuted && (
                                         <div className="absolute bottom-0 right-0 bg-red-600 p-1 rounded-full border-2 border-background">
                                             <MicOff className="w-3 h-3 text-white"/>
                                         </div>
@@ -336,7 +333,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                     <div className="flex flex-col gap-2 p-2">
-                        {slot.user?.userId === user.userId ? (
+                        {isCurrentUser ? (
                             <>
                                 <Button variant="outline" onClick={handleToggleMute}>
                                     {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
@@ -408,9 +405,9 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
             </div>
             
             {/* Mic Grid */}
-            <div className="grid grid-cols-5 gap-y-4 gap-x-2 p-4 z-10">
-                {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} isSpeaking={speakingSlotIndex === index} />)}
-                {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} isSpeaking={speakingSlotIndex === index + 5} />)}
+            <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4 z-10">
+                {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
+                {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
             </div>
 
 
@@ -423,7 +420,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                 <AvatarImage src={msg.user.image} />
                                 <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col gap-1 max-w-[320px]">
+                            <div className="flex flex-col gap-1 items-start">
                                 <div className="flex items-center space-x-2 rtl:space-x-reverse">
                                     <span className="text-sm font-semibold text-foreground">{msg.user.name}</span>
                                 </div>
@@ -449,9 +446,6 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="bg-yellow-400 text-black rounded-full w-16 h-16 border-4 border-yellow-200 shadow-lg">
                         <Gift className="w-8 h-8" />
-                    </Button>
-                     <Button variant="ghost" size="icon" className="bg-background/80 rounded-full">
-                        <Smile className="text-primary"/>
                     </Button>
                     <div className="flex-1 relative">
                         <Input
@@ -489,11 +483,11 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     };
     
     const handleProfileClick = () => {
-      if (activeTab === 'profile') {
-          onReset();
-      } else {
-         setActiveTab('profile');
-      }
+        if (activeTab === 'profile') {
+           setActiveTab('rooms');
+        } else {
+           setActiveTab('profile');
+        }
     }
     
     if (roomView === 'in_room' && currentRoom) {
@@ -514,7 +508,7 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
     return (
         <div className="flex flex-col h-screen">
             {activeTab === 'profile' && (
-                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={handleProfileClick} />
+                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={onReset} />
             )}
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
@@ -669,5 +663,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
