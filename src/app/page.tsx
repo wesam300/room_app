@@ -6,7 +6,7 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 
-const BET_AMOUNTS = [1000000, 50000, 10000, 5000, 1000];
+const BET_AMOUNTS = [1000, 5000, 10000, 50000, 1000000];
 const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
@@ -43,7 +43,7 @@ function getWinnerForRound(roundId: number): FruitKey {
 export default function FruityFortunePage() {
   const [isClient, setIsClient] = useState(false);
   const [balance, setBalance] = useState(10000000);
-  const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
+  const [activeBet, setActiveBet] = useState(BET_AMOUNTS[4]);
   
   // Game state driven by time
   const [roundId, setRoundId] = useState(0);
@@ -253,8 +253,7 @@ export default function FruityFortunePage() {
                 className={cn(
                     "relative flex flex-col items-center justify-center p-2 rounded-2xl cursor-pointer transition-all duration-100 aspect-square bg-black/30",
                      isSpinningAndHighlighted && "ring-2 ring-white/80 scale-110",
-                     isSpinning && !isSpinningAndHighlighted && "opacity-60",
-                     isMomentaryWinner && "ring-2 ring-yellow-400"
+                     isSpinning && !isSpinningAndHighlighted && "opacity-60"
                 )}
                 onClick={() => handlePlaceBet(fruitKey)}
               >
@@ -331,3 +330,6 @@ export default function FruityFortunePage() {
     
 
 
+
+
+    
