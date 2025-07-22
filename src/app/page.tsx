@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from 'framer-motion';
 
-const BET_AMOUNTS = [10000, 50000, 500000, 5000000, 10000000];
+const BET_AMOUNTS = [100000, 500000, 1000000, 5000000, 10000000];
 const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
@@ -203,9 +203,9 @@ const handleClaimReward = () => {
   
   // The main game loop, driven by a simple interval
   useEffect(() => {
-    const updateGameState = () => {
-        if (winnerScreenInfo) return; // Pause game updates while winner screen is shown
+    if (winnerScreenInfo) return; // Pause game updates while winner screen is shown
 
+    const updateGameState = () => {
         const now = Date.now();
         const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
         const timeInCycle = (now / 1000) % TOTAL_DURATION;
@@ -286,7 +286,6 @@ const handleClaimReward = () => {
         }
     };
 
-    updateGameState();
     const interval = setInterval(updateGameState, 50); 
     
     return () => {
