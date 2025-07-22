@@ -6,11 +6,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2 } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +39,7 @@ interface ChatMessage {
 interface MicSlot {
     user: UserProfile | null;
     isMuted: boolean;
+    isLocked: boolean;
 }
 
 
@@ -169,7 +170,7 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
     );
 }
 
-function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom: (room: Room) => void }) {
+function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfile, onEnterRoom: (room: Room) => void, onRoomUpdated: (updatedRoom: Room) => void }) {
     const [myRooms, setMyRooms] = useState<Room[]>([]);
     
     useEffect(() => {
@@ -261,29 +262,78 @@ function RoomsListScreen({ user, onEnterRoom }: { user: UserProfile, onEnterRoom
     );
 }
 
-function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onExit: () => void }) {
+function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomUpdated: (updatedRoom: Room) => void, children: React.ReactNode }) {
+    const [roomName, setRoomName] = useState(room.name);
+    const [roomImage, setRoomImage] = useState<string>(room.image);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { toast } = useToast();
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => setRoomImage(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSaveChanges = () => {
+        const updatedRoom = { ...room, name: roomName, image: roomImage };
+        onRoomUpdated(updatedRoom);
+        toast({ title: "تم تحديث الغرفة!" });
+    };
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle className="text-right">تعديل الغرفة</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4 text-right">
+                    <div className="flex flex-col items-center gap-4">
+                         <Avatar className="w-24 h-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <AvatarImage src={roomImage} />
+                            <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
+                        </Avatar>
+                        <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                    </div>
+                     <Input
+                        id="name"
+                        placeholder="أدخل اسم الغرفة..."
+                        value={roomName}
+                        onChange={(e) => setRoomName(e.target.value)}
+                        className="text-right"
+                    />
+                </div>
+                <DialogClose asChild>
+                    <Button onClick={handleSaveChanges}>حفظ التغييرات</Button>
+                </DialogClose>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void }) {
      const { toast } = useToast();
-     const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false }));
+     const [micSlots, setMicSlots] = useState<MicSlot[]>(Array(10).fill({ user: null, isMuted: false, isLocked: false }));
      const [isSpeaking, setIsSpeaking] = useState(false);
      
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
+     const isOwner = user.userId === room.ownerId;
      
      useEffect(() => {
-        // This effect simulates voice activity detection for the current user.
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
-            // In a real app, you'd use a voice activity detection library
-            // to set isSpeaking to true when the user talks and false when they stop.
-            // For this demo, we'll just toggle it to show the animation.
             const interval = setInterval(() => {
                 setIsSpeaking(true);
-                setTimeout(() => setIsSpeaking(false), 1500); // Animation lasts 1.5s
-            }, 4000); // Trigger speaking animation every 4 seconds.
+                setTimeout(() => setIsSpeaking(false), 1500);
+            }, 4000); 
             return () => {
                 clearInterval(interval);
                 setIsSpeaking(false);
             };
         } else {
-            // Ensure speaking animation is off if the user mutes, descends, or is not on a mic.
             setIsSpeaking(false);
         }
      }, [myMicIndex, micSlots]);
@@ -303,21 +353,23 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
             toast({ variant: "destructive", description: "هذا المايك مشغول."});
             return;
         }
+        if (micSlots[index].isLocked) {
+            toast({ variant: "destructive", description: "هذا المايك مقفل."});
+            return;
+        }
         setMicSlots(prev => {
             const newSlots = [...prev];
-            newSlots[index] = { user: user, isMuted: false };
+            newSlots[index] = { ...newSlots[index], user: user, isMuted: false };
             return newSlots;
         });
     }
 
-    const handleDescend = () => {
-        if (myMicIndex !== -1) {
-             setMicSlots(prev => {
-                const newSlots = [...prev];
-                newSlots[myMicIndex] = { user: null, isMuted: false };
-                return newSlots;
-            });
-        }
+    const handleDescend = (indexToDescend: number) => {
+         setMicSlots(prev => {
+            const newSlots = [...prev];
+            newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
+            return newSlots;
+        });
     }
     
     const handleToggleMute = () => {
@@ -325,7 +377,19 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
             setMicSlots(prevSlots => {
                 const newSlots = [...prevSlots];
                 const currentSlot = newSlots[myMicIndex];
-                newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
+                if (currentSlot) {
+                    newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
+                }
+                return newSlots;
+            });
+        }
+    }
+
+    const handleToggleLock = (index: number) => {
+        if (isOwner) {
+            setMicSlots(prev => {
+                const newSlots = [...prev];
+                newSlots[index] = { ...newSlots[index], isLocked: !newSlots[index].isLocked };
                 return newSlots;
             });
         }
@@ -333,7 +397,7 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
     
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUser = slot.user?.userId === user.userId;
-        // The speaking animation should only show for the current user when they are actively speaking and not muted.
+        const isCurrentUserOwner = isCurrentUser && isOwner;
         const showSpeakingAnimation = isCurrentUser && isSpeaking && !slot.isMuted;
 
         return (
@@ -369,11 +433,16 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                         </div>
                                     )}
                                 </>
+                            ) : slot.isLocked ? (
+                                <Lock className="w-8 h-8 text-primary/50" />
                             ) : (
                                 <Mic className="w-8 h-8 text-primary" />
                             )}
                         </div>
-                        <span className="text-xs text-muted-foreground">no.{index + 1}</span>
+                        <div className="flex items-center gap-1">
+                          {isCurrentUserOwner && <Crown className="w-3 h-3 text-yellow-400" />}
+                           <span className="text-xs text-muted-foreground">no.{index + 1}</span>
+                        </div>
                     </div>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
@@ -383,11 +452,24 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                                 <Button variant="outline" onClick={handleToggleMute}>
                                     {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
                                 </Button>
-                                <Button variant="destructive" onClick={handleDescend}>النزول من المايك</Button>
+                                <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
                             </>
-                        ) : !slot.user ? (
-                            <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
-                        ) : (
+                        ) : !slot.user ? ( // Mic is empty
+                            isOwner ? ( // Owner sees lock/unlock
+                                slot.isLocked ? (
+                                    <Button onClick={() => handleToggleLock(index)}>فتح المايك <Unlock className="mr-2"/></Button>
+                                ) : (
+                                    <>
+                                        <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
+                                        <Button variant="secondary" onClick={() => handleToggleLock(index)}>قفل المايك <Lock className="mr-2"/></Button>
+                                    </>
+                                )
+                            ) : ( // Non-owner sees ascend only
+                                 <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
+                            )
+                        ) : isOwner ? ( // Mic is occupied, and current user is owner
+                            <Button variant="destructive" onClick={() => handleDescend(index)}>طرد من المايك</Button>
+                        ): (
                             <p className="p-2 text-center text-sm">هذا المايك مشغول</p>
                         )}
                     </div>
@@ -396,11 +478,27 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
         )
     }
 
-    return (
-         <div className="flex flex-col h-screen bg-background text-foreground">
-            {/* Header */}
-            <header className="flex items-start justify-between p-3 z-10">
-                {/* Left controls */}
+    const RoomHeader = () => {
+         const roomInfoContent = (
+             <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20 cursor-pointer">
+                <div className="text-right">
+                    <p className="font-bold text-sm">{room.name}</p>
+                    <div className="flex items-center justify-end gap-1.5">
+                        <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                            <Copy className="h-3 w-3" />
+                        </button>
+                        <span className="text-xs text-muted-foreground">{room.id}</span>
+                    </div>
+                </div>
+                <Avatar className="w-10 h-10">
+                    <AvatarImage src={room.image} alt={room.name} />
+                    <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+            </div>
+        );
+
+        return (
+             <header className="flex items-start justify-between p-3 z-10">
                 <div className="flex items-center gap-2">
                     <Popover>
                         <PopoverTrigger asChild>
@@ -413,30 +511,26 @@ function RoomScreen({ room, user, onExit }: { room: Room, user: UserProfile, onE
                         </PopoverContent>
                     </Popover>
                 </div>
-                {/* Right Info */}
-                <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
-                     <div className="text-right">
-                        <p className="font-bold text-sm">{room.name}</p>
-                         <div className="flex items-center justify-end gap-1.5">
-                             <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                                <Copy className="h-3 w-3" />
-                            </button>
-                            <span className="text-xs text-muted-foreground">{room.id}</span>
-                        </div>
-                    </div>
-                    <Avatar className="w-10 h-10">
-                        <AvatarImage src={room.image} alt={room.name} />
-                        <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                </div>
+                {isOwner ? (
+                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                        {roomInfoContent}
+                    </EditRoomDialog>
+                ) : (
+                    roomInfoContent
+                )}
             </header>
+        )
+    }
+
+    return (
+         <div className="flex flex-col h-screen bg-background text-foreground">
+            <RoomHeader />
 
             {/* Sub-header */}
             <div className="flex items-center justify-between px-4 mt-2 z-10">
                 <div className="flex items-center gap-2">
                    <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
                    <div className="flex -space-x-4 rtl:space-x-reverse">
-                       {/* Placeholder for connected users */}
                        <Avatar className="w-8 h-8 border-2 border-background">
                            <AvatarImage src="https://placehold.co/100x100.png" />
                            <AvatarFallback>A</AvatarFallback>
@@ -490,9 +584,22 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
            setActiveTab('profile');
         }
     }
-    
+
+    const handleRoomUpdated = (updatedRoom: Room) => {
+        // Update the room in the main state
+        setCurrentRoom(updatedRoom);
+
+        // Update the room in localStorage
+        const existingRooms: Room[] = JSON.parse(localStorage.getItem('userRooms') || '[]');
+        const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
+        if (roomIndex !== -1) {
+            existingRooms[roomIndex] = updatedRoom;
+            localStorage.setItem('userRooms', JSON.stringify(existingRooms));
+        }
+    };
+
     if (roomView === 'in_room' && currentRoom) {
-        return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} />;
+        return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} />;
     }
 
     const renderContent = () => {
@@ -500,16 +607,16 @@ function MainApp({ user, onReset }: { user: UserProfile, onReset: () => void }) 
             case 'profile':
                 return <ProfileScreen onReset={onReset} />;
             case 'rooms':
-                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} />;
+                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated}/>;
             default:
-                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} />;
+                return <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated}/>;
         }
     }
 
     return (
         <div className="flex flex-col h-screen">
             {activeTab === 'profile' ? (
-                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={onReset} />
+                <TopBar name={user.name} image={user.image} userId={user.userId} onBack={handleReset} />
             ) : null }
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
