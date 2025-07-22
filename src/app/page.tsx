@@ -67,6 +67,7 @@ export default function FruityFortunePage() {
         if (payout > 0) {
             setBalance(prev => prev + payout);
             setLastWin({ fruit: winner, amount: payout });
+            setTimeout(() => setLastWin(null), 1000); // Clear win after 1 second
         } else {
             setLastWin(null);
         }
@@ -81,12 +82,16 @@ export default function FruityFortunePage() {
 
   useEffect(() => {
     if (isSpinning && winningFruit) {
-      setLastWin(null);
+      const spinSequence = [...SPIN_SEQUENCE];
+      const winnerIndex = spinSequence.indexOf(winningFruit);
+      const randomStart = Math.floor(Math.random() * spinSequence.length);
+      const reorderedSequence = [...spinSequence.slice(randomStart), ...spinSequence.slice(0, randomStart)];
       
-      const totalSteps = 26; // Approx 4000ms / 150ms
+      const totalSteps = 24 + (reorderedSequence.length - winnerIndex + reorderedSequence.indexOf(winningFruit)) % reorderedSequence.length;
+
       const spinAnimationSequence = Array.from(
         { length: totalSteps },
-        (_, i) => SPIN_SEQUENCE[i % SPIN_SEQUENCE.length]
+        (_, i) => reorderedSequence[i % reorderedSequence.length]
       );
       spinAnimationSequence[totalSteps - 1] = winningFruit;
 
@@ -122,13 +127,6 @@ export default function FruityFortunePage() {
 
     return () => clearInterval(intervalId);
   }, [timer, isClient, isSpinning, handleRoundEnd]);
-
-
-  useEffect(() => {
-    if (timer === 20 && !isSpinning) {
-      setLastWin(null);
-    }
-  }, [timer, isSpinning]);
 
 
   const placeBet = (fruit: FruitKey) => {
