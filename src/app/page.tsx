@@ -808,57 +808,59 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                     initialRecipient={initialRecipientForGift}
                 />
 
-                <RoomHeader />
+                <div className="flex-1 overflow-y-auto">
+                    <RoomHeader />
 
-                <div className="flex items-center justify-between px-4 mt-2">
-                    <div className="flex items-center gap-2">
-                       <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                       <div className="flex -space-x-4 rtl:space-x-reverse">
-                           <Avatar className="w-8 h-8 border-2 border-background">
-                               <AvatarImage src="https://placehold.co/100x100.png" />
-                               <AvatarFallback>A</AvatarFallback>
-                           </Avatar>
-                       </div>
+                    <div className="flex items-center justify-between px-4 mt-2">
+                        <div className="flex items-center gap-2">
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                        </div>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
+                                    <span className="font-bold text-sm">{formatNumber(totalRoomSupport)}</span>
+                                    <Trophy className="w-5 h-5 text-yellow-400"/>
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64" dir="rtl">
+                                <div className="flex flex-col gap-2">
+                                    <h4 className="font-bold text-center">أكبر الداعمين</h4>
+                                    <hr className="border-border/50 my-1"/>
+                                    {roomSupporters.length === 0 ? (
+                                        <p className="text-sm text-center text-muted-foreground py-2">لا يوجد داعمين بعد</p>
+                                    ) : (
+                                        roomSupporters.slice(0, 10).map((supporter, index) => (
+                                            <div key={supporter.user.userId} className="flex items-center justify-between gap-3 p-1 rounded-md hover:bg-accent/50">
+                                                <div className="flex items-center gap-2">
+                                                    <LeaderboardMedal rank={index + 1} />
+                                                    <Avatar className="w-8 h-8">
+                                                        <AvatarImage src={supporter.user.image} alt={supporter.user.name} />
+                                                        <AvatarFallback>{supporter.user.name.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-sm font-semibold truncate">{supporter.user.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 text-yellow-400">
+                                                    <Trophy className="w-4 h-4" />
+                                                    <span className="text-xs font-bold">{formatNumber(supporter.totalGiftValue)}</span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
                     </div>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
-                                <span className="font-bold text-sm">{formatNumber(totalRoomSupport)}</span>
-                                <Trophy className="w-5 h-5 text-yellow-400"/>
-                            </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64" dir="rtl">
-                            <div className="flex flex-col gap-2">
-                                <h4 className="font-bold text-center">أكبر الداعمين</h4>
-                                <hr className="border-border/50 my-1"/>
-                                {roomSupporters.length === 0 ? (
-                                    <p className="text-sm text-center text-muted-foreground py-2">لا يوجد داعمين بعد</p>
-                                ) : (
-                                    roomSupporters.slice(0, 10).map((supporter, index) => (
-                                        <div key={supporter.user.userId} className="flex items-center justify-between gap-3 p-1 rounded-md hover:bg-accent/50">
-                                            <div className="flex items-center gap-2">
-                                                <LeaderboardMedal rank={index + 1} />
-                                                <Avatar className="w-8 h-8">
-                                                    <AvatarImage src={supporter.user.image} alt={supporter.user.name} />
-                                                    <AvatarFallback>{supporter.user.name.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-sm font-semibold truncate">{supporter.user.name}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-yellow-400">
-                                                <Trophy className="w-4 h-4" />
-                                                <span className="text-xs font-bold">{formatNumber(supporter.totalGiftValue)}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                
-                <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
-                    {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
-                    {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
+                    
+                    <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
+                        {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
+                        {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
+                    </div>
                 </div>
 
                 <AnimatePresence>
@@ -884,8 +886,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                         </motion.div>
                     )}
                 </AnimatePresence>
-
-                <div className="flex-grow"></div>
 
                  <div className="flex-shrink-0 px-4 pb-4">
                      <div 
