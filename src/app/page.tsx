@@ -1172,24 +1172,26 @@ export default function HomePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const [name, setName] = useState<string | null>(null);
-  const [image, setImage] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState("");
+  const [imageInput, setImageInput] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    const savedName = localStorage.getItem("userName");
-    const savedImage = localStorage.getItem("userImage");
-    const savedUserId = localStorage.getItem("userId");
-    if (savedName && savedImage && savedUserId) {
-      setUser({ name: savedName, image: savedImage, userId: savedUserId });
+    try {
+        const savedUser = localStorage.getItem("userProfile");
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+    } catch (error) {
+        console.error("Failed to parse user profile from localStorage", error);
+        localStorage.removeItem("userProfile");
     }
     setIsLoading(false);
   }, []);
   
   const handleUserUpdate = (updatedUser: UserProfile) => {
-        localStorage.setItem("userName", updatedUser.name);
-        localStorage.setItem("userImage", updatedUser.image);
+        localStorage.setItem("userProfile", JSON.stringify(updatedUser));
         setUser(updatedUser);
   };
 
@@ -1198,21 +1200,22 @@ export default function HomePage() {
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImage(reader.result as string);
+        setImageInput(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const handleSave = () => {
-    if (name && image) {
-      let currentUserId = localStorage.getItem("userId");
-      if (!currentUserId) {
-          currentUserId = Math.floor(100000 + Math.random() * 900000).toString();
-          localStorage.setItem("userId", currentUserId);
-      }
-      const newUser = { name, image, userId: currentUserId };
-      handleUserUpdate(newUser);
+    if (nameInput && imageInput) {
+      const userId = localStorage.getItem("userId") || Math.floor(100000 + Math.random() * 900000).toString();
+      
+      const newUserProfile: UserProfile = { name: nameInput, image: imageInput, userId: userId };
+
+      localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
+      localStorage.setItem("userId", userId); // Also save userId separately if needed elsewhere
+      
+      setUser(newUserProfile);
 
       toast({
           title: "تم حفظ الملف الشخصي",
@@ -1229,11 +1232,10 @@ export default function HomePage() {
   
   const handleReset = () => {
     setUser(null); 
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userImage");
-    // We keep the userId so the user doesn't lose their ID on logout
-    setName(null);
-    setImage(null);
+    localStorage.removeItem("userProfile");
+    localStorage.removeItem("userId"); // Also clear this if you want a full reset
+    setNameInput("");
+    setImageInput(null);
     toast({ title: "تم تسجيل الخروج" });
   }
   
@@ -1260,7 +1262,7 @@ export default function HomePage() {
         <CardContent className="flex flex-col items-center gap-6">
           <div className="relative">
             <Avatar className="w-32 h-32 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <AvatarImage src={image || ''} />
+              <AvatarImage src={imageInput || ''} />
               <AvatarFallback className="text-4xl">
                 <Camera className="w-12 h-12" />
               </AvatarFallback>
@@ -1277,8 +1279,8 @@ export default function HomePage() {
           <Input
             type="text"
             placeholder="أدخل اسمك..."
-            value={name || ''}
-            onChange={(e) => setName(e.target.value)}
+            value={nameInput || ''}
+            onChange={(e) => setNameInput(e.target.value)}
             className="text-center text-lg"
           />
 
