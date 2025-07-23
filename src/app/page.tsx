@@ -522,11 +522,11 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
             return;
         }
         if (micSlots[index].user) {
-            toast({ variant: "destructive", description: "هذا المايك مشغول."});
+            toast({ variant: "destructive", description: "هذا המايك مشغول."});
             return;
         }
         if (micSlots[index].isLocked) {
-            toast({ variant: "destructive", description: "هذا المايك مقفل."});
+            toast({ variant: "destructive", description: "هذا המايك مقفل."});
             return;
         }
         setMicSlots(prev => {
@@ -732,48 +732,48 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     }
 
     const RoomHeader = () => {
-         const roomInfoContent = (
-             <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20 cursor-pointer">
-                <div className="text-right">
-                    <p className="font-bold text-sm">{room.name}</p>
-                    <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                            <Copy className="h-3 w-3" />
-                        </button>
-                        <span className="text-xs text-muted-foreground">{room.id}</span>
-                    </div>
-                </div>
-                <Avatar className="w-10 h-10">
-                    <AvatarImage src={room.image} alt={room.name} />
-                    <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-            </div>
-        );
-
-        return (
-             <header className="flex items-start justify-between p-3">
-                <div className="flex items-center gap-2">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                                <Power className="w-5 h-5 text-primary" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto">
-                           <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                {isOwner ? (
-                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                        {roomInfoContent}
-                    </EditRoomDialog>
-                ) : (
-                    roomInfoContent
-                )}
-            </header>
-        )
-    }
+        const roomInfoContent = (
+            <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20 cursor-pointer">
+               <Avatar className="w-10 h-10">
+                   <AvatarImage src={room.image} alt={room.name} />
+                   <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+               </Avatar>
+               <div className="text-right">
+                   <p className="font-bold text-sm">{room.name}</p>
+                   <div className="flex items-center justify-end gap-1.5">
+                       <span className="text-xs text-muted-foreground">{room.id}</span>
+                       <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                           <Copy className="h-3 w-3" />
+                       </button>
+                   </div>
+               </div>
+           </div>
+       );
+   
+       return (
+            <header className="flex items-start justify-between p-3">
+               {isOwner ? (
+                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                       {roomInfoContent}
+                   </EditRoomDialog>
+               ) : (
+                   roomInfoContent
+               )}
+               <div className="flex items-center gap-2">
+                   <Popover>
+                       <PopoverTrigger asChild>
+                           <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                               <Power className="w-5 h-5 text-primary" />
+                           </Button>
+                       </PopoverTrigger>
+                       <PopoverContent className="w-auto">
+                          <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
+                       </PopoverContent>
+                   </Popover>
+               </div>
+           </header>
+       )
+   }
 
     const LeaderboardMedal = ({ rank }: { rank: number }) => {
         if (rank === 1) return <span role="img" aria-label="Gold Medal" className="text-2xl">🥇</span>;
@@ -1169,7 +1169,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
 
 // --- Root Component & Profile Gate ---
 export default function HomePage() {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   const [nameInput, setNameInput] = useState("");
@@ -1181,7 +1181,7 @@ export default function HomePage() {
     try {
         const savedUser = localStorage.getItem("userProfile");
         if (savedUser) {
-          setUser(JSON.parse(savedUser));
+          setUserProfile(JSON.parse(savedUser));
         }
     } catch (error) {
         console.error("Failed to parse user profile from localStorage", error);
@@ -1192,7 +1192,7 @@ export default function HomePage() {
   
   const handleUserUpdate = (updatedUser: UserProfile) => {
         localStorage.setItem("userProfile", JSON.stringify(updatedUser));
-        setUser(updatedUser);
+        setUserProfile(updatedUser);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1215,7 +1215,7 @@ export default function HomePage() {
       localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
       localStorage.setItem("userId", userId); // Also save userId separately if needed elsewhere
       
-      setUser(newUserProfile);
+      setUserProfile(newUserProfile);
 
       toast({
           title: "تم حفظ الملف الشخصي",
@@ -1231,7 +1231,7 @@ export default function HomePage() {
   };
   
   const handleReset = () => {
-    setUser(null); 
+    setUserProfile(null); 
     localStorage.removeItem("userProfile");
     localStorage.removeItem("userRooms");
     setNameInput("");
@@ -1246,8 +1246,8 @@ export default function HomePage() {
       )
   }
 
-  if (user) {
-    return <MainApp user={user} onReset={handleReset} onUserUpdate={handleUserUpdate} />;
+  if (userProfile) {
+    return <MainApp user={userProfile} onReset={handleReset} onUserUpdate={handleUserUpdate} />;
   }
 
   return (
@@ -1292,5 +1292,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
