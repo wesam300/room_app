@@ -522,11 +522,11 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
             return;
         }
         if (micSlots[index].user) {
-            toast({ variant: "destructive", description: "هذا המايك مشغول."});
+            toast({ variant: "destructive", description: "هذا المايك مشغول."});
             return;
         }
         if (micSlots[index].isLocked) {
-            toast({ variant: "destructive", description: "هذا המايك مقفل."});
+            toast({ variant: "destructive", description: "هذا المايك مقفل."});
             return;
         }
         setMicSlots(prev => {
@@ -752,13 +752,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
    
        return (
             <header className="flex items-start justify-between p-3">
-               {isOwner ? (
-                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                       {roomInfoContent}
-                   </EditRoomDialog>
-               ) : (
-                   roomInfoContent
-               )}
                <div className="flex items-center gap-2">
                    <Popover>
                        <PopoverTrigger asChild>
@@ -771,6 +764,13 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                        </PopoverContent>
                    </Popover>
                </div>
+               {isOwner ? (
+                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                       {roomInfoContent}
+                   </EditRoomDialog>
+               ) : (
+                   roomInfoContent
+               )}
            </header>
        )
    }
@@ -1158,7 +1158,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
                          activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
-                    <User className="w-6 h-6" />
+                    <img src="https://i.imgur.com/Cj2G3L5.png" alt="Profile" className="w-6 h-6" />
                     <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
