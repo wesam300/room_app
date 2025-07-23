@@ -1233,7 +1233,7 @@ export default function HomePage() {
   const handleReset = () => {
     setUser(null); 
     localStorage.removeItem("userProfile");
-    localStorage.removeItem("userId"); // Also clear this if you want a full reset
+    localStorage.removeItem("userRooms");
     setNameInput("");
     setImageInput(null);
     toast({ title: "تم تسجيل الخروج" });
@@ -1292,3 +1292,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
