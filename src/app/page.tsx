@@ -468,7 +468,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
         Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
      );
-     const [isSpeaking, setIsSpeaking] = useState(false);
+     const [isSpeaking, setIsSpeaking] = useState(isSpeaking);
      const [isGameVisible, setIsGameVisible] = useState(false);
      
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
@@ -752,13 +752,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
    
        return (
             <header className="flex items-start justify-between p-3">
-               {isOwner ? (
-                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                       {roomInfoContent}
-                   </EditRoomDialog>
-               ) : (
-                   roomInfoContent
-               )}
                <div className="flex items-center gap-2">
                    <Popover>
                        <PopoverTrigger asChild>
@@ -771,6 +764,13 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                        </PopoverContent>
                    </Popover>
                </div>
+               {isOwner ? (
+                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                       {roomInfoContent}
+                   </EditRoomDialog>
+               ) : (
+                   roomInfoContent
+               )}
            </header>
        )
    }
@@ -978,6 +978,7 @@ function NewProfileScreen() {
                         right: '5%',
                         width: '27%',
                         height: '5%',
+                        backgroundColor: 'rgba(255, 0, 0, 0)',
                     }}
                     aria-label="Coins"
                 ></button>
@@ -1046,7 +1047,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
                          activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
-                    <img src="https://imgur.com/a/xnD1Epi" alt="Profile" className="w-6 h-6" />
+                    <img src="https://i.imgur.com/EWnIx50.jpg" alt="Profile" className="w-6 h-6" />
                     <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
@@ -1180,3 +1181,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
