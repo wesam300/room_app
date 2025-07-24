@@ -1040,7 +1040,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
 
             <div className="mt-8 flex justify-center gap-4">
                 {/* Silver Button */}
-                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-40 h-20 shadow-md">
+                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1054,7 +1054,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
                 </div>
 
                 {/* Coins Button */}
-                <div className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-40 h-20 shadow-md">
+                <div className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
