@@ -1107,7 +1107,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
                          activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
-                    <img src="https://i.imgur.com/EWnIx50.jpg" alt="Profile" className="w-6 h-6" />
+                    <img src="https://i.imgur.com/EWnIx50.jpg" alt="Profile" className="w-6 h-6 rounded-full" />
                     <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
