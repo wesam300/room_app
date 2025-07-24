@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -952,7 +952,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     );
 }
 
-// --- NEW PROFILE SCREEN ---
+// --- NEW PROFILE & COINS SCREEN ---
 
 function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, children: React.ReactNode }) {
     const [name, setName] = useState(user.name);
@@ -1007,13 +1007,92 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
 }
 
 
+function CoinsScreen({ onBack }: { onBack: () => void }) {
+    const coinPackages = [
+        { usd: "0.49", coins: 4250 },
+        { usd: "0.99", coins: 8500 },
+        { usd: "4.99", coins: 42500 },
+        { usd: "9.99", coins: 85000 },
+        { usd: "14.99", coins: 127500 },
+    ];
+
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">المحفظة</h2>
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ChevronLeft className="w-6 h-6" />
+                </Button>
+            </header>
+            
+            {/* Balance Card */}
+            <div className="relative bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl p-4 flex items-center justify-between shadow-lg mb-6 overflow-hidden">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/checkered-light-emboss.png')] opacity-10"></div>
+                <div className="flex items-center gap-4 z-10">
+                    <div className="w-16 h-16 bg-white/30 rounded-full flex items-center justify-center border-2 border-white/50">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#FFFFFF"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="#eab308" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+                <div className="text-right z-10">
+                    <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-purple-900"/>
+                        <p className="font-bold text-purple-900">رصيد</p>
+                    </div>
+                    <p className="text-3xl font-extrabold text-purple-900">0</p>
+                    <p className="text-xs text-purple-800/80 mt-1">يمكن استخدام الكوينز لارسال الهدايا</p>
+                </div>
+            </div>
+
+            {/* Recharge Section */}
+            <div>
+                <h3 className="font-bold text-lg mb-2 text-right">شحن</h3>
+                <div className="bg-[#2a2d36] rounded-xl p-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-gray-600/50">
+                        <div className="flex items-center gap-2">
+                             <svg width="24" height="24" viewBox="0 0 512 512" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M144.3 176.4c11.3-13.8 24.3-25.8 38.4-35.8l-23-39.7C137.9 116.2 119.5 133 103.8 152c-15.5 18.8-28.8 40-39.2 62.8l43.2 25c5.3-11.7 11.4-22.6 18.3-32.6 7-10 15-19.4 24.2-28.2l-1-1.6zM368.1 176c-11.3-13.8-24.3-25.8-38.4-35.8l23-39.7c21.8 15.6 40.2 32.4 55.9 51.3 15.5 18.8 28.8 40 39.2 62.8l-43.2 25c-5.3-11.7-11.4-22.6-18.3-32.6-7-10-15-19.4-24.2-28.3v0z"/><path d="M473.4 256c0-118-99.3-214.9-217.4-214.9S38.6 138 38.6 256c0 112.5 89.2 205.3 203.4 213.8v-272.7h-67.4v86.7h-43.1v-86.7h-62.4V213h216.1v43h-216.1v-43h62.4v-43.3h43.1v43.3h67.4V213h43.1v-43h62.4V256H285.1v170.7c111.4-15.3 188.3-110.4 188.3-213.7 0 0 .1 0 .1 0z"/></svg>
+                             <span className="font-semibold text-lg">Google Pay</span>
+                        </div>
+                        <ChevronLeft className="w-5 h-5 transform rotate-180 text-gray-400" />
+                    </div>
+                     <div className="mt-4 space-y-3">
+                        {coinPackages.map((pkg, index) => (
+                            <div key={index} className="flex justify-between items-center">
+                                <Button className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl text-sm">
+                                    USD {pkg.usd}
+                                </Button>
+                                <div className="flex items-center gap-2">
+                                     <span className="font-bold text-lg">{pkg.coins.toLocaleString('en-US')}</span>
+                                     <div className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void }) {
     const { toast } = useToast();
+    const [view, setView] = useState<'profile' | 'coins'>('profile');
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.userId);
         toast({ title: "تم نسخ ID المستخدم" });
     };
+
+    if (view === 'coins') {
+        return <CoinsScreen onBack={() => setView('profile')} />;
+    }
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
@@ -1040,7 +1119,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
 
             <div className="mt-8 flex justify-center gap-4">
                  {/* This is now the COINS button */}
-                <div className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                <button onClick={() => setView('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1051,7 +1130,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
                         <p className="text-white font-bold">الكوينزة</p>
                         <p className="text-gray-400 text-sm">0</p>
                     </div>
-                </div>
+                </button>
 
                  {/* This is now the SILVER/DIAMONDS button */}
                 <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
@@ -1269,9 +1348,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
-
-    
-
-
