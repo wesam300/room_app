@@ -1217,40 +1217,28 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
-                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-start w-full">
-                            <Copy className="w-3 h-3" />
-                            <span>ID: {user.userId}</span>
-                        </button>
-                    </div>
-                </div>
-                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                <div className="flex items-center gap-3">
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
+                            <span>ID: {user.userId}</span>
+                            <Copy className="w-3 h-3" />
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                </button>
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
                         <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
@@ -1259,6 +1247,18 @@ function ProfileScreen({
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
                 </button>
@@ -1522,43 +1522,24 @@ export default function HomePage() {
             />;
   }
 
+  // Login Screen
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl">إنشاء ملفك الشخصي</CardTitle>
-          <CardDescription className="text-center">
-            أدخل اسمك للبدء
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-6">
-          <div className="relative">
-            <Avatar className="w-32 h-32">
-              <AvatarImage src={'https://placehold.co/128x128.png'} />
-              <AvatarFallback className="text-4xl">
-                <Camera className="w-12 h-12" />
-              </AvatarFallback>
-            </Avatar>
-          </div>
-          
-          <Input
-            type="text"
-            placeholder="أدخل اسمك..."
-            defaultValue={initialName}
-            onChange={(e) => {
-                setNameInput(e.target.value);
-                localStorage.setItem("nameInput", e.target.value);
-            }}
-            className="text-center text-lg"
-          />
-
-          <Button onClick={() => handleSave(nameInput || initialName)} className="w-full" size="lg">
-            حفظ ومتابعة
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#4a2b23] text-white p-4">
+        <div className="flex flex-col items-center justify-center flex-1">
+            <img src="https://placehold.co/150x150/FFB300/000000.png?text=LOGO" alt="Jackaroo Club" className="mb-8 rounded-3xl" data-ai-hint="game logo" />
+            <Button className="w-full max-w-xs bg-white text-black hover:bg-gray-200" size="lg">
+                <svg className="w-6 h-6 mr-4" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C9.37,19.27 7,17.24 7,14.5C7,11.76 9.37,9.73 12.19,9.73C13.59,9.73 14.63,10.26 15.24,10.82L17.29,8.77C15.82,7.44 14.12,6.73 12.19,6.73C8.8,6.73 6,9.55 6,13C6,16.45 8.8,19.27 12.19,19.27C15.58,19.27 18.2,17.21 18.2,14.05C18.2,13.09 18.1,12.57 17.95,12.04C18.8,11.56 19.56,11.15 20.4,11.15L21.35,11.1Z" />
+                </svg>
+                تسجيل الدخول عبر جوجل
+            </Button>
+        </div>
+        <div className="text-center text-xs text-gray-300 pb-4">
+            <p>من خلال الاستمرار، فإنك توافق على</p>
+            <p>
+                <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
+            </p>
+        </div>
     </div>
   );
 }
-
-    
