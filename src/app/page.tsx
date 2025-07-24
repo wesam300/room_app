@@ -356,12 +356,9 @@ const FallingSparkles = ({ isAnimating }: { isAnimating: boolean }) => {
 
 function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserProfile, receiver: UserProfile, gift: GiftItem, onEnd: () => void }) {
     useEffect(() => {
-        const timer = setTimeout(() => {
-            onEnd();
-        }, 4000); // Animation lasts for 4 seconds
+        const timer = setTimeout(onEnd, 4000); // Animation lasts for 4 seconds
         return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [onEnd]);
 
     return (
         <motion.div
@@ -1192,6 +1189,30 @@ function SilverScreen({
     );
 }
 
+// Admin function to add coins
+function addCoinsToUser(userId: string, amount: number) {
+    // In a real app, this would be a server-side operation.
+    // For this prototype, we'll manipulate localStorage.
+    // This assumes a simple structure where each user has their own balance key.
+    // A more robust system would store all user data under a single object.
+    const balanceKey = `fruityFortuneBalance_${userId}`;
+    const currentBalance = parseInt(localStorage.getItem(balanceKey) || '0', 10);
+    const newBalance = currentBalance + amount;
+    localStorage.setItem(balanceKey, newBalance.toString());
+
+    // If the updated user is the current user, we need to update the state as well.
+    // This is a bit of a hack for the prototype.
+    const currentUserProfile: UserProfile | null = JSON.parse(localStorage.getItem("userProfile") || 'null');
+    if (currentUserProfile && currentUserProfile.userId === userId) {
+        // This will trigger a re-render in the main component if it's listening.
+        // We'll post a custom event that the main component can listen for.
+         window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { newBalance } }));
+    }
+    
+    return true; // Indicate success
+}
+
+
 function ProfileScreen({ 
     user, 
     onUserUpdate, 
@@ -1214,54 +1235,96 @@ function ProfileScreen({
         toast({ title: "تم نسخ ID المستخدم" });
     };
 
+    // --- Admin Panel State ---
+    const [adminUserId, setAdminUserId] = useState('');
+    const [adminAmount, setAdminAmount] = useState('');
+
+
+    const handleAdminAddCoins = () => {
+        const amountNumber = parseInt(adminAmount, 10);
+        if (!adminUserId || !amountNumber || isNaN(amountNumber)) {
+            toast({ variant: "destructive", title: "بيانات غير صالحة", description: "يرجى إدخال ID مستخدم وكمية صحيحة." });
+            return;
+        }
+        const success = addCoinsToUser(adminUserId, amountNumber);
+        if (success) {
+            toast({ title: "تم إضافة الكوينز!", description: `تمت إضافة ${amountNumber.toLocaleString()} إلى المستخدم ${adminUserId}` });
+            setAdminUserId('');
+            setAdminAmount('');
+        } else {
+             toast({ variant: "destructive", title: "فشل", description: "لم يتم العثور على المستخدم." });
+        }
+    };
+
+
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
                 <div className="flex items-center gap-3">
-                     <Avatar className="w-14 h-14">
+                    <Avatar className="w-14 h-14">
                         <AvatarImage src={user.image} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                      <div>
-                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
+                        <h2 className="text-lg font-bold text-left">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-start w-full">
                             <span>ID: {user.userId}</span>
                             <Copy className="w-3 h-3" />
                         </button>
                     </div>
                 </div>
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
                  <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
                      <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
                             <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
                 </button>
                  <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
                 </button>
+            </div>
+             {/* Admin Panel for adding coins - FOR DEMO */}
+            <div className="mt-8 p-4 border border-primary rounded-lg">
+                <h3 className="text-center font-bold text-primary mb-2">لوحة تحكم مؤقتة</h3>
+                <div className="flex flex-col gap-2">
+                    <Input 
+                        placeholder="User ID" 
+                        value={adminUserId}
+                        onChange={(e) => setAdminUserId(e.target.value)}
+                        className="text-left"
+                    />
+                    <Input 
+                        placeholder="Amount" 
+                        type="number"
+                        value={adminAmount}
+                        onChange={(e) => setAdminAmount(e.target.value)}
+                         className="text-left"
+                    />
+                    <Button onClick={handleAdminAddCoins}>إضافة كوينز</Button>
+                </div>
             </div>
         </div>
     );
@@ -1404,20 +1467,34 @@ export default function HomePage() {
     try {
         const savedUser = localStorage.getItem("userProfile");
         if (savedUser) {
-          setUserProfile(JSON.parse(savedUser));
+          const user = JSON.parse(savedUser);
+          setUserProfile(user);
+          // Load balances specific to this user
+          const savedBalance = localStorage.getItem(`fruityFortuneBalance_${user.userId}`);
+          setBalance(savedBalance ? parseInt(savedBalance, 10) : 10000000);
+          
+          const savedSilverBalance = localStorage.getItem(`silverBalance_${user.userId}`);
+          setSilverBalance(savedSilverBalance ? parseInt(savedSilverBalance, 10) : 0);
         }
-        
-        const savedBalance = localStorage.getItem('fruityFortuneBalance');
-        setBalance(savedBalance ? parseInt(savedBalance, 10) : 10000000);
-        
-        const savedSilverBalance = localStorage.getItem('silverBalance');
-        setSilverBalance(savedSilverBalance ? parseInt(savedSilverBalance, 10) : 0);
-
     } catch (error) {
         console.error("Failed to parse user profile from localStorage", error);
         localStorage.removeItem("userProfile"); // Clear corrupted data
     }
     setIsLoading(false);
+  }, []);
+
+  // Listen for custom balance update events (from the admin function)
+  useEffect(() => {
+    const handleBalanceUpdate = (event: Event) => {
+        const customEvent = event as CustomEvent;
+        setBalance(customEvent.detail.newBalance);
+    };
+
+    window.addEventListener('balanceUpdated', handleBalanceUpdate);
+
+    return () => {
+        window.removeEventListener('balanceUpdated', handleBalanceUpdate);
+    };
   }, []);
   
   const handleUserUpdate = (updatedUser: UserProfile) => {
@@ -1434,19 +1511,21 @@ export default function HomePage() {
   };
   
   const handleBalanceChange = (newBalance: number) => {
+      if (!userProfile) return;
       setBalance(newBalance);
       try {
-        localStorage.setItem('fruityFortuneBalance', newBalance.toString());
+        localStorage.setItem(`fruityFortuneBalance_${userProfile.userId}`, newBalance.toString());
       } catch (e) {
         toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ الرصيد." });
       }
   };
   
   const handleSilverBalanceChange = (updater: (prev: number) => number) => {
+      if (!userProfile) return;
       setSilverBalance(prev => {
           const newValue = updater(prev);
           try {
-            localStorage.setItem('silverBalance', newValue.toString());
+            localStorage.setItem(`silverBalance_${userProfile.userId}`, newValue.toString());
           } catch(e) {
             toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ رصيد الفضة." });
           }
@@ -1456,7 +1535,7 @@ export default function HomePage() {
 
   const handleSaveProfile = (name: string) => {
     if (name.trim()) {
-      const userId = localStorage.getItem("userId") || Math.floor(100000 + Math.random() * 900000).toString();
+      const userId = localStorage.getItem("tempUserId") || Math.floor(100000 + Math.random() * 900000).toString();
       
       const newUserProfile: UserProfile = { 
         name: name.trim(), 
@@ -1465,10 +1544,20 @@ export default function HomePage() {
       };
       
       try {
+        // Clear old global balances
+        localStorage.removeItem('fruityFortuneBalance');
+        localStorage.removeItem('silverBalance');
+        
+        // Set new user-specific data
         localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
-        localStorage.setItem("userId", userId); 
+        localStorage.setItem(`fruityFortuneBalance_${userId}`, '10000000');
+        localStorage.setItem(`silverBalance_${userId}`, '0');
+        
+        localStorage.removeItem("tempUserId"); // Clean up temp id
         
         setUserProfile(newUserProfile);
+        setBalance(10000000);
+        setSilverBalance(0);
 
         toast({
             title: "تم حفظ الملف الشخصي",
@@ -1493,11 +1582,8 @@ export default function HomePage() {
   
   const handleReset = () => {
     try {
-        localStorage.removeItem("userProfile");
-        localStorage.removeItem("globalRooms");
-        localStorage.removeItem("fruityFortuneBalance");
-        localStorage.removeItem("silverBalance");
-        localStorage.removeItem("userId");
+        // This should clear everything for a full reset
+        localStorage.clear();
     } catch(e) {
         console.error("Error clearing localStorage", e);
     }
@@ -1505,6 +1591,7 @@ export default function HomePage() {
     setNameInput("");
     setBalance(0);
     setSilverBalance(0);
+    setAuthStep('login'); // Go back to login screen
     toast({ title: "تم تسجيل الخروج وإعادة تعيين البيانات" });
   }
 
@@ -1523,8 +1610,10 @@ export default function HomePage() {
   
   const handleGoogleLogin = () => {
     // This is a simulation. In a real app, you'd use a library like Firebase Auth.
-    // For now, we'll just move to the profile creation step.
+    // For now, we'll just move to the profile creation step after "logging in".
     handleReset(); // Clear all old data before new login
+    // We create a temporary user ID to be used when profile is created
+    localStorage.setItem("tempUserId", Math.floor(100000 + Math.random() * 900000).toString());
     setAuthStep('create_profile');
   };
 
