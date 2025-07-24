@@ -83,41 +83,39 @@ function formatNumber(num: number): string {
 
 function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCreated: (room: Room) => void }) {
     const [roomName, setRoomName] = useState("");
-    const [roomImage, setRoomImage] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => setRoomImage(reader.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
+    const placeholderImage = "https://placehold.co/100x100.png";
 
     const handleCreateRoom = () => {
-        if (!roomName || !roomImage) {
-            toast({ variant: "destructive", title: "بيانات غير مكتملة", description: "يرجى إدخال اسم للغرفة واختيار صورة." });
+        if (!roomName) {
+            toast({ variant: "destructive", title: "بيانات غير مكتملة", description: "يرجى إدخال اسم للغرفة." });
             return;
         }
 
         const newRoom: Room = {
             id: Math.floor(100000 + Math.random() * 900000).toString(),
             name: roomName,
-            image: roomImage,
+            image: placeholderImage,
             ownerId: user.userId,
         };
 
-        const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
-        localStorage.setItem('globalRooms', JSON.stringify([...existingRooms, newRoom]));
+        try {
+            const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
+            localStorage.setItem('globalRooms', JSON.stringify([...existingRooms, newRoom]));
+        } catch (e) {
+             if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+                 toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن إنشاء المزيد من الغرف." });
+             } else {
+                 toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من إنشاء الغرفة." });
+             }
+             return;
+        }
         
         toast({ title: "تم إنشاء الغرفة بنجاح!" });
         onRoomCreated(newRoom);
         setIsOpen(false);
         setRoomName("");
-        setRoomImage(null);
     };
 
     return (
@@ -134,11 +132,11 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
                     <div className="flex flex-col items-center gap-4">
-                        <Avatar className="w-24 h-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            <AvatarImage src={roomImage || ''} />
+                        <Avatar className="w-24 h-24">
+                            <AvatarImage src={placeholderImage} />
                             <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
                         </Avatar>
-                        <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                        <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية.</p>
                     </div>
                      <Input
                         id="name"
@@ -158,8 +156,13 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
     const [allRooms, setAllRooms] = useState<Room[]>([]);
     
     useEffect(() => {
-        const rooms = JSON.parse(localStorage.getItem('globalRooms') || '[]') as Room[];
-        setAllRooms(rooms);
+        try {
+            const rooms = JSON.parse(localStorage.getItem('globalRooms') || '[]') as Room[];
+            setAllRooms(rooms);
+        } catch (e) {
+            console.error("Failed to parse global rooms from localStorage", e);
+            setAllRooms([]);
+        }
     }, []);
 
 
@@ -175,10 +178,14 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
             alert("لا يمكنك حذف غرفة ليست ملكك."); // Or use a proper toast/alert
             return;
         }
-
-        const updatedRooms = allRooms.filter(room => room.id !== roomIdToDelete);
-        setAllRooms(updatedRooms);
-        localStorage.setItem('globalRooms', JSON.stringify(updatedRooms));
+        
+        try {
+            const updatedRooms = allRooms.filter(room => room.id !== roomIdToDelete);
+            setAllRooms(updatedRooms);
+            localStorage.setItem('globalRooms', JSON.stringify(updatedRooms));
+        } catch (e) {
+            console.error("Failed to update global rooms in localStorage", e);
+        }
     };
 
 
@@ -255,28 +262,27 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
 
 function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomUpdated: (updatedRoom: Room) => void, children: React.ReactNode }) {
     const [roomName, setRoomName] = useState(room.name);
-    const [roomImage, setRoomImage] = useState<string>(room.image);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => setRoomImage(reader.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
+    const placeholderImage = "https://placehold.co/100x100.png";
 
     const handleSaveChanges = () => {
-        const updatedRoom = { ...room, name: roomName, image: roomImage };
+        const updatedRoom = { ...room, name: roomName, image: placeholderImage };
         
-        // Update localStorage
-        const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
-        const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
-        if (roomIndex !== -1) {
-            existingRooms[roomIndex] = updatedRoom;
-            localStorage.setItem('globalRooms', JSON.stringify(existingRooms));
+        try {
+            // Update localStorage
+            const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
+            const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
+            if (roomIndex !== -1) {
+                existingRooms[roomIndex] = updatedRoom;
+                localStorage.setItem('globalRooms', JSON.stringify(existingRooms));
+            }
+        } catch (e) {
+             if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+                 toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن تعديل الغرفة." });
+             } else {
+                 toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تعديل الغرفة." });
+             }
+             return;
         }
         
         onRoomUpdated(updatedRoom);
@@ -292,11 +298,11 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
                     <div className="flex flex-col items-center gap-4">
-                         <Avatar className="w-24 h-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            <AvatarImage src={roomImage} />
+                         <Avatar className="w-24 h-24">
+                            <AvatarImage src={room.image} />
                             <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
                         </Avatar>
-                        <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                        <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية.</p>
                     </div>
                      <Input
                         id="name"
@@ -627,7 +633,7 @@ function RoomScreen({
             const silverValue = gift.price * 0.20;
             onSilverBalanceChange(prev => prev + silverValue);
             toast({ 
-                title: recipient.userId === user.userId ? "لقد أهديت نفسك!" : "تم استلام هدية!",
+                title: "لقد أهديت نفسك!",
                 description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
             });
         }
@@ -1407,8 +1413,16 @@ export default function HomePage() {
   }, []);
   
   const handleUserUpdate = (updatedUser: UserProfile) => {
-        localStorage.setItem("userProfile", JSON.stringify(updatedUser));
-        setUserProfile(updatedUser);
+        try {
+            localStorage.setItem("userProfile", JSON.stringify(updatedUser));
+            setUserProfile(updatedUser);
+        } catch(e) {
+            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+                 toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن تحديث الملف الشخصي." });
+            } else {
+                 toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تحديث الملف الشخصي." });
+            }
+        }
   };
   
   const handleBalanceChange = (newBalance: number) => {
@@ -1440,16 +1454,25 @@ export default function HomePage() {
       const userId = localStorage.getItem("userId") || Math.floor(100000 + Math.random() * 900000).toString();
       
       const newUserProfile: UserProfile = { name: nameInput, image: imageInput, userId: userId };
-
-      localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
-      localStorage.setItem("userId", userId); // Also save userId separately if needed elsewhere
       
-      setUserProfile(newUserProfile);
+      try {
+        localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
+        localStorage.setItem("userId", userId); // Also save userId separately if needed elsewhere
+        
+        setUserProfile(newUserProfile);
 
-      toast({
-          title: "تم حفظ الملف الشخصي",
-          description: "مرحبًا بك في التطبيق!",
-      });
+        toast({
+            title: "تم حفظ الملف الشخصي",
+            description: "مرحبًا بك في التطبيق!",
+        });
+      } catch (e) {
+         if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+            toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن حفظ الملف الشخصي. حاول اختيار صورة أصغر." });
+         } else {
+            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حفظ الملف الشخصي." });
+         }
+      }
+
     } else {
        toast({
           variant: "destructive",
@@ -1461,10 +1484,14 @@ export default function HomePage() {
   
   const handleReset = () => {
     setUserProfile(null); 
-    localStorage.removeItem("userProfile");
-    localStorage.removeItem("globalRooms");
-    localStorage.removeItem("fruityFortuneBalance");
-    localStorage.removeItem("silverBalance");
+    try {
+        localStorage.removeItem("userProfile");
+        localStorage.removeItem("globalRooms");
+        localStorage.removeItem("fruityFortuneBalance");
+        localStorage.removeItem("silverBalance");
+    } catch(e) {
+        console.error("Error clearing localStorage", e);
+    }
     setNameInput("");
     setImageInput(null);
     setBalance(0);
