@@ -76,7 +76,7 @@ function formatNumber(num: number): string {
         const thousands = num / 1000;
         return thousands % 1 === 0 ? `${thousands}k` : `${thousands.toFixed(1)}k`;
     }
-    return num.toString();
+    return num.toLocaleString('en-US');
 }
 
 // --- Rooms Feature Components ---
@@ -1046,7 +1046,7 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                         <RefreshCw className="w-4 h-4 text-purple-900"/>
                         <p className="font-bold text-purple-900">رصيد</p>
                     </div>
-                    <p className="text-3xl font-extrabold text-purple-900">{formatNumber(balance)}</p>
+                    <p className="text-3xl font-extrabold text-purple-900">{balance.toLocaleString('en-US')}</p>
                     <p className="text-xs text-purple-800/80 mt-1">يمكن استخدام الكوينز لارسال الهدايا</p>
                 </div>
             </div>
@@ -1102,27 +1102,39 @@ function ProfileScreen({ user, onUserUpdate, balance }: { user: UserProfile, onU
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
-                        <h2 className="text-lg font-bold text-left">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                 <div className="flex items-center gap-3">
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
+                            <span>ID: {user.userId}</span>
+                            <Copy className="w-3 h-3" />
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
+                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">0</p>
+                    </div>
+                </div>
                  <button onClick={() => setView('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1135,18 +1147,6 @@ function ProfileScreen({ user, onUserUpdate, balance }: { user: UserProfile, onU
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
-                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">0</p>
-                    </div>
-                </div>
             </div>
         </div>
     );
