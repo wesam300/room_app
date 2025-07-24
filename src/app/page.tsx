@@ -464,7 +464,6 @@ function RoomScreen({
 
     const [isRoomMuted, setIsRoomMuted] = useState(false);
 
-
      useEffect(() => {
         if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
              const interval = setInterval(() => {
