@@ -356,7 +356,9 @@ const FallingSparkles = ({ isAnimating }: { isAnimating: boolean }) => {
     );
 };
 
-function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserProfile, receiver: UserProfile, gift: GiftItem, onEnd: () => void }) {
+function GiftAnimationOverlay({ animationData, onEnd }: { animationData: { sender: UserProfile, receiver: UserProfile, gift: GiftItem }, onEnd: () => void }) {
+    const { sender, receiver, gift } = animationData;
+
     useEffect(() => {
         const timer = setTimeout(() => {
             onEnd();
@@ -399,7 +401,7 @@ function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserP
                 +{gift.price.toLocaleString()}
             </motion.p>
         </motion.div>
-    )
+    );
 }
 
 function GiftDialog({ 
@@ -860,9 +862,7 @@ function RoomScreen({
                 <AnimatePresence>
                     {activeGiftAnimation && (
                         <GiftAnimationOverlay
-                            sender={activeGiftAnimation.sender}
-                            receiver={activeGiftAnimation.receiver}
-                            gift={activeGiftAnimation.gift}
+                            animationData={activeGiftAnimation}
                             onEnd={() => setActiveGiftAnimation(null)}
                         />
                     )}
