@@ -315,6 +315,8 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
 }
 
 const FallingSparkles = ({ isAnimating }: { isAnimating: boolean }) => {
+    if (!isAnimating) return null;
+
     const items = Array.from({ length: 30 }).map((_, i) => ({
       id: i,
       left: `${Math.random() * 100}%`,
@@ -324,8 +326,6 @@ const FallingSparkles = ({ isAnimating }: { isAnimating: boolean }) => {
       opacity: Math.random() * 0.5 + 0.5,
     }));
   
-    if (!isAnimating) return null;
-
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {items.map(item => (
@@ -350,9 +350,12 @@ const FallingSparkles = ({ isAnimating }: { isAnimating: boolean }) => {
 
 function GiftAnimationOverlay({ sender, receiver, gift, onEnd }: { sender: UserProfile, receiver: UserProfile, gift: GiftItem, onEnd: () => void }) {
     useEffect(() => {
-        const timer = setTimeout(onEnd, 4000); // Animation lasts for 4 seconds
+        const timer = setTimeout(() => {
+            onEnd();
+        }, 4000); // Animation lasts for 4 seconds
         return () => clearTimeout(timer);
-    }, [onEnd]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <motion.div
@@ -1200,24 +1203,24 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
                 <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
+                    <div>
                         <h2 className="text-lg font-bold text-right">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
                             <span>ID: {user.userId}</span>
                             <Copy className="w-3 h-3" />
                         </button>
                     </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
                 </div>
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
