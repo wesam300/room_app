@@ -616,19 +616,20 @@ function RoomScreen({
         
         onBalanceChange(balance - gift.price);
 
-        // For the recipient, add 20% of the gift's coin value as silver
-        const silverValue = gift.price * 0.20;
-        
-        // IMPORTANT: We assume the recipient is the current user for this simulation.
-        // In a real app, this logic would be handled by the backend and sent to the correct user.
+        // Add 20% of the gift's coin value as silver to the RECIPIENT
+        // For now, this is simulated for the current user if they are the recipient.
         if (recipient.userId === user.userId) {
+            const silverValue = gift.price * 0.20;
             onSilverBalanceChange(prev => prev + silverValue);
-            toast({ title: "لقد أهديت نفسك!", description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`});
+            toast({ 
+                title: recipient.userId === user.userId ? "لقد أهديت نفسك!" : "تم استلام هدية!",
+                description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
+            });
         }
         
         setActiveGiftAnimation({ sender: user, receiver: recipient, gift });
         
-        // Update room supporters state
+        // Update room supporters state (the sender is the supporter)
         setRoomSupporters(prev => {
             const existingSupporterIndex = prev.findIndex(s => s.user.userId === user.userId);
             let newSupporters = [...prev];
@@ -722,6 +723,7 @@ function RoomScreen({
                             {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
                         </Button>
                         <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
+                        <Button onClick={() => handleOpenGiftDialog(user)}>إرسال هدية</Button>
                     </>
                 ) : !slot.user ? (
                     isOwner ? (
@@ -1058,10 +1060,10 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <header className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">المحفظة</h2>
                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ChevronLeft className="w-6 h-6" />
                 </Button>
+                <h2 className="text-xl font-bold">المحفظة</h2>
             </header>
             
             {/* Balance Card */}
@@ -1075,10 +1077,10 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                         </svg>
                     </div>
                 </div>
-                <div className="text-right z-10">
+                <div className="text-left z-10">
                     <div className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 text-purple-900"/>
                         <p className="font-bold text-purple-900">رصيد</p>
+                        <RefreshCw className="w-4 h-4 text-purple-900"/>
                     </div>
                     <p className="text-3xl font-extrabold text-purple-900">{balance.toLocaleString('en-US')}</p>
                     <p className="text-xs text-purple-800/80 mt-1">يمكن استخدام الكوينز لارسال الهدايا</p>
@@ -1090,11 +1092,11 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                 <h3 className="font-bold text-lg mb-2 text-right">شحن</h3>
                 <div className="bg-[#2a2d36] rounded-xl p-4">
                     <div className="flex justify-between items-center pb-3 border-b border-gray-600/50">
-                        <div className="flex items-center gap-2">
-                             <svg width="24" height="24" viewBox="0 0 512 512" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M144.3 176.4c11.3-13.8 24.3-25.8 38.4-35.8l-23-39.7C137.9 116.2 119.5 133 103.8 152c-15.5 18.8-28.8 40-39.2 62.8l43.2 25c5.3-11.7 11.4-22.6 18.3-32.6 7-10 15-19.4 24.2-28.2l-1-1.6zM368.1 176c-11.3-13.8-24.3-25.8-38.4-35.8l23-39.7c21.8 15.6 40.2 32.4 55.9 51.3 15.5 18.8 28.8 40 39.2 62.8l-43.2 25c-5.3-11.7-11.4-22.6-18.3-32.6-7-10-15-19.4-24.2-28.3v0z"/><path d="M473.4 256c0-118-99.3-214.9-217.4-214.9S38.6 138 38.6 256c0 112.5 89.2 205.3 203.4 213.8v-272.7h-67.4v86.7h-43.1v-86.7h-62.4V213h216.1v43h-216.1v-43h62.4v-43.3h43.1v43.3h67.4V213h43.1v-43h62.4V256H285.1v170.7c111.4-15.3 188.3-110.4 188.3-213.7 0 0 .1 0 .1 0z"/></svg>
-                             <span className="font-semibold text-lg">Google Pay</span>
-                        </div>
                         <ChevronLeft className="w-5 h-5 transform rotate-180 text-gray-400" />
+                        <div className="flex items-center gap-2">
+                             <span className="font-semibold text-lg">Google Pay</span>
+                             <svg width="24" height="24" viewBox="0 0 512 512" fill="#fff" xmlns="http://www.w3.org/2000/svg"><path d="M144.3 176.4c11.3-13.8 24.3-25.8 38.4-35.8l-23-39.7C137.9 116.2 119.5 133 103.8 152c-15.5 18.8-28.8 40-39.2 62.8l43.2 25c5.3-11.7 11.4-22.6 18.3-32.6 7-10 15-19.4 24.2-28.2l-1-1.6zM368.1 176c-11.3-13.8-24.3-25.8-38.4-35.8l23-39.7c21.8 15.6 40.2 32.4 55.9 51.3 15.5 18.8 28.8 40 39.2 62.8l-43.2 25c-5.3-11.7-11.4-22.6-18.3-32.6-7-10-15-19.4-24.2-28.3v0z"/><path d="M473.4 256c0-118-99.3-214.9-217.4-214.9S38.6 138 38.6 256c0 112.5 89.2 205.3 203.4 213.8v-272.7h-67.4v86.7h-43.1v-86.7h-62.4V213h216.1v43h-216.1v-43h62.4v-43.3h43.1v43.3h67.4V213h43.1v-43h62.4V256H285.1v170.7c111.4-15.3 188.3-110.4 188.3-213.7 0 0 .1 0 .1 0z"/></svg>
+                        </div>
                     </div>
                      <div className="mt-4 space-y-3">
                         {coinPackages.map((pkg, index) => (
@@ -1143,10 +1145,10 @@ function SilverScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <header className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">الفضة</h2>
-                <Button variant="ghost" size="icon" onClick={onBack}>
+                 <Button variant="ghost" size="icon" onClick={onBack}>
                     <ChevronLeft className="w-6 h-6" />
                 </Button>
+                <h2 className="text-xl font-bold">الفضة</h2>
             </header>
             
             <div className="relative bg-gradient-to-br from-gray-500 to-gray-700 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg mb-6 overflow-hidden h-56">
@@ -1195,49 +1197,49 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
-                        <h2 className="text-lg font-bold text-left">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-start w-full">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                <div className="flex items-center gap-3">
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.userId}</span>
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
                             <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
                 </button>
                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
             </div>
