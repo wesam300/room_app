@@ -1235,28 +1235,6 @@ function ProfileScreen({
         toast({ title: "تم نسخ ID المستخدم" });
     };
 
-    // --- Admin Panel State ---
-    const [adminUserId, setAdminUserId] = useState('');
-    const [adminAmount, setAdminAmount] = useState('');
-
-
-    const handleAdminAddCoins = () => {
-        const amountNumber = parseInt(adminAmount, 10);
-        if (!adminUserId || !amountNumber || isNaN(amountNumber)) {
-            toast({ variant: "destructive", title: "بيانات غير صالحة", description: "يرجى إدخال ID مستخدم وكمية صحيحة." });
-            return;
-        }
-        const success = addCoinsToUser(adminUserId, amountNumber);
-        if (success) {
-            toast({ title: "تم إضافة الكوينز!", description: `تمت إضافة ${amountNumber.toLocaleString()} إلى المستخدم ${adminUserId}` });
-            setAdminUserId('');
-            setAdminAmount('');
-        } else {
-             toast({ variant: "destructive", title: "فشل", description: "لم يتم العثور على المستخدم." });
-        }
-    };
-
-
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
@@ -1305,26 +1283,6 @@ function ProfileScreen({
                         </svg>
                     </div>
                 </button>
-            </div>
-             {/* Admin Panel for adding coins - FOR DEMO */}
-            <div className="mt-8 p-4 border border-primary rounded-lg">
-                <h3 className="text-center font-bold text-primary mb-2">لوحة تحكم مؤقتة</h3>
-                <div className="flex flex-col gap-2">
-                    <Input 
-                        placeholder="User ID" 
-                        value={adminUserId}
-                        onChange={(e) => setAdminUserId(e.target.value)}
-                        className="text-left"
-                    />
-                    <Input 
-                        placeholder="Amount" 
-                        type="number"
-                        value={adminAmount}
-                        onChange={(e) => setAdminAmount(e.target.value)}
-                         className="text-left"
-                    />
-                    <Button onClick={handleAdminAddCoins}>إضافة كوينز</Button>
-                </div>
             </div>
         </div>
     );
