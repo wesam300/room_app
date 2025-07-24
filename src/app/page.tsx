@@ -468,7 +468,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
         Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
      );
-     const [isSpeaking, setIsSpeaking] = useState(isSpeaking);
+     const [isSpeaking, setIsSpeaking] = useState(false);
      const [isGameVisible, setIsGameVisible] = useState(false);
      
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
@@ -751,19 +751,17 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
        );
    
        return (
-            <header className="flex items-start justify-between p-3">
-               <div className="flex items-center gap-2">
-                   <Popover>
-                       <PopoverTrigger asChild>
-                           <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                               <Power className="w-5 h-5 text-primary" />
-                           </Button>
-                       </PopoverTrigger>
-                       <PopoverContent className="w-auto">
-                          <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
-                       </PopoverContent>
-                   </Popover>
-               </div>
+            <header className="flex items-center justify-between p-3">
+                 <Popover>
+                     <PopoverTrigger asChild>
+                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                             <Power className="w-5 h-5 text-primary" />
+                         </Button>
+                     </PopoverTrigger>
+                     <PopoverContent className="w-auto">
+                        <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
+                     </PopoverContent>
+                 </Popover>
                {isOwner ? (
                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
                        {roomInfoContent}
@@ -1009,16 +1007,8 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
 }
 
 
-function ProfileScreen({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void }) {
+function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void }) {
     const { toast } = useToast();
-    const [balance, setBalance] = useState(0);
-
-    useEffect(() => {
-        const savedBalance = localStorage.getItem('fruityFortuneBalance');
-        if (savedBalance) {
-            setBalance(parseInt(savedBalance, 10));
-        }
-    }, []);
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.userId);
@@ -1026,41 +1016,29 @@ function ProfileScreen({ user, onReset, onUserUpdate }: { user: UserProfile, onR
     };
 
     return (
-        <div className="p-4 flex flex-col items-center h-full text-foreground">
-             <div className="w-full flex justify-end">
-                <Button variant="ghost" size="icon" onClick={onReset}>
-                    <LogOut className="w-6 h-6 text-destructive" />
-                </Button>
-             </div>
-            <div className="flex flex-col items-center gap-4 mt-8">
-                <div className="relative">
-                    <Avatar className="w-24 h-24 border-4 border-primary">
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+             <div className="w-full flex items-center justify-between">
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
+
+                <div className="flex items-center gap-3 text-right">
+                     <div>
+                        <h2 className="text-lg font-bold">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <span>ID: {user.userId}</span>
+                            <Copy className="w-3 h-3" />
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
                         <AvatarImage src={user.image} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                     <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                        <Button variant="outline" size="icon" className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 bg-background">
-                            <Edit className="w-4 h-4" />
-                        </Button>
-                    </EditProfileDialog>
                 </div>
-                <h2 className="text-2xl font-bold">{user.name}</h2>
-                <div className="flex items-center gap-2 bg-black/20 p-1 px-3 rounded-full">
-                    <span className="text-sm text-muted-foreground">ID: {user.userId}</span>
-                    <button onClick={handleCopyId}><Copy className="w-4 h-4" /></button>
-                </div>
-            </div>
-            <Card className="w-full mt-8 p-4">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                         <Trophy className="w-6 h-6 text-yellow-400"/>
-                         <span className="text-lg font-bold">الكوينز</span>
-                    </div>
-                    <span className="text-lg font-bold">{balance.toLocaleString()}</span>
-                </div>
-            </Card>
-
-            {/* Other profile sections can be added here */}
+             </div>
+             {/* The rest of the profile page can be built here */}
         </div>
     );
 }
@@ -1085,6 +1063,11 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
         setCurrentRoom(updatedRoom);
     };
 
+    const handleUserUpdateAndReset = (updatedUser: UserProfile) => {
+        onUserUpdate(updatedUser);
+        // Optionally, you might want to switch tab or view after update
+    };
+
     if (view === 'in_room' && currentRoom) {
         return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} />;
     }
@@ -1093,7 +1076,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
                  {activeTab === 'rooms' && <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated} />}
-                 {activeTab === 'profile' && <ProfileScreen user={user} onReset={onReset} onUserUpdate={onUserUpdate} />}
+                 {activeTab === 'profile' && <ProfileScreen user={user} onUserUpdate={handleUserUpdateAndReset} />}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
@@ -1258,7 +1241,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
-
-    
