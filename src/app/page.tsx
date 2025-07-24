@@ -917,7 +917,7 @@ function RoomScreen({
                 <AnimatePresence>
                     {isGameVisible && (
                         <motion.div 
-                            className="absolute inset-x-0 bottom-0 top-[15%] bg-background z-20 rounded-t-2xl overflow-hidden"
+                            className="absolute inset-x-0 bottom-0 top-[10%] bg-background z-20 rounded-t-2xl overflow-hidden"
                             initial={{ y: "100%" }}
                             animate={{ y: 0 }}
                             exit={{ y: "100%" }}
@@ -1199,49 +1199,49 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
                 <div className="flex items-center gap-3">
-                     <div>
-                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
                     <Avatar className="w-14 h-14">
                         <AvatarImage src={user.image} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-start w-full">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.userId}</span>
+                        </button>
+                    </div>
                 </div>
+                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
-                </button>
-                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
                             <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                </button>
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                     </div>
                 </button>
             </div>
@@ -1427,40 +1427,11 @@ export default function HomePage() {
       });
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageResult = reader.result as string;
-        try {
-            const newUserProfile: UserProfile = { 
-                name: nameInput || "مستخدم جديد", 
-                image: imageResult, 
-                userId: userProfile?.userId || Math.floor(100000 + Math.random() * 900000).toString()
-            };
-            localStorage.setItem("tempUserProfile", JSON.stringify(newUserProfile)); // Try to save to check size
-            
-            // If it succeeds, set it
-            handleSave(nameInput, imageResult);
-            localStorage.removeItem("tempUserProfile");
-        } catch (e) {
-            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                toast({ variant: "destructive", title: "خطأ في التخزين", description: "حجم الصورة كبير جدًا. الرجاء اختيار صورة أصغر." });
-            } else {
-                toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تحميل الصورة." });
-            }
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSave = (name: string, image: string) => {
-    if (name && image) {
+  const handleSave = (name: string) => {
+    if (name) {
       const userId = localStorage.getItem("userId") || Math.floor(100000 + Math.random() * 900000).toString();
       
-      const newUserProfile: UserProfile = { name: name, image: image, userId: userId };
+      const newUserProfile: UserProfile = { name: name, image: 'https://placehold.co/128x128.png', userId: userId };
       
       try {
         localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
@@ -1484,7 +1455,7 @@ export default function HomePage() {
        toast({
           variant: "destructive",
           title: "بيانات غير مكتملة",
-          description: "يرجى إدخال الاسم واختيار صورة.",
+          description: "يرجى إدخال الاسم.",
       });
     }
   };
@@ -1506,14 +1477,11 @@ export default function HomePage() {
   }
 
   const [initialName, setInitialName] = useState("");
-  const [initialImage, setInitialImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userProfile) {
         const savedName = localStorage.getItem("nameInput");
-        const savedImage = localStorage.getItem("imageInput");
         if (savedName) setInitialName(savedName);
-        if (savedImage) setInitialImage(savedImage);
     }
   }, [userProfile]);
   
@@ -1542,24 +1510,17 @@ export default function HomePage() {
         <CardHeader>
           <CardTitle className="text-center text-2xl">إنشاء ملفك الشخصي</CardTitle>
           <CardDescription className="text-center">
-            أدخل اسمك واختر صورة للبدء
+            أدخل اسمك للبدء
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6">
           <div className="relative">
-            <Avatar className="w-32 h-32 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <AvatarImage src={initialImage || 'https://placehold.co/128x128.png'} />
+            <Avatar className="w-32 h-32">
+              <AvatarImage src={'https://placehold.co/128x128.png'} />
               <AvatarFallback className="text-4xl">
                 <Camera className="w-12 h-12" />
               </AvatarFallback>
             </Avatar>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageChange}
-              className="hidden"
-              accept="image/*"
-            />
           </div>
           
           <Input
@@ -1573,7 +1534,7 @@ export default function HomePage() {
             className="text-center text-lg"
           />
 
-          <Button onClick={() => handleSave(nameInput || initialName, initialImage || 'https://placehold.co/128x128.png')} className="w-full" size="lg">
+          <Button onClick={() => handleSave(nameInput || initialName)} className="w-full" size="lg">
             حفظ ومتابعة
           </Button>
         </CardContent>
