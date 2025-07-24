@@ -752,6 +752,13 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
    
        return (
             <header className="flex items-start justify-between p-3">
+               {isOwner ? (
+                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                       {roomInfoContent}
+                   </EditRoomDialog>
+               ) : (
+                   roomInfoContent
+               )}
                <div className="flex items-center gap-2">
                    <Popover>
                        <PopoverTrigger asChild>
@@ -764,13 +771,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                        </PopoverContent>
                    </Popover>
                </div>
-               {isOwner ? (
-                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                       {roomInfoContent}
-                   </EditRoomDialog>
-               ) : (
-                   roomInfoContent
-               )}
            </header>
        )
    }
@@ -957,9 +957,31 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 // --- NEW PROFILE SCREEN ---
 
 function NewProfileScreen() {
+    const { toast } = useToast();
+
+    const handleCoinsClick = () => {
+        toast({
+            title: "قريباً",
+            description: "هذه الميزة قيد التطوير.",
+        });
+    };
+
     return (
         <div className="flex items-center justify-center h-full bg-background">
-            <img src="https://i.imgur.com/hj1YrcL.jpg" alt="Profile Page" className="max-w-full max-h-full object-contain" />
+            <div className="relative w-full max-w-sm">
+                <img src="https://i.imgur.com/hj1YrcL.jpg" alt="Profile Page" className="w-full h-auto" />
+                <button
+                    onClick={handleCoinsClick}
+                    className="absolute cursor-pointer"
+                    style={{
+                        top: '11.5%',
+                        right: '5%',
+                        width: '27%',
+                        height: '5%',
+                    }}
+                    aria-label="Coins"
+                ></button>
+            </div>
         </div>
     );
 }
@@ -1024,7 +1046,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
                          activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
-                    <img src="https://i.imgur.com/Cj2G3L5.png" alt="Profile" className="w-6 h-6" />
+                    <img src="https://imgur.com/a/xnD1Epi" alt="Profile" className="w-6 h-6" />
                     <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
