@@ -751,25 +751,25 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
        );
    
        return (
-            <header className="flex items-center justify-between p-3">
-                 <Popover>
-                     <PopoverTrigger asChild>
-                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                             <Power className="w-5 h-5 text-primary" />
-                         </Button>
-                     </PopoverTrigger>
-                     <PopoverContent className="w-auto">
-                        <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
-                     </PopoverContent>
-                 </Popover>
-               {isOwner ? (
-                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                       {roomInfoContent}
-                   </EditRoomDialog>
-               ) : (
-                   roomInfoContent
-               )}
-           </header>
+           <header className="flex items-center justify-between p-3">
+               <Popover>
+                   <PopoverTrigger asChild>
+                       <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                           <Power className="w-5 h-5 text-primary" />
+                       </Button>
+                   </PopoverTrigger>
+                   <PopoverContent className="w-auto">
+                      <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
+                   </PopoverContent>
+               </Popover>
+             {isOwner ? (
+                 <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                     {roomInfoContent}
+                 </EditRoomDialog>
+             ) : (
+                 roomInfoContent
+             )}
+         </header>
        )
    }
 
