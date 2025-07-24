@@ -322,88 +322,6 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
     );
 }
 
-const FallingSparkles = ({ isAnimating }: { isAnimating: boolean }) => {
-    if (!isAnimating) return null;
-
-    const items = Array.from({ length: 30 }).map((_, i) => ({
-      id: i,
-      left: `${Math.random() * 100}%`,
-      animationDuration: `${Math.random() * 2 + 3}s`,
-      animationDelay: `${Math.random() * 3}s`,
-      fontSize: `${Math.random() * 1 + 0.5}rem`,
-      opacity: Math.random() * 0.5 + 0.5,
-    }));
-  
-    return (
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {items.map(item => (
-          <motion.div
-            key={item.id}
-            className="absolute -top-10 text-yellow-300"
-            style={{ left: item.left, fontSize: item.fontSize, opacity: item.opacity }}
-            animate={{ top: '110%', rotate: 360 }}
-            transition={{
-              duration: parseFloat(item.animationDuration),
-              delay: parseFloat(item.animationDelay),
-              repeat: Infinity,
-              ease: 'linear',
-            }}
-          >
-            ✨
-          </motion.div>
-        ))}
-      </div>
-    );
-};
-
-function GiftAnimationOverlay({ animationData, onEnd }: { animationData: { sender: UserProfile, receiver: UserProfile, gift: GiftItem }, onEnd: () => void }) {
-    const { sender, receiver, gift } = animationData;
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            onEnd();
-        }, 4000); // Animation lasts for 4 seconds
-        return () => clearTimeout(timer);
-    }, [onEnd]);
-
-    return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-4"
-        >
-            <FallingSparkles isAnimating={true} />
-            <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', damping: 10, stiffness: 100, delay: 0.2 }}
-                className="text-center text-white"
-            >
-                <p className="text-xl font-bold">{sender.name} أهدى {receiver.name}</p>
-                <h2 className="text-4xl font-extrabold text-yellow-300 my-4">{gift.name}</h2>
-            </motion.div>
-            <motion.div
-                 initial={{ y: "150%", opacity: 0, scale: 0.5 }}
-                 animate={{ y: 0, opacity: 1, scale: 1 }}
-                 transition={{ type: 'spring', damping: 15, stiffness: 80, delay: 0.5 }}
-                 className="my-8"
-            >
-                <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-48 h-48 md:w-64 md:h-64 object-contain drop-shadow-[0_0_25px_rgba(255,215,0,0.7)]" />
-            </motion.div>
-             <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="text-2xl font-bold text-yellow-400"
-            >
-                +{gift.price.toLocaleString()}
-            </motion.p>
-        </motion.div>
-    );
-}
-
 function GiftDialog({ 
     isOpen, 
     onOpenChange, 
@@ -540,7 +458,6 @@ function RoomScreen({
 
     const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
-    const [activeGiftAnimation, setActiveGiftAnimation] = useState<{ sender: UserProfile, receiver: UserProfile, gift: GiftItem } | null>(null);
 
     const [roomSupporters, setRoomSupporters] = useState<Supporter[]>([]);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
@@ -658,8 +575,6 @@ function RoomScreen({
                 description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
             });
         }
-        
-        setActiveGiftAnimation({ sender: user, receiver: recipient, gift });
         
         // Update room supporters state (the sender is the supporter)
         setRoomSupporters(prev => {
@@ -859,16 +774,6 @@ function RoomScreen({
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              <div className="relative z-10 flex flex-col h-full">
-                <AnimatePresence>
-                    {activeGiftAnimation && (
-                        <GiftAnimationOverlay
-                            animationData={activeGiftAnimation}
-                            onEnd={() => setActiveGiftAnimation(null)}
-                        />
-                    )}
-                </AnimatePresence>
-                <FallingSparkles isAnimating={!!activeGiftAnimation} />
-                
                 <GiftDialog 
                     isOpen={isGiftDialogOpen}
                     onOpenChange={setIsGiftDialogOpen}
@@ -1743,5 +1648,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
