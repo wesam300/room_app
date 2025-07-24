@@ -917,7 +917,7 @@ function RoomScreen({
                 <AnimatePresence>
                     {isGameVisible && (
                         <motion.div 
-                            className="absolute inset-x-0 bottom-0 top-[20%] bg-background z-20 rounded-t-2xl overflow-hidden"
+                            className="absolute inset-x-0 bottom-0 top-[15%] bg-background z-20 rounded-t-2xl overflow-hidden"
                             initial={{ y: "100%" }}
                             animate={{ y: 0 }}
                             exit={{ y: "100%" }}
