@@ -917,7 +917,7 @@ function RoomScreen({
                 <AnimatePresence>
                     {isGameVisible && (
                         <motion.div 
-                            className="absolute inset-x-0 bottom-0 top-1/4 bg-background z-20 rounded-t-2xl overflow-hidden"
+                            className="absolute inset-x-0 bottom-0 top-1/3 bg-background z-20 rounded-t-2xl overflow-hidden"
                             initial={{ y: "100%" }}
                             animate={{ y: 0 }}
                             exit={{ y: "100%" }}
@@ -1009,22 +1009,12 @@ function RoomScreen({
 
 function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, children: React.ReactNode }) {
     const [name, setName] = useState(user.name);
-    const [image, setImage] = useState<string>(user.image);
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onloadend = () => setImage(reader.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
+    const placeholderImage = "https://placehold.co/100x100.png";
 
     const handleSave = () => {
-        const updatedUser = { ...user, name, image };
+        const updatedUser = { ...user, name, image: placeholderImage };
         onUserUpdate(updatedUser);
         toast({ title: "تم تحديث الملف الشخصي!" });
         setIsOpen(false);
@@ -1039,11 +1029,11 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
                     <div className="flex flex-col items-center gap-4">
-                        <Avatar className="w-24 h-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            <AvatarImage src={image} />
+                        <Avatar className="w-24 h-24">
+                            <AvatarImage src={user.image} />
                             <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
                         </Avatar>
-                        <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                         <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية.</p>
                     </div>
                     <Input
                         id="name"
@@ -1388,7 +1378,6 @@ export default function HomePage() {
   const [silverBalance, setSilverBalance] = useState(0);
   
   const [nameInput, setNameInput] = useState("");
-  const [imageInput, setImageInput] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -1443,21 +1432,39 @@ export default function HomePage() {
       const file = e.target.files[0];
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageInput(reader.result as string);
+        const imageResult = reader.result as string;
+        try {
+            const newUserProfile: UserProfile = { 
+                name: nameInput || "مستخدم جديد", 
+                image: imageResult, 
+                userId: userProfile?.userId || Math.floor(100000 + Math.random() * 900000).toString()
+            };
+            localStorage.setItem("tempUserProfile", JSON.stringify(newUserProfile)); // Try to save to check size
+            
+            // If it succeeds, set it
+            handleSave(nameInput, imageResult);
+            localStorage.removeItem("tempUserProfile");
+        } catch (e) {
+            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+                toast({ variant: "destructive", title: "خطأ في التخزين", description: "حجم الصورة كبير جدًا. الرجاء اختيار صورة أصغر." });
+            } else {
+                toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تحميل الصورة." });
+            }
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = () => {
-    if (nameInput && imageInput) {
+  const handleSave = (name: string, image: string) => {
+    if (name && image) {
       const userId = localStorage.getItem("userId") || Math.floor(100000 + Math.random() * 900000).toString();
       
-      const newUserProfile: UserProfile = { name: nameInput, image: imageInput, userId: userId };
+      const newUserProfile: UserProfile = { name: name, image: image, userId: userId };
       
       try {
         localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
-        localStorage.setItem("userId", userId); // Also save userId separately if needed elsewhere
+        localStorage.setItem("userId", userId); 
         
         setUserProfile(newUserProfile);
 
@@ -1467,7 +1474,7 @@ export default function HomePage() {
         });
       } catch (e) {
          if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-            toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن حفظ الملف الشخصي. حاول اختيار صورة أصغر." });
+            toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن حفظ الملف الشخصي." });
          } else {
             toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حفظ الملف الشخصي." });
          }
@@ -1493,11 +1500,22 @@ export default function HomePage() {
         console.error("Error clearing localStorage", e);
     }
     setNameInput("");
-    setImageInput(null);
     setBalance(0);
     setSilverBalance(0);
     toast({ title: "تم تسجيل الخروج" });
   }
+
+  const [initialName, setInitialName] = useState("");
+  const [initialImage, setInitialImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userProfile) {
+        const savedName = localStorage.getItem("nameInput");
+        const savedImage = localStorage.getItem("imageInput");
+        if (savedName) setInitialName(savedName);
+        if (savedImage) setInitialImage(savedImage);
+    }
+  }, [userProfile]);
   
   if (isLoading) {
       return (
@@ -1530,7 +1548,7 @@ export default function HomePage() {
         <CardContent className="flex flex-col items-center gap-6">
           <div className="relative">
             <Avatar className="w-32 h-32 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <AvatarImage src={imageInput || ''} />
+              <AvatarImage src={initialImage || 'https://placehold.co/128x128.png'} />
               <AvatarFallback className="text-4xl">
                 <Camera className="w-12 h-12" />
               </AvatarFallback>
@@ -1547,12 +1565,15 @@ export default function HomePage() {
           <Input
             type="text"
             placeholder="أدخل اسمك..."
-            value={nameInput || ''}
-            onChange={(e) => setNameInput(e.target.value)}
+            defaultValue={initialName}
+            onChange={(e) => {
+                setNameInput(e.target.value);
+                localStorage.setItem("nameInput", e.target.value);
+            }}
             className="text-center text-lg"
           />
 
-          <Button onClick={handleSave} className="w-full" size="lg">
+          <Button onClick={() => handleSave(nameInput || initialName, initialImage || 'https://placehold.co/128x128.png')} className="w-full" size="lg">
             حفظ ومتابعة
           </Button>
         </CardContent>
@@ -1560,5 +1581,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
