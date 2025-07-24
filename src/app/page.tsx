@@ -63,6 +63,8 @@ const BOT_USER: UserProfile = {
     userId: "bot-001"
 };
 
+const ADMIN_USER_ID = '327521';
+
 const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
 ];
@@ -1189,6 +1191,99 @@ function SilverScreen({
     );
 }
 
+function AdminPanel() {
+    const { toast } = useToast();
+    const [addCoinsUserId, setAddCoinsUserId] = useState("");
+    const [addCoinsAmount, setAddCoinsAmount] = useState("");
+    const [banUserId, setBanUserId] = useState("");
+
+    const handleAddCoins = () => {
+        const amount = parseInt(addCoinsAmount, 10);
+        if (!addCoinsUserId || !addCoinsAmount || isNaN(amount)) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
+            return;
+        }
+
+        try {
+            const balanceKey = `fruityFortuneBalance_${addCoinsUserId}`;
+            const currentBalance = parseInt(localStorage.getItem(balanceKey) || '0', 10);
+            const newBalance = currentBalance + amount;
+            localStorage.setItem(balanceKey, newBalance.toString());
+            toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${addCoinsUserId} إلى ${newBalance.toLocaleString()}.` });
+            setAddCoinsUserId("");
+            setAddCoinsAmount("");
+            // This is a way to notify other tabs, but won't update the current user's screen if they are the one receiving coins.
+            // A more robust solution needs a state management library or backend.
+            window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { userId: addCoinsUserId, newBalance } }));
+        } catch (e) {
+            toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من تحديث الرصيد." });
+        }
+    };
+
+    const handleBanUser = () => {
+        if (!banUserId) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID المستخدم." });
+            return;
+        }
+        try {
+            const bannedUsersKey = 'bannedUsers';
+            const bannedUsers: string[] = JSON.parse(localStorage.getItem(bannedUsersKey) || '[]');
+            if (!bannedUsers.includes(banUserId)) {
+                bannedUsers.push(banUserId);
+                localStorage.setItem(bannedUsersKey, JSON.stringify(bannedUsers));
+                toast({ title: "تم حظر المستخدم!", description: `المستخدم ${banUserId} لن يتمكن من الدخول للتطبيق.` });
+            } else {
+                toast({ title: "مستخدم محظور بالفعل", description: `المستخدم ${banUserId} محظور بالفعل.` });
+            }
+            setBanUserId("");
+        } catch (e) {
+            toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من حظر المستخدم." });
+        }
+    };
+
+    return (
+        <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
+            <h3 className="text-lg font-bold text-center text-primary mb-4">لوحة تحكم المشرف</h3>
+            <div className="space-y-6">
+                {/* Add Coins Section */}
+                <div className="space-y-2">
+                    <h4 className="font-semibold text-right">إضافة كوينز لمستخدم</h4>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                            placeholder="User ID"
+                            value={addCoinsUserId}
+                            onChange={(e) => setAddCoinsUserId(e.target.value)}
+                            className="text-left"
+                        />
+                        <Input
+                            type="number"
+                            placeholder="المبلغ"
+                            value={addCoinsAmount}
+                            onChange={(e) => setAddCoinsAmount(e.target.value)}
+                             className="text-left"
+                        />
+                        <Button onClick={handleAddCoins} className="w-full sm:w-auto">إضافة</Button>
+                    </div>
+                </div>
+                {/* Ban User Section */}
+                <div className="space-y-2">
+                    <h4 className="font-semibold text-right">حظر مستخدم</h4>
+                     <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                            placeholder="User ID"
+                            value={banUserId}
+                            onChange={(e) => setBanUserId(e.target.value)}
+                            className="text-left flex-1"
+                        />
+                        <Button onClick={handleBanUser} variant="destructive" className="w-full sm:w-auto">حظر</Button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
 function ProfileScreen({ 
     user, 
     onUserUpdate, 
@@ -1203,6 +1298,7 @@ function ProfileScreen({
     onNavigate: (view: 'coins' | 'silver') => void
 }) {
     const { toast } = useToast();
+    const isAdmin = user.userId === ADMIN_USER_ID;
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.userId);
@@ -1212,52 +1308,53 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
-                        <h2 className="text-lg font-bold text-left">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-start w-full">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                <div className="flex items-center gap-3">
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.userId}</span>
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
-                </button>
                  <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
+                </button>
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                     </div>
                 </button>
             </div>
+            {isAdmin && <AdminPanel />}
         </div>
     );
 }
@@ -1399,9 +1496,19 @@ export default function HomePage() {
         const savedUser = localStorage.getItem("userProfile");
         if (savedUser) {
           const user = JSON.parse(savedUser);
+          
+          // Check if user is banned
+          const bannedUsers: string[] = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
+          if (bannedUsers.includes(user.userId)) {
+              localStorage.removeItem("userProfile"); // Log them out
+              toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
+              setIsLoading(false);
+              return;
+          }
+
           setUserProfile(user);
           // Load balances specific to this user
-          const initialBalance = user.userId === '327521' ? 1000000000 : 10000000;
+          const initialBalance = user.userId === ADMIN_USER_ID ? 1000000000 : 10000000;
           const savedBalance = localStorage.getItem(`fruityFortuneBalance_${user.userId}`);
           setBalance(savedBalance ? parseInt(savedBalance, 10) : initialBalance);
           
@@ -1419,7 +1526,9 @@ export default function HomePage() {
   useEffect(() => {
     const handleBalanceUpdate = (event: Event) => {
         const customEvent = event as CustomEvent;
-        setBalance(customEvent.detail.newBalance);
+        if (userProfile && customEvent.detail.userId === userProfile.userId) {
+            setBalance(customEvent.detail.newBalance);
+        }
     };
 
     window.addEventListener('balanceUpdated', handleBalanceUpdate);
@@ -1427,7 +1536,7 @@ export default function HomePage() {
     return () => {
         window.removeEventListener('balanceUpdated', handleBalanceUpdate);
     };
-  }, []);
+  }, [userProfile]);
   
   const handleUserUpdate = (updatedUser: UserProfile) => {
         try {
@@ -1481,7 +1590,7 @@ export default function HomePage() {
         localStorage.removeItem('silverBalance');
         
         // Set new user-specific data
-        const initialBalance = userId === '327521' ? 1000000000 : 10000000;
+        const initialBalance = userId === ADMIN_USER_ID ? 1000000000 : 10000000;
         localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
         localStorage.setItem(`fruityFortuneBalance_${userId}`, initialBalance.toString());
         localStorage.setItem(`silverBalance_${userId}`, '0');
@@ -1546,7 +1655,17 @@ export default function HomePage() {
     // For now, we'll just move to the profile creation step after "logging in".
     handleReset(); // Clear all old data before new login
     // We create a temporary user ID to be used when profile is created
-    localStorage.setItem("tempUserId", Math.floor(100000 + Math.random() * 900000).toString());
+    const tempId = Math.floor(100000 + Math.random() * 900000).toString();
+    localStorage.setItem("tempUserId", tempId);
+
+     // Check if user is banned before allowing profile creation
+    const bannedUsers: string[] = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
+    if (bannedUsers.includes(tempId)) {
+        toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
+        localStorage.removeItem("tempUserId");
+        return;
+    }
+
     setAuthStep('create_profile');
   };
 
@@ -1622,4 +1741,3 @@ export default function HomePage() {
     </div>
   );
 }
-
