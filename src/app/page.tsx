@@ -568,10 +568,6 @@ function RoomScreen({
             if (recipient.userId === user.userId) { // This check is flawed if sender != current user, but for now it's fine.
                 const silverValue = totalCost * 0.20;
                 onSilverBalanceChange(prev => prev + silverValue);
-                toast({ 
-                    title: `لقد أهديت نفسك ${quantity}x ${gift.name}!`,
-                    description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
-                });
             }
             
             // Update room supporters state (the sender is the supporter)
@@ -1238,19 +1234,7 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                </button>
-                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1260,6 +1244,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
             </div>
@@ -1316,6 +1312,10 @@ function MainApp({
         onSilverBalanceChange(() => 0); // Reset silver balance
     };
 
+    const handleGameClick = () => {
+        toast({ title: "اللعبة موجودة داخل الغرف" });
+    }
+
     if (view === 'in_room' && currentRoom) {
         return <RoomScreen 
             room={currentRoom} 
@@ -1363,9 +1363,7 @@ function MainApp({
                     <span className="text-xs font-medium">الغرف</span>
                 </button>
                  <button 
-                    onClick={() => {
-                        toast({ title: "اللعبة موجودة داخل الغرف" });
-                    }}
+                    onClick={handleGameClick}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground cursor-pointer",
                         "hover:text-foreground"
