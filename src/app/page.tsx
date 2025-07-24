@@ -469,7 +469,23 @@ function GiftDialog({
     );
 }
 
-function RoomScreen({ room, user, onExit, onRoomUpdated, balance, onBalanceChange }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void, balance: number, onBalanceChange: (newBalance: number) => void }) {
+function RoomScreen({ 
+    room, 
+    user, 
+    onExit, 
+    onRoomUpdated, 
+    balance, 
+    onBalanceChange,
+    onSilverBalanceChange
+}: { 
+    room: Room, 
+    user: UserProfile, 
+    onExit: () => void, 
+    onRoomUpdated: (updatedRoom: Room) => void, 
+    balance: number, 
+    onBalanceChange: (newBalance: number) => void,
+    onSilverBalanceChange: (updater: (prev: number) => number) => void
+}) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
         Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
@@ -592,6 +608,17 @@ function RoomScreen({ room, user, onExit, onRoomUpdated, balance, onBalanceChang
         }
         
         onBalanceChange(balance - gift.price);
+
+        // For the recipient, add 20% of the gift's coin value as silver
+        const silverValue = gift.price * 0.20;
+        
+        // IMPORTANT: We assume the recipient is the current user for this simulation.
+        // In a real app, this logic would be handled by the backend and sent to the correct user.
+        if (recipient.userId === user.userId) {
+            onSilverBalanceChange(prev => prev + silverValue);
+            toast({ title: "لقد أهديت نفسك!", description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`});
+        }
+        
         setActiveGiftAnimation({ sender: user, receiver: recipient, gift });
         
         // Update room supporters state
@@ -1086,44 +1113,115 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
     );
 }
 
-function ProfileScreen({ user, onUserUpdate, balance }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, balance: number }) {
+function SilverScreen({ 
+    onBack, 
+    silverBalance, 
+    onConvert
+}: { 
+    onBack: () => void, 
+    silverBalance: number,
+    onConvert: () => void
+}) {
     const { toast } = useToast();
-    const [view, setView] = useState<'profile' | 'coins'>('profile');
+
+    const handleConvert = () => {
+        if (silverBalance <= 0) {
+            toast({ variant: "destructive", title: "ليس لديك فضة", description: "رصيد الفضة لديك هو صفر."});
+            return;
+        }
+        onConvert();
+        toast({ title: "تم الاستبدال بنجاح!", description: `تم تحويل ${silverBalance.toLocaleString()} فضة إلى كوينز.` });
+    };
+
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">الفضة</h2>
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ChevronLeft className="w-6 h-6" />
+                </Button>
+            </header>
+            
+            <div className="relative bg-gradient-to-br from-gray-500 to-gray-700 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg mb-6 overflow-hidden h-56">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/az-subtle.png')] opacity-20"></div>
+                <div className="z-10">
+                    <p className="text-lg font-bold text-gray-200">رصيد الفضة</p>
+                    <p className="text-5xl font-extrabold text-white my-2">{silverBalance.toLocaleString('en-US')}</p>
+                    <p className="text-xs text-gray-300 max-w-xs mx-auto">يمكنك استبدال الفضة بالكوينز لإنفاقها في التطبيق.</p>
+                </div>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center justify-center">
+                 <Button size="lg" className="w-full max-w-sm bg-primary hover:bg-primary/90 text-primary-foreground text-lg font-bold py-6" onClick={handleConvert}>
+                    استبدال بالكوينز
+                </Button>
+                <p className="text-muted-foreground text-sm mt-4 text-center">
+                    سيتم استبدال كل رصيدك من الفضة بالكوينز بنسبة 1:1.
+                </p>
+            </div>
+        </div>
+    );
+}
+
+function ProfileScreen({ 
+    user, 
+    onUserUpdate, 
+    balance, 
+    silverBalance,
+    onNavigate,
+    onConvertSilver
+}: { 
+    user: UserProfile, 
+    onUserUpdate: (updatedUser: UserProfile) => void, 
+    balance: number, 
+    silverBalance: number,
+    onNavigate: (view: 'coins' | 'silver') => void,
+    onConvertSilver: () => void
+}) {
+    const { toast } = useToast();
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.userId);
         toast({ title: "تم نسخ ID المستخدم" });
     };
 
-    if (view === 'coins') {
-        return <CoinsScreen onBack={() => setView('profile')} balance={balance} />;
-    }
-
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
-                        <h2 className="text-lg font-bold text-left">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-start w-full">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                <div className="flex items-center gap-3">
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground justify-end w-full">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.userId}</span>
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                <button onClick={() => setView('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1135,27 +1233,33 @@ function ProfileScreen({ user, onUserUpdate, balance }: { user: UserProfile, onU
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
-                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">0</p>
-                    </div>
-                </div>
             </div>
         </div>
     );
 }
 
-function MainApp({ user, onReset, onUserUpdate, balance, onBalanceChange }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void, balance: number, onBalanceChange: (newBalance: number) => void }) {
+
+function MainApp({ 
+    user, 
+    onReset, 
+    onUserUpdate, 
+    balance, 
+    onBalanceChange, 
+    silverBalance,
+    onSilverBalanceChange 
+}: { 
+    user: UserProfile, 
+    onReset: () => void, 
+    onUserUpdate: (updatedUser: UserProfile) => void, 
+    balance: number, 
+    onBalanceChange: (newBalance: number) => void,
+    silverBalance: number,
+    onSilverBalanceChange: (updater: (prev: number) => number) => void
+}) {
     const [view, setView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [activeTab, setActiveTab] = useState<'rooms' | 'profile'>('rooms');
+    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const { toast } = useToast();
 
     const handleEnterRoom = (room: Room) => {
@@ -1177,19 +1281,51 @@ function MainApp({ user, onReset, onUserUpdate, balance, onBalanceChange }: { us
         // Optionally, you might want to switch tab or view after update
     };
 
+    const handleConvertSilver = () => {
+        onBalanceChange(balance + silverBalance);
+        onSilverBalanceChange(() => 0); // Reset silver balance
+    };
+
     if (view === 'in_room' && currentRoom) {
-        return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} balance={balance} onBalanceChange={onBalanceChange} />;
+        return <RoomScreen 
+            room={currentRoom} 
+            user={user} 
+            onExit={handleExitRoom} 
+            onRoomUpdated={handleRoomUpdated} 
+            balance={balance} 
+            onBalanceChange={onBalanceChange} 
+            onSilverBalanceChange={onSilverBalanceChange}
+        />;
+    }
+
+    const renderProfileContent = () => {
+        switch (profileView) {
+            case 'coins':
+                return <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />;
+            case 'silver':
+                return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
+            case 'profile':
+            default:
+                return <ProfileScreen 
+                    user={user} 
+                    onUserUpdate={handleUserUpdateAndReset} 
+                    balance={balance} 
+                    silverBalance={silverBalance}
+                    onNavigate={setProfileView} 
+                    onConvertSilver={handleConvertSilver}
+                />;
+        }
     }
 
     return (
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
                  {activeTab === 'rooms' && <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated} />}
-                 {activeTab === 'profile' && <ProfileScreen user={user} onUserUpdate={handleUserUpdateAndReset} balance={balance} />}
+                 {activeTab === 'profile' && renderProfileContent()}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
-                    onClick={() => setActiveTab('rooms')}
+                    onClick={() => { setActiveTab('rooms'); setProfileView('profile'); }}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
                         activeTab === 'rooms' ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -1199,8 +1335,6 @@ function MainApp({ user, onReset, onUserUpdate, balance, onBalanceChange }: { us
                 </button>
                  <button 
                     onClick={() => {
-                        // In a real app, you would navigate to the game page.
-                        // For this example, we'll just show a toast.
                         toast({ title: "اللعبة موجودة داخل الغرف" });
                     }}
                     className={cn(
@@ -1230,6 +1364,7 @@ export default function HomePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState(0);
+  const [silverBalance, setSilverBalance] = useState(0);
   
   const [nameInput, setNameInput] = useState("");
   const [imageInput, setImageInput] = useState<string | null>(null);
@@ -1242,9 +1377,13 @@ export default function HomePage() {
         if (savedUser) {
           setUserProfile(JSON.parse(savedUser));
         }
-        // Load balance from FruityFortuneGame's localStorage
+        
         const savedBalance = localStorage.getItem('fruityFortuneBalance');
-        setBalance(savedBalance ? parseInt(savedBalance, 10) : 10000000); // Default balance if none is set
+        setBalance(savedBalance ? parseInt(savedBalance, 10) : 10000000);
+        
+        const savedSilverBalance = localStorage.getItem('silverBalance');
+        setSilverBalance(savedSilverBalance ? parseInt(savedSilverBalance, 10) : 0);
+
     } catch (error) {
         console.error("Failed to parse user profile from localStorage", error);
         localStorage.removeItem("userProfile");
@@ -1260,6 +1399,14 @@ export default function HomePage() {
   const handleBalanceChange = (newBalance: number) => {
       setBalance(newBalance);
       localStorage.setItem('fruityFortuneBalance', newBalance.toString());
+  };
+  
+  const handleSilverBalanceChange = (updater: (prev: number) => number) => {
+      setSilverBalance(prev => {
+          const newValue = updater(prev);
+          localStorage.setItem('silverBalance', newValue.toString());
+          return newValue;
+      });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1302,9 +1449,11 @@ export default function HomePage() {
     localStorage.removeItem("userProfile");
     localStorage.removeItem("userRooms");
     localStorage.removeItem("fruityFortuneBalance");
+    localStorage.removeItem("silverBalance");
     setNameInput("");
     setImageInput(null);
     setBalance(0);
+    setSilverBalance(0);
     toast({ title: "تم تسجيل الخروج" });
   }
   
@@ -1316,7 +1465,15 @@ export default function HomePage() {
   }
 
   if (userProfile) {
-    return <MainApp user={userProfile} onReset={handleReset} onUserUpdate={handleUserUpdate} balance={balance} onBalanceChange={handleBalanceChange} />;
+    return <MainApp 
+                user={userProfile} 
+                onReset={handleReset} 
+                onUserUpdate={handleUserUpdate} 
+                balance={balance} 
+                onBalanceChange={handleBalanceChange}
+                silverBalance={silverBalance}
+                onSilverBalanceChange={handleSilverBalanceChange}
+            />;
   }
 
   return (
