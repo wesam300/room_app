@@ -959,7 +959,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 function NewProfileScreen() {
     return (
         <div className="flex items-center justify-center h-full bg-background">
-            <img src="https://i.imgur.com/Cj2G3L5.png" alt="Profile Page" className="max-w-full max-h-full object-contain" />
+            <img src="https://i.imgur.com/hj1YrcL.jpg" alt="Profile Page" className="max-w-full max-h-full object-contain" />
         </div>
     );
 }
