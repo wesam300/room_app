@@ -196,7 +196,7 @@ const FallingCoins = () => {
 };
   
 
-export default function FruityFortuneGame() {
+export default function FruityFortuneGame({ onBalanceChange }: { onBalanceChange: (newBalance: number) => void }) {
   const [isClient, setIsClient] = useState(false);
   const [balance, setBalance] = useState(0);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
@@ -222,6 +222,33 @@ export default function FruityFortuneGame() {
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
   
+  // Custom hook to manage balance with localStorage and notify parent
+  const usePersistentBalance = (callback: (newBalance: number) => void) => {
+    const [localBalance, setLocalBalance] = useState(0);
+
+    // Load initial balance
+    useEffect(() => {
+        const savedBalance = localStorage.getItem('fruityFortuneBalance');
+        const initialBalance = savedBalance ? parseInt(savedBalance, 10) : 10000000;
+        setLocalBalance(initialBalance);
+        callback(initialBalance);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const updateBalance = (newBalance: number | ((prev: number) => number)) => {
+        setLocalBalance(prev => {
+            const resolvedBalance = typeof newBalance === 'function' ? newBalance(prev) : newBalance;
+            localStorage.setItem('fruityFortuneBalance', resolvedBalance.toString());
+            callback(resolvedBalance);
+            return resolvedBalance;
+        });
+    };
+
+    return [localBalance, updateBalance] as const;
+  };
+  
+  const [gameBalance, setGameBalance] = usePersistentBalance(onBalanceChange);
+
 
   // Load state from localStorage on initial mount
   useEffect(() => {
@@ -234,14 +261,6 @@ export default function FruityFortuneGame() {
     const now = Date.now();
     const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
     setRoundId(currentRoundId);
-
-    // --- Load Balance ---
-    const savedBalance = localStorage.getItem('fruityFortuneBalance');
-    if (savedBalance) {
-        setBalance(parseInt(savedBalance, 10));
-    } else {
-        setBalance(1000000000); // Set initial balance to 1 billion if nothing is saved
-    }
 
     // --- Load Daily Reward ---
     const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
@@ -304,9 +323,7 @@ export default function FruityFortuneGame() {
                 const { winner } = getWinnerForRound(savedRoundId);
                 const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
                 if (payout > 0) {
-                    const newBalance = (parseInt(localStorage.getItem('fruityFortuneBalance') || '0', 10)) + payout;
-                    setBalance(newBalance);
-                    localStorage.setItem('fruityFortuneBalance', newBalance.toString());
+                    setGameBalance(prev => prev + payout);
                     toast({
                         title: "ربح أثناء غيابك!",
                         description: `لقد ربحت ${formatNumber(payout)}. الفائز كان ${FRUITS[winner].name}`,
@@ -327,12 +344,12 @@ export default function FruityFortuneGame() {
         }
     }
     
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, toast]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
     if (isClient) {
-      localStorage.setItem('fruityFortuneBalance', balance.toString());
       if (lastClaimTimestamp) {
           localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
       }
@@ -347,7 +364,7 @@ export default function FruityFortuneGame() {
           localStorage.removeItem('fruityFortuneBets');
       }
     }
-  }, [balance, lastClaimTimestamp, bets, roundId, isClient, history]);
+  }, [lastClaimTimestamp, bets, roundId, isClient, history]);
 
 
    // Daily Reward Timer Logic
@@ -392,7 +409,7 @@ export default function FruityFortuneGame() {
 
 const handleClaimReward = () => {
     if (canClaim) {
-        setBalance(prev => prev + DAILY_REWARD_AMOUNT);
+        setGameBalance(prev => prev + DAILY_REWARD_AMOUNT);
         const now = Date.now();
         setLastClaimTimestamp(now);
         setCanClaim(false);
@@ -464,7 +481,7 @@ const handleClaimReward = () => {
                     const { winner: finalWinner } = getWinnerForRound(currentRoundId);
                     const payout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
                     if (payout > 0) {
-                        setBalance(prev => prev + payout);
+                        setGameBalance(prev => prev + payout);
                         setWinnerScreenInfo({ fruit: finalWinner, payout: payout });
                         setTimeout(() => setWinnerScreenInfo(null), 4000); // Show winner screen for 4s
                     }
@@ -503,7 +520,7 @@ const handleClaimReward = () => {
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, setGameBalance]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -522,11 +539,11 @@ const handleClaimReward = () => {
         return;
     }
 
-    if (balance < activeBet) {
+    if (gameBalance < activeBet) {
        toast({ title: "رصيد غير كاف", description: "ليس لديك ما يكفي من الرصيد للقيام بهذا الرهان", variant: "destructive" });
        return;
     }
-    setBalance(prev => prev - activeBet);
+    setGameBalance(prev => prev - activeBet);
     setBets(prev => ({
         ...prev,
         [fruit]: (prev[fruit] || 0) + activeBet
@@ -609,7 +626,7 @@ const handleClaimReward = () => {
             <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
                 <div className="flex flex-col items-center justify-center">
                     <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
-                    <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
+                    <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{gameBalance.toLocaleString('en-US')}</span>
                 </div>
             </div>
 

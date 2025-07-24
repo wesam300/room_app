@@ -67,9 +67,15 @@ const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
 ];
 
-function formatNumber(num: number) {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}m`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}k`;
+function formatNumber(num: number): string {
+    if (num >= 1000000) {
+        const millions = num / 1000000;
+        return millions % 1 === 0 ? `${millions}m` : `${millions.toFixed(1)}m`;
+    }
+    if (num >= 1000) {
+        const thousands = num / 1000;
+        return thousands % 1 === 0 ? `${thousands}k` : `${thousands.toFixed(1)}k`;
+    }
     return num.toString();
 }
 
@@ -463,7 +469,7 @@ function GiftDialog({
     );
 }
 
-function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void }) {
+function RoomScreen({ room, user, onExit, onRoomUpdated, balance, onBalanceChange }: { room: Room, user: UserProfile, onExit: () => void, onRoomUpdated: (updatedRoom: Room) => void, balance: number, onBalanceChange: (newBalance: number) => void }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
         Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
@@ -478,7 +484,6 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
     const [chatInput, setChatInput] = useState("");
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    const [balance, setBalance] = useState(10000000);
     const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
     const [activeGiftAnimation, setActiveGiftAnimation] = useState<{ sender: UserProfile, receiver: UserProfile, gift: GiftItem } | null>(null);
@@ -585,8 +590,8 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
             toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: "ليس لديك ما يكفي من العملات لإرسال هذه الهدية." });
             return;
         }
-
-        setBalance(prev => prev - gift.price);
+        
+        onBalanceChange(balance - gift.price);
         setActiveGiftAnimation({ sender: user, receiver: recipient, gift });
         
         // Update room supporters state
@@ -871,7 +876,7 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame />
+                               <FruityFortuneGame onBalanceChange={onBalanceChange} />
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -1007,7 +1012,7 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
 }
 
 
-function CoinsScreen({ onBack }: { onBack: () => void }) {
+function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number }) {
     const coinPackages = [
         { usd: "0.49", coins: 4250 },
         { usd: "0.99", coins: 8500 },
@@ -1041,7 +1046,7 @@ function CoinsScreen({ onBack }: { onBack: () => void }) {
                         <RefreshCw className="w-4 h-4 text-purple-900"/>
                         <p className="font-bold text-purple-900">رصيد</p>
                     </div>
-                    <p className="text-3xl font-extrabold text-purple-900">0</p>
+                    <p className="text-3xl font-extrabold text-purple-900">{formatNumber(balance)}</p>
                     <p className="text-xs text-purple-800/80 mt-1">يمكن استخدام الكوينز لارسال الهدايا</p>
                 </div>
             </div>
@@ -1081,7 +1086,7 @@ function CoinsScreen({ onBack }: { onBack: () => void }) {
     );
 }
 
-function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void }) {
+function ProfileScreen({ user, onUserUpdate, balance }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, balance: number }) {
     const { toast } = useToast();
     const [view, setView] = useState<'profile' | 'coins'>('profile');
 
@@ -1091,13 +1096,13 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
     };
 
     if (view === 'coins') {
-        return <CoinsScreen onBack={() => setView('profile')} />;
+        return <CoinsScreen onBack={() => setView('profile')} balance={balance} />;
     }
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                     <Avatar className="w-14 h-14">
                         <AvatarImage src={user.image} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
@@ -1118,8 +1123,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 {/* This is now the COINS button */}
-                <button onClick={() => setView('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => setView('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1128,11 +1132,9 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
                     </div>
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">0</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
-
-                 {/* This is now the SILVER/DIAMONDS button */}
                 <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1150,7 +1152,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
     );
 }
 
-function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void }) {
+function MainApp({ user, onReset, onUserUpdate, balance, onBalanceChange }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void, balance: number, onBalanceChange: (newBalance: number) => void }) {
     const [view, setView] = useState<'list' | 'in_room'>('list');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [activeTab, setActiveTab] = useState<'rooms' | 'profile'>('rooms');
@@ -1176,14 +1178,14 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
     };
 
     if (view === 'in_room' && currentRoom) {
-        return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} />;
+        return <RoomScreen room={currentRoom} user={user} onExit={handleExitRoom} onRoomUpdated={handleRoomUpdated} balance={balance} onBalanceChange={onBalanceChange} />;
     }
 
     return (
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
                  {activeTab === 'rooms' && <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated} />}
-                 {activeTab === 'profile' && <ProfileScreen user={user} onUserUpdate={handleUserUpdateAndReset} />}
+                 {activeTab === 'profile' && <ProfileScreen user={user} onUserUpdate={handleUserUpdateAndReset} balance={balance} />}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
@@ -1227,6 +1229,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
 export default function HomePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [balance, setBalance] = useState(0);
   
   const [nameInput, setNameInput] = useState("");
   const [imageInput, setImageInput] = useState<string | null>(null);
@@ -1239,6 +1242,9 @@ export default function HomePage() {
         if (savedUser) {
           setUserProfile(JSON.parse(savedUser));
         }
+        // Load balance from FruityFortuneGame's localStorage
+        const savedBalance = localStorage.getItem('fruityFortuneBalance');
+        setBalance(savedBalance ? parseInt(savedBalance, 10) : 10000000); // Default balance if none is set
     } catch (error) {
         console.error("Failed to parse user profile from localStorage", error);
         localStorage.removeItem("userProfile");
@@ -1249,6 +1255,11 @@ export default function HomePage() {
   const handleUserUpdate = (updatedUser: UserProfile) => {
         localStorage.setItem("userProfile", JSON.stringify(updatedUser));
         setUserProfile(updatedUser);
+  };
+  
+  const handleBalanceChange = (newBalance: number) => {
+      setBalance(newBalance);
+      localStorage.setItem('fruityFortuneBalance', newBalance.toString());
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1290,8 +1301,10 @@ export default function HomePage() {
     setUserProfile(null); 
     localStorage.removeItem("userProfile");
     localStorage.removeItem("userRooms");
+    localStorage.removeItem("fruityFortuneBalance");
     setNameInput("");
     setImageInput(null);
+    setBalance(0);
     toast({ title: "تم تسجيل الخروج" });
   }
   
@@ -1303,7 +1316,7 @@ export default function HomePage() {
   }
 
   if (userProfile) {
-    return <MainApp user={userProfile} onReset={handleReset} onUserUpdate={handleUserUpdate} />;
+    return <MainApp user={userProfile} onReset={handleReset} onUserUpdate={handleUserUpdate} balance={balance} onBalanceChange={handleBalanceChange} />;
   }
 
   return (
