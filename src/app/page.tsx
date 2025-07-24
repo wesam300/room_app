@@ -1018,24 +1018,24 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div>
-                        <h2 className="text-lg font-bold text-left">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
-                </div>
                 <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                <div className="flex items-center gap-3">
+                     <div>
+                        <h2 className="text-lg font-bold text-right">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center justify-end gap-1 text-sm text-muted-foreground">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.userId}</span>
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
@@ -1063,7 +1063,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
                     </div>
                     <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">120K</p>
+                        <p className="text-gray-400 text-sm">0</p>
                     </div>
                 </div>
             </div>
@@ -1273,3 +1273,4 @@ export default function HomePage() {
     
 
     
+
