@@ -1018,25 +1018,25 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
-
-                <div className="flex items-center gap-3 text-right">
-                     <div>
+                <div className="flex items-center gap-3">
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground">
                             <span>ID: {user.userId}</span>
                             <Copy className="w-3 h-3" />
                         </button>
                     </div>
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
                 </div>
+
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
              </div>
              {/* The rest of the profile page can be built here */}
         </div>
@@ -1241,3 +1241,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
