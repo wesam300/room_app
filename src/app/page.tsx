@@ -110,8 +110,8 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
             ownerId: user.userId,
         };
 
-        const existingRooms: Room[] = JSON.parse(localStorage.getItem('userRooms') || '[]');
-        localStorage.setItem('userRooms', JSON.stringify([...existingRooms, newRoom]));
+        const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
+        localStorage.setItem('globalRooms', JSON.stringify([...existingRooms, newRoom]));
         
         toast({ title: "تم إنشاء الغرفة بنجاح!" });
         onRoomCreated(newRoom);
@@ -155,23 +155,30 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
 }
 
 function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfile, onEnterRoom: (room: Room) => void, onRoomUpdated: (updatedRoom: Room) => void }) {
-    const [myRooms, setMyRooms] = useState<Room[]>([]);
+    const [allRooms, setAllRooms] = useState<Room[]>([]);
     
     useEffect(() => {
-        const rooms = JSON.parse(localStorage.getItem('userRooms') || '[]') as Room[];
-        setMyRooms(rooms);
+        const rooms = JSON.parse(localStorage.getItem('globalRooms') || '[]') as Room[];
+        setAllRooms(rooms);
     }, []);
 
 
     const handleRoomCreated = (newRoom: Room) => {
-        setMyRooms(prev => [...prev, newRoom]);
+        setAllRooms(prev => [...prev, newRoom]);
         onEnterRoom(newRoom);
     }
     
     const handleDeleteRoom = (roomIdToDelete: string) => {
-        const updatedRooms = myRooms.filter(room => room.id !== roomIdToDelete);
-        setMyRooms(updatedRooms);
-        localStorage.setItem('userRooms', JSON.stringify(updatedRooms));
+        // Only allow room owner to delete
+        const roomToDelete = allRooms.find(room => room.id === roomIdToDelete);
+        if (roomToDelete && roomToDelete.ownerId !== user.userId) {
+            alert("لا يمكنك حذف غرفة ليست ملكك."); // Or use a proper toast/alert
+            return;
+        }
+
+        const updatedRooms = allRooms.filter(room => room.id !== roomIdToDelete);
+        setAllRooms(updatedRooms);
+        localStorage.setItem('globalRooms', JSON.stringify(updatedRooms));
     };
 
 
@@ -180,17 +187,15 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
             <header className="flex items-center justify-between p-2 border-b">
                 <CreateRoomDialog user={user} onRoomCreated={handleRoomCreated} />
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">الغرف المتاحة</Button>
-                    <Button variant="outline" size="icon"><Search className="h-4 w-4" /></Button>
+                    <h1 className="text-xl font-bold">الغرف</h1>
                 </div>
             </header>
             <div className="flex-1 p-4 text-right">
-                <h2 className="text-xl font-bold mb-4">غرفي</h2>
-                {myRooms.length === 0 ? (
-                    <p className="text-muted-foreground">لم تقم بإنشاء أي غرف بعد.</p>
+                {allRooms.length === 0 ? (
+                    <p className="text-muted-foreground text-center mt-10">لا توجد غرف متاحة حاليًا. كن أول من ينشئ واحدة!</p>
                 ) : (
                     <div className="grid gap-3">
-                        {myRooms.map(room => (
+                        {allRooms.map(room => (
                             <div key={room.id} className="relative group">
                                 <button onClick={() => onEnterRoom(room)} className="w-full text-right p-0.5 bg-gradient-to-b from-yellow-300 to-yellow-500 rounded-2xl shadow-lg">
                                     <div className="bg-gradient-to-b from-yellow-50 via-amber-50 to-yellow-100 rounded-[14px] p-3 flex items-center justify-between gap-3">
@@ -218,25 +223,27 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
                                         </div>
                                     </div>
                                 </button>
-                                 <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="destructive" size="icon" className="absolute top-2 left-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                سيتم حذف هذه الغرفة بشكل دائم. لا يمكن التراجع عن هذا الإجراء.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteRoom(room.id)}>حذف</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                                 {room.ownerId === user.userId && (
+                                     <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="icon" className="absolute top-2 left-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    سيتم حذف هذه الغرفة بشكل دائم. لا يمكن التراجع عن هذا الإجراء.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDeleteRoom(room.id)}>حذف</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                 )}
                             </div>
                         ))}
                     </div>
@@ -265,11 +272,11 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
         const updatedRoom = { ...room, name: roomName, image: roomImage };
         
         // Update localStorage
-        const existingRooms: Room[] = JSON.parse(localStorage.getItem('userRooms') || '[]');
+        const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
         const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
         if (roomIndex !== -1) {
             existingRooms[roomIndex] = updatedRoom;
-            localStorage.setItem('userRooms', JSON.stringify(existingRooms));
+            localStorage.setItem('globalRooms', JSON.stringify(existingRooms));
         }
         
         onRoomUpdated(updatedRoom);
@@ -1447,7 +1454,7 @@ export default function HomePage() {
   const handleReset = () => {
     setUserProfile(null); 
     localStorage.removeItem("userProfile");
-    localStorage.removeItem("userRooms");
+    localStorage.removeItem("globalRooms");
     localStorage.removeItem("fruityFortuneBalance");
     localStorage.removeItem("silverBalance");
     setNameInput("");
