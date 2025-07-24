@@ -316,7 +316,7 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
     }
     
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient, toast]);
+  }, [isClient]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -329,11 +329,10 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
           localStorage.setItem('fruityFortuneLastSyncedRound', roundId.toString());
       }
       // Save bets along with the current round ID
-      const userId = localStorage.getItem("userProfile") ? JSON.parse(localStorage.getItem("userProfile")!).userId : null;
-      if (Object.keys(bets).length > 0 && userId) {
-          localStorage.setItem(`fruityFortuneBets_${userId}`, JSON.stringify({ bets, roundId }));
-      } else if (userId) {
-          localStorage.removeItem(`fruityFortuneBets_${userId}`);
+      if (Object.keys(bets).length > 0) {
+          localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId }));
+      } else {
+          localStorage.removeItem('fruityFortuneBets');
       }
     }
   }, [lastClaimTimestamp, bets, roundId, isClient, history]);
