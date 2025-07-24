@@ -439,7 +439,7 @@ function RoomScreen({
     onExit: () => void, 
     onRoomUpdated: (updatedRoom: Room) => void, 
     balance: number, 
-    onBalanceChange: (newBalance: number) => void,
+    onBalanceChange: (updater: (prev: number) => number) => void,
     onSilverBalanceChange: (updater: (prev: number) => number) => void
 }) {
      const { toast } = useToast();
@@ -557,42 +557,45 @@ function RoomScreen({
 
     const handleSendGift = (gift: GiftItem, recipient: UserProfile, quantity: number) => {
         const totalCost = gift.price * quantity;
-        if (balance < totalCost) {
-            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
-            return;
-        }
         
-        onBalanceChange(balance - totalCost);
-
-        // Add 20% of the gift's coin value as silver to the RECIPIENT
-        // For now, this is simulated for the current user if they are the recipient.
-        if (recipient.userId === user.userId) {
-            const silverValue = totalCost * 0.20;
-            onSilverBalanceChange(prev => prev + silverValue);
-            toast({ 
-                title: `لقد أهديت نفسك ${quantity}x ${gift.name}!`,
-                description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
-            });
-        }
-        
-        // Update room supporters state (the sender is the supporter)
-        setRoomSupporters(prev => {
-            const existingSupporterIndex = prev.findIndex(s => s.user.userId === user.userId);
-            let newSupporters = [...prev];
-            if (existingSupporterIndex !== -1) {
-                const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
-                updatedSupporter.totalGiftValue += totalCost;
-                newSupporters[existingSupporterIndex] = updatedSupporter;
-            } else {
-                newSupporters.push({ user, totalGiftValue: totalCost });
+        onBalanceChange(prevBalance => {
+            if (prevBalance < totalCost) {
+                toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
+                return prevBalance; // Return original balance if insufficient
             }
-            // Sort by total gift value descending and return
-            return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
-        });
 
-        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
-        setIsGiftDialogOpen(false);
+            // Add 20% of the gift's coin value as silver to the RECIPIENT
+            if (recipient.userId === user.userId) { // This check is flawed if sender != current user, but for now it's fine.
+                const silverValue = totalCost * 0.20;
+                onSilverBalanceChange(prev => prev + silverValue);
+                toast({ 
+                    title: `لقد أهديت نفسك ${quantity}x ${gift.name}!`,
+                    description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
+                });
+            }
+            
+            // Update room supporters state (the sender is the supporter)
+            setRoomSupporters(prev => {
+                const existingSupporterIndex = prev.findIndex(s => s.user.userId === user.userId);
+                let newSupporters = [...prev];
+                if (existingSupporterIndex !== -1) {
+                    const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
+                    updatedSupporter.totalGiftValue += totalCost;
+                    newSupporters[existingSupporterIndex] = updatedSupporter;
+                } else {
+                    newSupporters.push({ user, totalGiftValue: totalCost });
+                }
+                // Sort by total gift value descending and return
+                return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
+            });
+
+            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
+            setIsGiftDialogOpen(false);
+            
+            return prevBalance - totalCost; // Return new balance
+        });
     };
+
 
     const handleOpenGiftDialog = (recipient: UserProfile | null) => {
         setInitialRecipientForGift(recipient);
@@ -847,7 +850,7 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame onBalanceChange={onBalanceChange} />
+                               <FruityFortuneGame balance={balance} onBalanceChange={onBalanceChange} />
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -1214,12 +1217,11 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
                 <div className="flex items-center gap-3">
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center justify-end gap-1 text-sm text-muted-foreground w-full">
@@ -1227,36 +1229,37 @@ function ProfileScreen({
                             <Copy className="w-3 h-3" />
                         </button>
                     </div>
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
                 </div>
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                </button>
-                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
                             <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
             </div>
@@ -1279,7 +1282,7 @@ function MainApp({
     onReset: () => void, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
     balance: number, 
-    onBalanceChange: (newBalance: number) => void,
+    onBalanceChange: (updater: (prev: number) => number) => void,
     silverBalance: number,
     onSilverBalanceChange: (updater: (prev: number) => number) => void
 }) {
@@ -1309,7 +1312,7 @@ function MainApp({
     };
 
     const handleConvertSilver = () => {
-        onBalanceChange(balance + silverBalance);
+        onBalanceChange(prev => prev + silverBalance);
         onSilverBalanceChange(() => 0); // Reset silver balance
     };
 
@@ -1457,14 +1460,17 @@ export default function HomePage() {
         }
   };
   
-  const handleBalanceChange = (newBalance: number) => {
+  const handleBalanceChange = (updater: (prev: number) => number) => {
       if (!userProfile) return;
-      setBalance(newBalance);
-      try {
-        localStorage.setItem(`fruityFortuneBalance_${userProfile.userId}`, newBalance.toString());
-      } catch (e) {
-        toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ الرصيد." });
-      }
+      setBalance(prev => {
+          const newBalance = updater(prev);
+          try {
+            localStorage.setItem(`fruityFortuneBalance_${userProfile.userId}`, newBalance.toString());
+          } catch (e) {
+            toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ الرصيد." });
+          }
+          return newBalance;
+      });
   };
   
   const handleSilverBalanceChange = (updater: (prev: number) => number) => {

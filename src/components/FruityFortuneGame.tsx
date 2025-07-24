@@ -196,9 +196,8 @@ const FallingCoins = () => {
 };
   
 
-export default function FruityFortuneGame({ onBalanceChange }: { onBalanceChange: (newBalance: number) => void }) {
+export default function FruityFortuneGame({ balance, onBalanceChange }: { balance: number; onBalanceChange: (updater: (prev: number) => number) => void; }) {
   const [isClient, setIsClient] = useState(false);
-  const [balance, setBalance] = useState(0);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
   // Game state driven by time
@@ -221,34 +220,6 @@ export default function FruityFortuneGame({ onBalanceChange }: { onBalanceChange
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
-  
-  // Custom hook to manage balance with localStorage and notify parent
-  const usePersistentBalance = (callback: (newBalance: number) => void) => {
-    const [localBalance, setLocalBalance] = useState(0);
-
-    // Load initial balance
-    useEffect(() => {
-        const savedBalance = localStorage.getItem('fruityFortuneBalance');
-        const initialBalance = savedBalance ? parseInt(savedBalance, 10) : 10000000;
-        setLocalBalance(initialBalance);
-        callback(initialBalance);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    const updateBalance = (newBalance: number | ((prev: number) => number)) => {
-        setLocalBalance(prev => {
-            const resolvedBalance = typeof newBalance === 'function' ? newBalance(prev) : newBalance;
-            localStorage.setItem('fruityFortuneBalance', resolvedBalance.toString());
-            callback(resolvedBalance);
-            return resolvedBalance;
-        });
-    };
-
-    return [localBalance, updateBalance] as const;
-  };
-  
-  const [gameBalance, setGameBalance] = usePersistentBalance(onBalanceChange);
-
 
   // Load state from localStorage on initial mount
   useEffect(() => {
@@ -323,7 +294,7 @@ export default function FruityFortuneGame({ onBalanceChange }: { onBalanceChange
                 const { winner } = getWinnerForRound(savedRoundId);
                 const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
                 if (payout > 0) {
-                    setGameBalance(prev => prev + payout);
+                    onBalanceChange(prev => prev + payout);
                     toast({
                         title: "ربح أثناء غيابك!",
                         description: `لقد ربحت ${formatNumber(payout)}. الفائز كان ${FRUITS[winner].name}`,
@@ -358,10 +329,11 @@ export default function FruityFortuneGame({ onBalanceChange }: { onBalanceChange
           localStorage.setItem('fruityFortuneLastSyncedRound', roundId.toString());
       }
       // Save bets along with the current round ID
-      if (Object.keys(bets).length > 0) {
-          localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId }));
-      } else {
-          localStorage.removeItem('fruityFortuneBets');
+      const userId = localStorage.getItem("userProfile") ? JSON.parse(localStorage.getItem("userProfile")!).userId : null;
+      if (Object.keys(bets).length > 0 && userId) {
+          localStorage.setItem(`fruityFortuneBets_${userId}`, JSON.stringify({ bets, roundId }));
+      } else if (userId) {
+          localStorage.removeItem(`fruityFortuneBets_${userId}`);
       }
     }
   }, [lastClaimTimestamp, bets, roundId, isClient, history]);
@@ -409,7 +381,7 @@ export default function FruityFortuneGame({ onBalanceChange }: { onBalanceChange
 
 const handleClaimReward = () => {
     if (canClaim) {
-        setGameBalance(prev => prev + DAILY_REWARD_AMOUNT);
+        onBalanceChange(prev => prev + DAILY_REWARD_AMOUNT);
         const now = Date.now();
         setLastClaimTimestamp(now);
         setCanClaim(false);
@@ -481,7 +453,7 @@ const handleClaimReward = () => {
                     const { winner: finalWinner } = getWinnerForRound(currentRoundId);
                     const payout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
                     if (payout > 0) {
-                        setGameBalance(prev => prev + payout);
+                        onBalanceChange(prev => prev + payout);
                         setWinnerScreenInfo({ fruit: finalWinner, payout: payout });
                         setTimeout(() => setWinnerScreenInfo(null), 4000); // Show winner screen for 4s
                     }
@@ -520,7 +492,7 @@ const handleClaimReward = () => {
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, setGameBalance]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, onBalanceChange]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -539,11 +511,11 @@ const handleClaimReward = () => {
         return;
     }
 
-    if (gameBalance < activeBet) {
+    if (balance < activeBet) {
        toast({ title: "رصيد غير كاف", description: "ليس لديك ما يكفي من الرصيد للقيام بهذا الرهان", variant: "destructive" });
        return;
     }
-    setGameBalance(prev => prev - activeBet);
+    onBalanceChange(prev => prev - activeBet);
     setBets(prev => ({
         ...prev,
         [fruit]: (prev[fruit] || 0) + activeBet
@@ -626,7 +598,7 @@ const handleClaimReward = () => {
             <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
                 <div className="flex flex-col items-center justify-center">
                     <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
-                    <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{gameBalance.toLocaleString('en-US')}</span>
+                    <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
                 </div>
             </div>
 
