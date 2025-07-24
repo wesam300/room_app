@@ -1018,7 +1018,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                 <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                     <Avatar className="w-14 h-14">
                         <AvatarImage src={user.image} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
@@ -1039,21 +1039,7 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 {/* Silver Button */}
-                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">120K</p>
-                    </div>
-                </div>
-
-                 {/* Coins Button */}
+                 {/* This is now the COINS button */}
                 <div className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1064,6 +1050,20 @@ function ProfileScreen({ user, onUserUpdate }: { user: UserProfile, onUserUpdate
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
                         <p className="text-gray-400 text-sm">0</p>
+                    </div>
+                </div>
+
+                 {/* This is now the SILVER/DIAMONDS button */}
+                <div className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">120K</p>
                     </div>
                 </div>
             </div>
