@@ -412,11 +412,13 @@ function GiftDialog({
     isOpen: boolean, 
     onOpenChange: (open: boolean) => void,
     usersOnMics: UserProfile[],
-    onSendGift: (gift: GiftItem, recipient: UserProfile) => void,
+    onSendGift: (gift: GiftItem, recipient: UserProfile, quantity: number) => void,
     balance: number,
     initialRecipient: UserProfile | null,
 }) {
     const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+    const [quantity, setQuantity] = useState(1);
+    const QUANTITY_OPTIONS = [1, 5, 10, 100];
 
     // This effect runs when the dialog is opened or the initialRecipient changes.
     // It sets the initial recipient if one is provided.
@@ -426,16 +428,17 @@ function GiftDialog({
         }
     }, [initialRecipient, isOpen]);
 
-    // This effect resets the selected recipient when the dialog is closed.
+    // This effect resets the selected recipient and quantity when the dialog is closed.
     useEffect(() => {
         if (!isOpen) {
             setSelectedRecipient(null);
+            setQuantity(1);
         }
     }, [isOpen]);
 
     const handleSendClick = (gift: GiftItem) => {
         if (selectedRecipient) {
-            onSendGift(gift, selectedRecipient);
+            onSendGift(gift, selectedRecipient, quantity);
         }
     };
     
@@ -465,14 +468,28 @@ function GiftDialog({
                     <div className="py-4 text-right">
                          <p className="text-center mb-4">إرسال هدية إلى: <span className="font-bold text-primary">{selectedRecipient.name}</span></p>
                         {GIFTS.map(gift => (
-                            <div key={gift.id} className="flex flex-col items-center gap-3">
+                             <div key={gift.id} className="flex flex-col items-center gap-3">
                                 <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-32 h-32" />
                                 <div className="text-center">
                                     <p className="font-bold text-lg">{gift.name}</p>
                                     <p className="text-sm text-yellow-400">{gift.price.toLocaleString()} كوينز</p>
                                 </div>
-                                <div className="flex justify-between items-center w-full mt-4 p-2 bg-black/30 rounded-lg">
-                                     <Button size="lg" onClick={() => handleSendClick(gift)}>إرسال</Button>
+                                <div className="flex justify-center gap-2 my-2">
+                                    {QUANTITY_OPTIONS.map(q => (
+                                        <Button
+                                            key={q}
+                                            variant={quantity === q ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setQuantity(q)}
+                                        >
+                                            x{q}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <div className="flex justify-between items-center w-full mt-2 p-2 bg-black/30 rounded-lg">
+                                     <Button size="lg" onClick={() => handleSendClick(gift)}>
+                                         إرسال ({formatNumber(gift.price * quantity)})
+                                     </Button>
                                      <div className="flex items-center gap-2">
                                         <span className="font-bold text-lg">{balance.toLocaleString()}</span>
                                         <Trophy className="w-6 h-6 text-yellow-400"/>
@@ -619,21 +636,22 @@ function RoomScreen({
         setChatInput("");
     };
 
-    const handleSendGift = (gift: GiftItem, recipient: UserProfile) => {
-        if (balance < gift.price) {
-            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: "ليس لديك ما يكفي من العملات لإرسال هذه الهدية." });
+    const handleSendGift = (gift: GiftItem, recipient: UserProfile, quantity: number) => {
+        const totalCost = gift.price * quantity;
+        if (balance < totalCost) {
+            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
             return;
         }
         
-        onBalanceChange(balance - gift.price);
+        onBalanceChange(balance - totalCost);
 
         // Add 20% of the gift's coin value as silver to the RECIPIENT
         // For now, this is simulated for the current user if they are the recipient.
         if (recipient.userId === user.userId) {
-            const silverValue = gift.price * 0.20;
+            const silverValue = totalCost * 0.20;
             onSilverBalanceChange(prev => prev + silverValue);
             toast({ 
-                title: "لقد أهديت نفسك!",
+                title: `لقد أهديت نفسك ${quantity}x ${gift.name}!`,
                 description: `لقد ربحت ${silverValue.toLocaleString()} فضة.`
             });
         }
@@ -646,16 +664,16 @@ function RoomScreen({
             let newSupporters = [...prev];
             if (existingSupporterIndex !== -1) {
                 const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
-                updatedSupporter.totalGiftValue += gift.price;
+                updatedSupporter.totalGiftValue += totalCost;
                 newSupporters[existingSupporterIndex] = updatedSupporter;
             } else {
-                newSupporters.push({ user, totalGiftValue: gift.price });
+                newSupporters.push({ user, totalGiftValue: totalCost });
             }
             // Sort by total gift value descending and return
             return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
         });
 
-        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${gift.name} إلى ${recipient.name}.` });
+        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
         setIsGiftDialogOpen(false);
     };
 
@@ -1542,3 +1560,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
