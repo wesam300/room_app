@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -956,37 +956,114 @@ function RoomScreen({ room, user, onExit, onRoomUpdated }: { room: Room, user: U
 
 // --- NEW PROFILE SCREEN ---
 
-function NewProfileScreen() {
+function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile, onUserUpdate: (updatedUser: UserProfile) => void, children: React.ReactNode }) {
+    const [name, setName] = useState(user.name);
+    const [image, setImage] = useState<string>(user.image);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
+    const [isOpen, setIsOpen] = useState(false);
 
-    const handleCoinsClick = () => {
-        toast({
-            title: "قريباً",
-            description: "هذه الميزة قيد التطوير.",
-        });
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => setImage(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSave = () => {
+        const updatedUser = { ...user, name, image };
+        onUserUpdate(updatedUser);
+        toast({ title: "تم تحديث الملف الشخصي!" });
+        setIsOpen(false);
     };
 
     return (
-        <div className="flex items-center justify-center h-full bg-background">
-            <div className="relative w-full max-w-sm">
-                <img src="https://i.imgur.com/hj1YrcL.jpg" alt="Profile Page" className="w-full h-auto" />
-                <button
-                    onClick={handleCoinsClick}
-                    className="absolute cursor-pointer"
-                    style={{
-                        top: '11.5%',
-                        right: '5%',
-                        width: '27%',
-                        height: '5%',
-                        backgroundColor: 'rgba(255, 0, 0, 0)',
-                    }}
-                    aria-label="Coins"
-                ></button>
-            </div>
-        </div>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle className="text-right">تعديل الملف الشخصي</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4 text-right">
+                    <div className="flex flex-col items-center gap-4">
+                        <Avatar className="w-24 h-24 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                            <AvatarImage src={image} />
+                            <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
+                        </Avatar>
+                        <input type="file" ref={fileInputRef} onChange={handleImageChange} className="hidden" accept="image/*" />
+                    </div>
+                    <Input
+                        id="name"
+                        placeholder="أدخل اسمك..."
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="text-right"
+                    />
+                </div>
+                <Button onClick={handleSave}>حفظ التغييرات</Button>
+            </DialogContent>
+        </Dialog>
     );
 }
 
+
+function ProfileScreen({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void }) {
+    const { toast } = useToast();
+    const [balance, setBalance] = useState(0);
+
+    useEffect(() => {
+        const savedBalance = localStorage.getItem('fruityFortuneBalance');
+        if (savedBalance) {
+            setBalance(parseInt(savedBalance, 10));
+        }
+    }, []);
+
+    const handleCopyId = () => {
+        navigator.clipboard.writeText(user.userId);
+        toast({ title: "تم نسخ ID المستخدم" });
+    };
+
+    return (
+        <div className="p-4 flex flex-col items-center h-full text-foreground">
+             <div className="w-full flex justify-end">
+                <Button variant="ghost" size="icon" onClick={onReset}>
+                    <LogOut className="w-6 h-6 text-destructive" />
+                </Button>
+             </div>
+            <div className="flex flex-col items-center gap-4 mt-8">
+                <div className="relative">
+                    <Avatar className="w-24 h-24 border-4 border-primary">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                     <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                        <Button variant="outline" size="icon" className="absolute -bottom-2 -right-2 rounded-full w-8 h-8 bg-background">
+                            <Edit className="w-4 h-4" />
+                        </Button>
+                    </EditProfileDialog>
+                </div>
+                <h2 className="text-2xl font-bold">{user.name}</h2>
+                <div className="flex items-center gap-2 bg-black/20 p-1 px-3 rounded-full">
+                    <span className="text-sm text-muted-foreground">ID: {user.userId}</span>
+                    <button onClick={handleCopyId}><Copy className="w-4 h-4" /></button>
+                </div>
+            </div>
+            <Card className="w-full mt-8 p-4">
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                         <Trophy className="w-6 h-6 text-yellow-400"/>
+                         <span className="text-lg font-bold">الكوينز</span>
+                    </div>
+                    <span className="text-lg font-bold">{balance.toLocaleString()}</span>
+                </div>
+            </Card>
+
+            {/* Other profile sections can be added here */}
+        </div>
+    );
+}
 
 function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: () => void, onUserUpdate: (updatedUser: UserProfile) => void }) {
     const [view, setView] = useState<'list' | 'in_room'>('list');
@@ -1016,7 +1093,7 @@ function MainApp({ user, onReset, onUserUpdate }: { user: UserProfile, onReset: 
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
                  {activeTab === 'rooms' && <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated} />}
-                 {activeTab === 'profile' && <NewProfileScreen />}
+                 {activeTab === 'profile' && <ProfileScreen user={user} onReset={onReset} onUserUpdate={onUserUpdate} />}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
@@ -1181,5 +1258,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
