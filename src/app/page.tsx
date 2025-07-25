@@ -68,6 +68,14 @@ const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
 ];
 
+// --- MOCK DATA ---
+const ALL_ROOMS: Room[] = [
+    { id: 'room-1', name: 'الجلسة الماسية', image: 'https://placehold.co/100x100/7F00FF/FFFFFF.png', ownerId: 'admin-1' },
+    { id: 'room-2', name: 'أصدقاء للأبد', image: 'https://placehold.co/100x100/FFC300/000000.png', ownerId: 'admin-2' },
+    { id: 'room-3', name: 'سوالف وضحك', image: 'https://placehold.co/100x100/DAF7A6/333333.png', ownerId: 'admin-3' },
+];
+
+
 function formatNumber(num: number): string {
     if (num >= 1000000) {
         const millions = num / 1000000;
@@ -531,16 +539,25 @@ function RoomScreen({
    
        return (
            <header className="flex items-center justify-between p-3">
-                <Popover>
-                   <PopoverTrigger asChild>
+                <AlertDialog>
+                   <AlertDialogTrigger asChild>
                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
                            <Power className="w-5 h-5 text-primary" />
                        </Button>
-                   </PopoverTrigger>
-                   <PopoverContent className="w-auto">
-                      <Button variant="destructive" onClick={onExit}>الخروج من الغرفة</Button>
-                   </PopoverContent>
-               </Popover>
+                   </AlertDialogTrigger>
+                   <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>الخروج من الغرفة</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            هل أنت متأكد أنك تريد الخروج؟ ستعود إلى قائمة الغرف.
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={onExit}>الخروج</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+               </AlertDialog>
              {isOwner ? (
                  <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
                      {roomInfoContent}
@@ -1043,10 +1060,40 @@ function ProfileScreen({
     );
 }
 
+function RoomsListScreen({ onEnterRoom }: { onEnterRoom: (room: Room) => void }) {
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                <h1 className="text-2xl font-bold text-primary">الغرف المتاحة</h1>
+                <Button variant="outline">إنشاء غرفة</Button>
+            </header>
+            <div className="flex-1 overflow-y-auto space-y-4">
+                {ALL_ROOMS.map(room => (
+                    <Card key={room.id} className="bg-black/20 border-primary/30 overflow-hidden">
+                        <CardContent className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <Avatar className="w-16 h-16">
+                                    <AvatarImage src={room.image} alt={room.name} />
+                                    <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="text-right">
+                                    <CardTitle className="text-lg">{room.name}</CardTitle>
+                                    <CardDescription>ID: {room.id}</CardDescription>
+                                </div>
+                            </div>
+                            <Button onClick={() => onEnterRoom(room)}>إنضمام</Button>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 function MainApp({ 
     user, 
     onUserUpdate, 
-    onReset,
+    onLogout,
     balance, 
     setBalance, 
     silverBalance,
@@ -1054,22 +1101,27 @@ function MainApp({
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
-    onReset: () => void,
+    onLogout: () => void,
     balance: number, 
     setBalance: (updater: (prev: number) => number) => void,
     silverBalance: number,
     setSilverBalance: (updater: (prev: number) => number) => void
 }) {
-    const [view, setView] = useState<'room' | 'profile'>('room');
+    const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
+    const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+
     const { toast } = useToast();
 
-    const [currentRoom, setCurrentRoom] = useState<Room>({
-        id: 'default-room-123',
-        name: 'الغرفة الرئيسية',
-        image: 'https://placehold.co/100x100/8e44ad/ffffff.png',
-        ownerId: user.userId, // Let's make the current user the owner for simplicity
-    });
+    const handleEnterRoom = (room: Room) => {
+        setCurrentRoom(room);
+        setView('inRoom');
+    }
+
+    const handleExitRoom = () => {
+        setCurrentRoom(null);
+        setView('roomsList');
+    }
 
     const handleRoomUpdated = (updatedRoom: Room) => {
         setCurrentRoom(updatedRoom);
@@ -1102,53 +1154,64 @@ function MainApp({
         toast({ title: "اللعبة موجودة داخل الغرف" });
     }, [toast]);
 
+    const renderContent = () => {
+        if (view === 'inRoom' && currentRoom) {
+            return (
+                <RoomScreen 
+                    room={currentRoom}
+                    user={user} 
+                    onExit={handleExitRoom} 
+                    onRoomUpdated={handleRoomUpdated} 
+                    balance={balance} 
+                    setBalance={setBalance} 
+                    setSilverBalance={setSilverBalance}
+                />
+            );
+        }
+        if (view === 'profile') {
+            if (profileView === 'coins') {
+                return <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />;
+            }
+            if (profileView === 'silver') {
+                return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
+            }
+            return (
+                <ProfileScreen 
+                    user={user} 
+                    onUserUpdate={handleUserUpdateAndReset} 
+                    balance={balance} 
+                    silverBalance={silverBalance}
+                    onNavigate={setProfileView}
+                    onLogout={onLogout}
+                    onAddCoins={handleAddCoins}
+                    onBanUser={handleBanUser}
+                />
+            );
+        }
+        return <RoomsListScreen onEnterRoom={handleEnterRoom} />;
+    };
+
+
     return (
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
-                {view === 'room' ? (
-                     <RoomScreen 
-                        room={currentRoom}
-                        user={user} 
-                        onExit={() => setView('profile')} 
-                        onRoomUpdated={handleRoomUpdated} 
-                        balance={balance} 
-                        setBalance={setBalance} 
-                        setSilverBalance={setSilverBalance}
-                     />
-                ) : (
-                    profileView === 'coins' ? (
-                        <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />
-                    ) : profileView === 'silver' ? (
-                        <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />
-                    ) : (
-                        <ProfileScreen 
-                            user={user} 
-                            onUserUpdate={handleUserUpdateAndReset} 
-                            balance={balance} 
-                            silverBalance={silverBalance}
-                            onNavigate={setProfileView}
-                            onLogout={onReset}
-                            onAddCoins={handleAddCoins}
-                            onBanUser={handleBanUser}
-                        />
-                    )
-                )}
+                {renderContent()}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
-                    onClick={() => { setView('room'); setProfileView('profile'); }}
+                    onClick={() => { setView('roomsList'); setProfileView('profile'); }}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
-                        view === 'room' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        view === 'roomsList' || view === 'inRoom' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
                     <MessageSquare className="w-6 h-6" />
                     <span className="text-xs font-medium">الغرف</span>
                 </button>
                  <button 
-                    onClick={view === 'room' ? undefined : handleGameClick}
+                    onClick={view !== 'inRoom' ? handleGameClick : undefined}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                        view === 'room' ? "cursor-default" : "cursor-pointer hover:text-foreground"
+                         view === 'inRoom' ? "text-primary cursor-default" : "cursor-pointer hover:text-foreground"
                     )}>
                     <Gamepad2 className="w-6 h-6" />
                     <span className="text-xs font-medium">اللعبة</span>
@@ -1172,17 +1235,19 @@ export default function HomePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   
   // Use local state for balance for now
   const [balance, setBalance] = useState(10000000); 
   const [silverBalance, setSilverBalance] = useState(50000);
 
   useEffect(() => {
-    // Check for user profile in localStorage on initial load
+    // This effect runs only on the client-side
     const savedUser = localStorage.getItem("userProfile");
     if (savedUser) {
       setUserProfile(JSON.parse(savedUser));
     }
+    setIsLoading(false); // Finished loading from localStorage
   }, []);
 
   const handleSaveProfile = (name: string) => {
@@ -1212,12 +1277,21 @@ export default function HomePage() {
       localStorage.setItem("userProfile", JSON.stringify(updatedUser));
   };
   
-  const handleReset = () => {
+  const handleLogout = () => {
     localStorage.removeItem('userProfile');
     setUserProfile(null); 
     setNameInput("");
     toast({ title: "تم تسجيل الخروج" });
   }
+
+  if (isLoading) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-[#4a2b23] text-white p-4">
+            <h1 className="text-2xl font-bold">...جاري التحميل</h1>
+        </div>
+    );
+  }
+
 
   if (!userProfile) {
     return (
@@ -1257,7 +1331,7 @@ export default function HomePage() {
 
   return <MainApp 
             user={userProfile} 
-            onReset={handleReset} 
+            onLogout={handleLogout} 
             onUserUpdate={handleUserUpdate} 
             balance={balance} 
             setBalance={setBalance}
