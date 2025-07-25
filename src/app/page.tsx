@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
+import { db } from '@/lib/firebase';
+import { ref, onValue, set, push, remove, get, child, serverTimestamp, runTransaction } from 'firebase/database';
 
 
 // --- Types ---
@@ -29,6 +31,7 @@ interface Room {
     name: string;
     image: string;
     ownerId: string;
+    memberCount?: number;
 }
 
 interface ChatMessage {
@@ -89,35 +92,33 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
     const [isOpen, setIsOpen] = useState(false);
     const placeholderImage = "https://placehold.co/100x100.png";
 
-    const handleCreateRoom = () => {
+    const handleCreateRoom = async () => {
         if (!roomName) {
             toast({ variant: "destructive", title: "بيانات غير مكتملة", description: "يرجى إدخال اسم للغرفة." });
             return;
         }
 
+        const roomsRef = ref(db, 'rooms');
+        const newRoomRef = push(roomsRef);
+        
         const newRoom: Room = {
-            id: Math.floor(100000 + Math.random() * 900000).toString(),
+            id: newRoomRef.key!,
             name: roomName,
             image: placeholderImage,
             ownerId: user.userId,
+            memberCount: 0
         };
 
         try {
-            const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
-            localStorage.setItem('globalRooms', JSON.stringify([...existingRooms, newRoom]));
-        } catch (e) {
-             if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                 toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن إنشاء المزيد من الغرف." });
-             } else {
-                 toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من إنشاء الغرفة." });
-             }
-             return;
+            await set(newRoomRef, newRoom);
+            toast({ title: "تم إنشاء الغرفة بنجاح!" });
+            onRoomCreated(newRoom);
+            setIsOpen(false);
+            setRoomName("");
+        } catch (error) {
+            console.error("Error creating room: ", error);
+            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من إنشاء الغرفة." });
         }
-        
-        toast({ title: "تم إنشاء الغرفة بنجاح!" });
-        onRoomCreated(newRoom);
-        setIsOpen(false);
-        setRoomName("");
     };
 
     return (
@@ -159,23 +160,33 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
     const { toast } = useToast();
     
     useEffect(() => {
-        try {
-            const rooms = JSON.parse(localStorage.getItem('globalRooms') || '[]') as Room[];
-            setAllRooms(rooms);
-        } catch (e) {
-            console.error("Failed to parse global rooms from localStorage", e);
-            setAllRooms([]);
-        }
+        const roomsRef = ref(db, 'rooms');
+        // onValue listens for data changes at a location
+        const unsubscribe = onValue(roomsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const roomsList: Room[] = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key]
+                }));
+                setAllRooms(roomsList);
+            } else {
+                setAllRooms([]);
+            }
+        });
+
+        // Detach listener on cleanup
+        return () => unsubscribe();
     }, []);
 
 
     const handleRoomCreated = (newRoom: Room) => {
-        setAllRooms(prev => [...prev, newRoom]);
+        // The onValue listener will handle adding the room to the state.
+        // We can directly enter the room.
         onEnterRoom(newRoom);
     }
     
-    const handleDeleteRoom = (roomIdToDelete: string) => {
-        // Only allow room owner to delete
+    const handleDeleteRoom = async (roomIdToDelete: string) => {
         const roomToDelete = allRooms.find(room => room.id === roomIdToDelete);
         if (roomToDelete && roomToDelete.ownerId !== user.userId) {
             toast({variant: "destructive", title: "غير مصرح به", description: "لا يمكنك حذف غرفة ليست ملكك."});
@@ -183,11 +194,13 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
         }
         
         try {
-            const updatedRooms = allRooms.filter(room => room.id !== roomIdToDelete);
-            setAllRooms(updatedRooms);
-            localStorage.setItem('globalRooms', JSON.stringify(updatedRooms));
-        } catch (e) {
-            console.error("Failed to update global rooms in localStorage", e);
+            const roomRef = ref(db, `rooms/${roomIdToDelete}`);
+            await remove(roomRef);
+            toast({ title: "تم حذف الغرفة بنجاح!" });
+            // The onValue listener will automatically update the UI.
+        } catch (error) {
+            console.error("Failed to delete room:", error);
+            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حذف الغرفة." });
         }
     };
 
@@ -216,7 +229,7 @@ function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfi
                                                     <p className="text-sm text-gray-500 mt-1">مرحبا بكم في غرفة {room.name}</p>
                                                 </div>
                                                 <div className="bg-amber-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                                                    <span>{Math.floor(Math.random() * 500) + 10}</span>
+                                                    <span>{room.memberCount || 0}</span>
                                                     <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0H9.33333V10H11V0Z" fill="white"/><path d="M7.33333 3.33333H5.66667V10H7.33333V3.33333Z" fill="white"/><path d="M3.66667 6.66667H2V10H3.66667V6.66667Z" fill="white"/></svg>
                                                 </div>
                                             </div>
@@ -268,28 +281,18 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
     const { toast } = useToast();
     const placeholderImage = "https://placehold.co/100x100.png";
 
-    const handleSaveChanges = () => {
-        const updatedRoom = { ...room, name: roomName, image: placeholderImage };
+    const handleSaveChanges = async () => {
+        const updatedRoomData = { ...room, name: roomName, image: placeholderImage };
         
         try {
-            // Update localStorage
-            const existingRooms: Room[] = JSON.parse(localStorage.getItem('globalRooms') || '[]');
-            const roomIndex = existingRooms.findIndex(r => r.id === updatedRoom.id);
-            if (roomIndex !== -1) {
-                existingRooms[roomIndex] = updatedRoom;
-                localStorage.setItem('globalRooms', JSON.stringify(existingRooms));
-            }
-        } catch (e) {
-             if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                 toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن تعديل الغرفة." });
-             } else {
-                 toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تعديل الغرفة." });
-             }
-             return;
+            const roomRef = ref(db, `rooms/${room.id}`);
+            await set(roomRef, updatedRoomData);
+            onRoomUpdated(updatedRoomData);
+            toast({ title: "تم تحديث الغرفة!" });
+        } catch (error) {
+            console.error("Failed to update room:", error);
+            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تعديل الغرفة." });
         }
-        
-        onRoomUpdated(updatedRoom);
-        toast({ title: "تم تحديث الغرفة!" });
     };
 
     return (
@@ -486,6 +489,15 @@ function RoomScreen({
         }
     }, [chatMessages]);
 
+    useEffect(() => {
+        const roomRef = ref(db, `rooms/${room.id}/memberCount`);
+        runTransaction(roomRef, (currentCount) => (currentCount || 0) + 1);
+
+        return () => {
+            runTransaction(roomRef, (currentCount) => (currentCount || 1) - 1);
+        };
+    }, [room.id]);
+
 
      const handleCopyId = () => {
         navigator.clipboard.writeText(room.id);
@@ -565,24 +577,22 @@ function RoomScreen({
         }
 
         onBalanceChange(prev => prev - totalCost);
-
-        setRoomSupporters(prevSupporters => {
-            let newSupporters = [...prevSupporters];
-            const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
-            if (existingSupporterIndex !== -1) {
-                const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
-                updatedSupporter.totalGiftValue += totalCost;
-                newSupporters[existingSupporterIndex] = updatedSupporter;
-            } else {
-                newSupporters.push({ user, totalGiftValue: totalCost });
-            }
-            return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
-        });
+        
+        let newSupporters = [...roomSupporters];
+        const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
+        if (existingSupporterIndex !== -1) {
+            const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
+            updatedSupporter.totalGiftValue += totalCost;
+            newSupporters[existingSupporterIndex] = updatedSupporter;
+        } else {
+            newSupporters.push({ user, totalGiftValue: totalCost });
+        }
+        setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
 
         if (recipient.userId === user.userId) { // Simplified for client-side
             onSilverBalanceChange(prevSilver => prevSilver + (totalCost * 0.20));
         }
-
+        
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
         setIsGiftDialogOpen(false);
     };
@@ -983,6 +993,7 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                     <ChevronLeft className="w-6 h-6" />
                 </Button>
                 <h2 className="text-xl font-bold">المحفظة</h2>
+                <div></div>
             </header>
             
             {/* Balance Card */}
@@ -1068,6 +1079,7 @@ function SilverScreen({
                     <ChevronLeft className="w-6 h-6" />
                 </Button>
                 <h2 className="text-xl font-bold">الفضة</h2>
+                <div></div>
             </header>
             
             <div className="relative bg-gradient-to-br from-gray-500 to-gray-700 rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg mb-6 overflow-hidden h-56">
@@ -1097,7 +1109,7 @@ function AdminPanel() {
     const [addCoinsAmount, setAddCoinsAmount] = useState("");
     const [banUserId, setBanUserId] = useState("");
 
-    const handleAddCoins = () => {
+    const handleAddCoins = async () => {
         const amount = parseInt(addCoinsAmount, 10);
         if (!addCoinsUserId || !addCoinsAmount || isNaN(amount)) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
@@ -1105,38 +1117,33 @@ function AdminPanel() {
         }
 
         try {
-            const balanceKey = `fruityFortuneBalance_${addCoinsUserId}`;
-            const currentBalance = parseInt(localStorage.getItem(balanceKey) || '0', 10);
-            const newBalance = currentBalance + amount;
-            localStorage.setItem(balanceKey, newBalance.toString());
+            const userBalanceRef = ref(db, `users/${addCoinsUserId}/balance`);
+            await runTransaction(userBalanceRef, (currentBalance) => (currentBalance || 0) + amount);
+            
+            const snapshot = await get(child(ref(db), `users/${addCoinsUserId}/balance`));
+            const newBalance = snapshot.val();
+            
             toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${addCoinsUserId} إلى ${newBalance.toLocaleString()}.` });
             setAddCoinsUserId("");
             setAddCoinsAmount("");
-            // This is a way to notify other tabs, but won't update the current user's screen if they are the one receiving coins.
-            // A more robust solution needs a state management library or backend.
-            window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { userId: addCoinsUserId, newBalance } }));
         } catch (e) {
+            console.error("Error adding coins: ", e);
             toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من تحديث الرصيد." });
         }
     };
 
-    const handleBanUser = () => {
+    const handleBanUser = async () => {
         if (!banUserId) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID المستخدم." });
             return;
         }
         try {
-            const bannedUsersKey = 'bannedUsers';
-            const bannedUsers: string[] = JSON.parse(localStorage.getItem(bannedUsersKey) || '[]');
-            if (!bannedUsers.includes(banUserId)) {
-                bannedUsers.push(banUserId);
-                localStorage.setItem(bannedUsersKey, JSON.stringify(bannedUsers));
-                toast({ title: "تم حظر المستخدم!", description: `المستخدم ${banUserId} لن يتمكن من الدخول للتطبيق.` });
-            } else {
-                toast({ title: "مستخدم محظور بالفعل", description: `المستخدم ${banUserId} محظور بالفعل.` });
-            }
+            const bannedUserRef = ref(db, `bannedUsers/${banUserId}`);
+            await set(bannedUserRef, true);
+            toast({ title: "تم حظر المستخدم!", description: `المستخدم ${banUserId} لن يتمكن من الدخول للتطبيق.` });
             setBanUserId("");
         } catch (e) {
+            console.error("Error banning user: ", e);
             toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من حظر المستخدم." });
         }
     };
@@ -1208,49 +1215,49 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div className="text-left">
-                        <h2 className="text-lg font-bold">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full">
-                            <Copy className="w-3 h-3" />
-                            <span>ID: {user.userId}</span>
-                        </button>
-                    </div>
-                </div>
                  <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
+                <div className="flex items-center gap-3">
+                     <div className="text-right">
+                        <h2 className="text-lg font-bold">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
+                            <span>ID: {user.userId}</span>
+                            <Copy className="w-3 h-3" />
+                        </button>
+                    </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                </div>
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="text-left">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
                     </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
                             <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </div>
-                </button>
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="text-left">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
+                     <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
             </div>
@@ -1295,11 +1302,11 @@ function MainApp({
 
     const handleRoomUpdated = (updatedRoom: Room) => {
         setCurrentRoom(updatedRoom);
+        // Also update the list view if needed, although the listener should handle it.
     };
 
     const handleUserUpdateAndReset = (updatedUser: UserProfile) => {
         onUserUpdate(updatedUser);
-        // Optionally, you might want to switch tab or view after update
     };
 
     const handleConvertSilver = () => {
@@ -1389,118 +1396,111 @@ export default function HomePage() {
   const [silverBalance, setSilverBalance] = useState(0);
   
   const [nameInput, setNameInput] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Clear old data to force re-login for all users
-    try {
-        const savedUser = localStorage.getItem("userProfile");
-        if (savedUser) {
-          const user = JSON.parse(savedUser);
-          
-          // Check if user is banned
-          const bannedUsers: string[] = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
-          if (bannedUsers.includes(user.userId)) {
-              localStorage.removeItem("userProfile"); // Log them out
-              toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
-              setIsLoading(false);
-              return;
-          }
-
-          setUserProfile(user);
-          // Load balances specific to this user
-          const initialBalance = user.userId === ADMIN_USER_ID ? 1000000000 : 10000000;
-          const savedBalance = localStorage.getItem(`fruityFortuneBalance_${user.userId}`);
-          setBalance(savedBalance ? parseInt(savedBalance, 10) : initialBalance);
-          
-          const savedSilverBalance = localStorage.getItem(`silverBalance_${user.userId}`);
-          setSilverBalance(savedSilverBalance ? parseInt(savedSilverBalance, 10) : 0);
-        }
-    } catch (error) {
-        console.error("Failed to parse user profile from localStorage", error);
-        localStorage.removeItem("userProfile"); // Clear corrupted data
+    const localUserId = localStorage.getItem("userId");
+    if (!localUserId) {
+        setIsLoading(false);
+        return;
     }
-    setIsLoading(false);
-  }, [toast]);
 
-  // Listen for custom balance update events (from the admin function)
-  useEffect(() => {
-    const handleBalanceUpdate = (event: Event) => {
-        const customEvent = event as CustomEvent;
-        if (userProfile && customEvent.detail.userId === userProfile.userId) {
-            setBalance(customEvent.detail.newBalance);
+    const fetchUserData = async () => {
+        const userRef = ref(db, `users/${localUserId}`);
+        const snapshot = await get(userRef);
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            
+            const bannedRef = ref(db, `bannedUsers/${userData.userId}`);
+            const bannedSnapshot = await get(bannedRef);
+            if (bannedSnapshot.exists()) {
+                localStorage.removeItem("userId");
+                toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
+                setIsLoading(false);
+                return;
+            }
+
+            setUserProfile({
+                userId: localUserId,
+                name: userData.name,
+                image: userData.image,
+            });
+
+            // Set up listeners for real-time balance updates
+            const balanceRef = ref(db, `users/${localUserId}/balance`);
+            onValue(balanceRef, (snap) => setBalance(snap.val() || 0));
+            
+            const silverBalanceRef = ref(db, `users/${localUserId}/silverBalance`);
+            onValue(silverBalanceRef, (snap) => setSilverBalance(snap.val() || 0));
+
+        } else {
+            // If user exists in localStorage but not in DB, log them out.
+            localStorage.removeItem("userId");
         }
+        setIsLoading(false);
     };
-
-    window.addEventListener('balanceUpdated', handleBalanceUpdate);
-
-    return () => {
-        window.removeEventListener('balanceUpdated', handleBalanceUpdate);
-    };
-  }, [userProfile]);
+    
+    fetchUserData();
+  }, [toast]);
   
-  const handleUserUpdate = (updatedUser: UserProfile) => {
+  const handleUserUpdate = async (updatedUser: UserProfile) => {
         try {
-            localStorage.setItem("userProfile", JSON.stringify(updatedUser));
+            const userRef = ref(db, `users/${updatedUser.userId}`);
+            await set(userRef, {
+                name: updatedUser.name,
+                image: updatedUser.image,
+            });
             setUserProfile(updatedUser);
         } catch(e) {
-            if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                 toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن تحديث الملف الشخصي." });
-            } else {
-                 toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تحديث الملف الشخصي." });
-            }
+            console.error("Error updating user profile in DB: ", e);
+            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تحديث الملف الشخصي." });
         }
   };
   
   const handleBalanceChange = (updater: (prev: number) => number) => {
       if (!userProfile) return;
-      setBalance(prev => {
-          const newBalance = updater(prev);
-          try {
-            localStorage.setItem(`fruityFortuneBalance_${userProfile.userId}`, newBalance.toString());
-          } catch (e) {
-            toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ الرصيد." });
-          }
-          return newBalance;
-      });
+      const userBalanceRef = ref(db, `users/${userProfile.userId}/balance`);
+      runTransaction(userBalanceRef, (currentBalance) => updater(currentBalance || 0))
+          .catch((error) => {
+              console.error("Transaction failed: ", error);
+              toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ الرصيد." });
+          });
   };
   
   const handleSilverBalanceChange = (updater: (prev: number) => number) => {
       if (!userProfile) return;
-      setSilverBalance(prev => {
-          const newValue = updater(prev);
-          try {
-            localStorage.setItem(`silverBalance_${userProfile.userId}`, newValue.toString());
-          } catch(e) {
-            toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ رصيد الفضة." });
-          }
-          return newValue;
-      });
+      const userSilverBalanceRef = ref(db, `users/${userProfile.userId}/silverBalance`);
+      runTransaction(userSilverBalanceRef, (currentBalance) => updater(currentBalance || 0))
+          .catch((error) => {
+              console.error("Transaction failed: ", error);
+              toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ رصيد الفضة." });
+          });
   };
 
-  const handleSaveProfile = (name: string) => {
+  const handleSaveProfile = async (name: string) => {
     if (name.trim()) {
       const userId = localStorage.getItem("tempUserId") || Math.floor(100000 + Math.random() * 900000).toString();
       
       const newUserProfile: UserProfile = { 
         name: name.trim(), 
-        image: 'https://placehold.co/128x128.png', // Default placeholder image
+        image: 'https://placehold.co/128x128.png',
         userId: userId 
       };
       
       try {
-        // Clear old global balances
-        localStorage.removeItem('fruityFortuneBalance');
-        localStorage.removeItem('silverBalance');
-        
-        // Set new user-specific data
         const initialBalance = userId === ADMIN_USER_ID ? 1000000000 : 10000000;
-        localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
-        localStorage.setItem(`fruityFortuneBalance_${userId}`, initialBalance.toString());
-        localStorage.setItem(`silverBalance_${userId}`, '0');
+        const userRef = ref(db, `users/${userId}`);
+        await set(userRef, {
+            name: newUserProfile.name,
+            image: newUserProfile.image,
+            balance: initialBalance,
+            silverBalance: 0,
+            createdAt: serverTimestamp()
+        });
         
-        localStorage.removeItem("tempUserId"); // Clean up temp id
+        localStorage.setItem("userId", userId);
+        localStorage.removeItem("tempUserId");
         
         setUserProfile(newUserProfile);
         setBalance(initialBalance);
@@ -1511,11 +1511,8 @@ export default function HomePage() {
             description: "مرحبًا بك في التطبيق!",
         });
       } catch (e) {
-         if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-            toast({ variant: "destructive", title: "خطأ في التخزين", description: "مساحة التخزين ممتلئة. لا يمكن حفظ الملف الشخصي." });
-         } else {
-            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حفظ الملف الشخصي." });
-         }
+         console.error("Error saving profile to DB: ", e);
+         toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حفظ الملف الشخصي." });
       }
 
     } else {
@@ -1529,8 +1526,8 @@ export default function HomePage() {
   
   const handleReset = () => {
     try {
-        // This should clear everything for a full reset
-        localStorage.clear();
+        localStorage.removeItem('userId');
+        localStorage.removeItem('tempUserId');
     } catch(e) {
         console.error("Error clearing localStorage", e);
     }
@@ -1538,11 +1535,10 @@ export default function HomePage() {
     setNameInput("");
     setBalance(0);
     setSilverBalance(0);
-    setAuthStep('login'); // Go back to login screen
+    setAuthStep('login'); 
     toast({ title: "تم تسجيل الخروج وإعادة تعيين البيانات" });
   }
 
-  // This state will track the login flow
   const [authStep, setAuthStep] = useState<'login' | 'create_profile' | 'authenticated'>('login');
 
   useEffect(() => {
@@ -1555,22 +1551,18 @@ export default function HomePage() {
     }
   }, [userProfile, isLoading]);
   
-  const handleGoogleLogin = () => {
-    // This is a simulation. In a real app, you'd use a library like Firebase Auth.
-    // For now, we'll just move to the profile creation step after "logging in".
-    handleReset(); // Clear all old data before new login
-    // We create a temporary user ID to be used when profile is created
+  const handleGoogleLogin = async () => {
+    handleReset();
     const tempId = Math.floor(100000 + Math.random() * 900000).toString();
-    localStorage.setItem("tempUserId", tempId);
-
-     // Check if user is banned before allowing profile creation
-    const bannedUsers: string[] = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
-    if (bannedUsers.includes(tempId)) {
+    
+    const bannedRef = ref(db, `bannedUsers/${tempId}`);
+    const bannedSnapshot = await get(bannedRef);
+    if (bannedSnapshot.exists()) {
         toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
-        localStorage.removeItem("tempUserId");
         return;
     }
 
+    localStorage.setItem("tempUserId", tempId);
     setAuthStep('create_profile');
   };
 
@@ -1614,7 +1606,6 @@ export default function HomePage() {
                         onChange={(e) => setNameInput(e.target.value)}
                         className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
                     />
-                    {/* Placeholder for Country and Gender selection */}
                 </div>
 
                 <Button onClick={() => handleSaveProfile(nameInput)} size="lg" className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -1646,5 +1637,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    
