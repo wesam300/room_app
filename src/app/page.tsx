@@ -155,6 +155,13 @@ function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCr
     );
 }
 
+const defaultRoom: Room = {
+    id: 'default-room-123',
+    name: 'الغرفة الرئيسية',
+    image: 'https://placehold.co/100x100/8e44ad/ffffff.png',
+    ownerId: 'system',
+};
+
 function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfile, onEnterRoom: (room: Room) => void, onRoomUpdated: (updatedRoom: Room) => void }) {
     const [allRooms, setAllRooms] = useState<Room[]>([]);
     const { toast } = useToast();
@@ -1196,13 +1203,15 @@ function ProfileScreen({
     onUserUpdate, 
     balance, 
     silverBalance,
-    onNavigate
+    onNavigate,
+    onLogout,
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
     balance: number, 
     silverBalance: number,
-    onNavigate: (view: 'coins' | 'silver') => void
+    onNavigate: (view: 'coins' | 'silver') => void,
+    onLogout: () => void,
 }) {
     const { toast } = useToast();
     const isAdmin = user.userId === ADMIN_USER_ID;
@@ -1262,6 +1271,8 @@ function ProfileScreen({
                 </button>
             </div>
             {isAdmin && <AdminPanel />}
+            <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
+
         </div>
     );
 }
@@ -1269,40 +1280,27 @@ function ProfileScreen({
 
 function MainApp({ 
     user, 
-    onReset, 
     onUserUpdate, 
     balance, 
     onBalanceChange, 
     silverBalance,
-    onSilverBalanceChange 
+    onSilverBalanceChange,
+    onLogout
 }: { 
     user: UserProfile, 
-    onReset: () => void, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
     balance: number, 
     onBalanceChange: (updater: (prev: number) => number) => void,
     silverBalance: number,
-    onSilverBalanceChange: (updater: (prev: number) => number) => void
+    onSilverBalanceChange: (updater: (prev: number) => number) => void,
+    onLogout: () => void,
 }) {
-    const [view, setView] = useState<'list' | 'in_room'>('list');
-    const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [activeTab, setActiveTab] = useState<'rooms' | 'profile'>('rooms');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const { toast } = useToast();
 
-    const handleEnterRoom = (room: Room) => {
-        setCurrentRoom(room);
-        setView('in_room');
-    };
-
-    const handleExitRoom = () => {
-        setCurrentRoom(null);
-        setView('list');
-    };
-
     const handleRoomUpdated = (updatedRoom: Room) => {
-        setCurrentRoom(updatedRoom);
-        // Also update the list view if needed, although the listener should handle it.
+        // In this simplified version, this might not be needed if we only have one room.
     };
 
     const handleUserUpdateAndReset = (updatedUser: UserProfile) => {
@@ -1318,11 +1316,30 @@ function MainApp({
         toast({ title: "اللعبة موجودة داخل الغرف" });
     }, [toast]);
 
-    if (view === 'in_room' && currentRoom) {
+    const renderMainContent = () => {
+        if (activeTab === 'profile') {
+            switch (profileView) {
+                case 'coins':
+                    return <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />;
+                case 'silver':
+                    return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
+                case 'profile':
+                default:
+                    return <ProfileScreen 
+                        user={user} 
+                        onUserUpdate={handleUserUpdateAndReset} 
+                        balance={balance} 
+                        silverBalance={silverBalance}
+                        onNavigate={setProfileView}
+                        onLogout={onLogout}
+                    />;
+            }
+        }
+        // Default to room view
         return <RoomScreen 
-            room={currentRoom} 
+            room={defaultRoom}
             user={user} 
-            onExit={handleExitRoom} 
+            onExit={() => setActiveTab('rooms')} 
             onRoomUpdated={handleRoomUpdated} 
             balance={balance} 
             onBalanceChange={onBalanceChange} 
@@ -1330,29 +1347,10 @@ function MainApp({
         />;
     }
 
-    const renderProfileContent = () => {
-        switch (profileView) {
-            case 'coins':
-                return <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />;
-            case 'silver':
-                return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
-            case 'profile':
-            default:
-                return <ProfileScreen 
-                    user={user} 
-                    onUserUpdate={handleUserUpdateAndReset} 
-                    balance={balance} 
-                    silverBalance={silverBalance}
-                    onNavigate={setProfileView}
-                />;
-        }
-    }
-
     return (
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
-                 {activeTab === 'rooms' && <RoomsListScreen user={user} onEnterRoom={handleEnterRoom} onRoomUpdated={handleRoomUpdated} />}
-                 {activeTab === 'profile' && renderProfileContent()}
+                 {renderMainContent()}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
@@ -1379,7 +1377,7 @@ function MainApp({
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
                          activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
-                    <img src="https://i.imgur.com/EWnIx50.jpg" alt="Profile" className="w-6 h-6 rounded-full" />
+                    <User className="w-6 h-6" />
                     <span className="text-xs font-medium">أنا</span>
                 </button>
             </footer>
@@ -1397,30 +1395,34 @@ export default function HomePage() {
   
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
+  const [authStep, setAuthStep] = useState<'loading' | 'login' | 'create_profile' | 'authenticated'>('loading');
+  const [tempUserId, setTempUserId] = useState<string | null>(null);
+
 
   useEffect(() => {
     const localUserId = localStorage.getItem("userId");
     if (!localUserId) {
+        setAuthStep('login');
         setIsLoading(false);
         return;
     }
 
     const fetchUserData = async () => {
+        const bannedRef = ref(db, `bannedUsers/${localUserId}`);
+        const bannedSnapshot = await get(bannedRef);
+        if (bannedSnapshot.exists()) {
+            localStorage.removeItem("userId");
+            toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
+            setAuthStep('login');
+            setIsLoading(false);
+            return;
+        }
+
         const userRef = ref(db, `users/${localUserId}`);
         const snapshot = await get(userRef);
         
         if (snapshot.exists()) {
             const userData = snapshot.val();
-            
-            const bannedRef = ref(db, `bannedUsers/${userData.userId}`);
-            const bannedSnapshot = await get(bannedRef);
-            if (bannedSnapshot.exists()) {
-                localStorage.removeItem("userId");
-                toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
-                setIsLoading(false);
-                return;
-            }
-
             setUserProfile({
                 userId: localUserId,
                 name: userData.name,
@@ -1434,9 +1436,11 @@ export default function HomePage() {
             const silverBalanceRef = ref(db, `users/${localUserId}/silverBalance`);
             onValue(silverBalanceRef, (snap) => setSilverBalance(snap.val() || 0));
 
+            setAuthStep('authenticated');
         } else {
             // If user exists in localStorage but not in DB, log them out.
             localStorage.removeItem("userId");
+            setAuthStep('login');
         }
         setIsLoading(false);
     };
@@ -1450,6 +1454,8 @@ export default function HomePage() {
             await set(userRef, {
                 name: updatedUser.name,
                 image: updatedUser.image,
+                balance: balance,
+                silverBalance: silverBalance
             });
             setUserProfile(updatedUser);
         } catch(e) {
@@ -1479,18 +1485,16 @@ export default function HomePage() {
   };
 
   const handleSaveProfile = async (name: string) => {
-    if (name.trim()) {
-      const userId = localStorage.getItem("tempUserId") || Math.floor(100000 + Math.random() * 900000).toString();
-      
+    if (name.trim() && tempUserId) {
       const newUserProfile: UserProfile = { 
         name: name.trim(), 
         image: 'https://placehold.co/128x128.png',
-        userId: userId 
+        userId: tempUserId
       };
       
       try {
-        const initialBalance = userId === ADMIN_USER_ID ? 1000000000 : 10000000;
-        const userRef = ref(db, `users/${userId}`);
+        const initialBalance = tempUserId === ADMIN_USER_ID ? 1000000000 : 10000000;
+        const userRef = ref(db, `users/${tempUserId}`);
         await set(userRef, {
             name: newUserProfile.name,
             image: newUserProfile.image,
@@ -1499,12 +1503,12 @@ export default function HomePage() {
             createdAt: serverTimestamp()
         });
         
-        localStorage.setItem("userId", userId);
-        localStorage.removeItem("tempUserId");
+        localStorage.setItem("userId", tempUserId);
         
         setUserProfile(newUserProfile);
         setBalance(initialBalance);
         setSilverBalance(0);
+        setAuthStep('authenticated');
 
         toast({
             title: "تم حفظ الملف الشخصي",
@@ -1524,10 +1528,9 @@ export default function HomePage() {
     }
   };
   
-  const handleReset = () => {
+  const handleLogout = () => {
     try {
         localStorage.removeItem('userId');
-        localStorage.removeItem('tempUserId');
     } catch(e) {
         console.error("Error clearing localStorage", e);
     }
@@ -1536,37 +1539,24 @@ export default function HomePage() {
     setBalance(0);
     setSilverBalance(0);
     setAuthStep('login'); 
-    toast({ title: "تم تسجيل الخروج وإعادة تعيين البيانات" });
+    toast({ title: "تم تسجيل الخروج" });
   }
 
-  const [authStep, setAuthStep] = useState<'login' | 'create_profile' | 'authenticated'>('login');
-
-  useEffect(() => {
-    if (!isLoading) {
-      if (userProfile) {
-        setAuthStep('authenticated');
-      } else {
-        setAuthStep('login');
-      }
-    }
-  }, [userProfile, isLoading]);
-  
   const handleGoogleLogin = async () => {
-    handleReset();
-    const tempId = Math.floor(100000 + Math.random() * 900000).toString();
+    const newId = Math.floor(100000 + Math.random() * 900000).toString();
     
-    const bannedRef = ref(db, `bannedUsers/${tempId}`);
+    const bannedRef = ref(db, `bannedUsers/${newId}`);
     const bannedSnapshot = await get(bannedRef);
     if (bannedSnapshot.exists()) {
         toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
         return;
     }
 
-    localStorage.setItem("tempUserId", tempId);
+    setTempUserId(newId);
     setAuthStep('create_profile');
   };
 
-  if (isLoading) {
+  if (isLoading || authStep === 'loading') {
       return (
           <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
              {/* Loading spinner or placeholder */}
@@ -1577,7 +1567,7 @@ export default function HomePage() {
   if (authStep === 'authenticated' && userProfile) {
     return <MainApp 
                 user={userProfile} 
-                onReset={handleReset} 
+                onLogout={handleLogout} 
                 onUserUpdate={handleUserUpdate} 
                 balance={balance} 
                 onBalanceChange={handleBalanceChange}
