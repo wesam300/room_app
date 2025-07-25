@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -28,6 +28,9 @@ interface Room {
     name: string;
     image: string;
     ownerId: string;
+    description: string;
+    userCount: number;
+    tags?: string[];
 }
 
 interface ChatMessage {
@@ -70,9 +73,11 @@ const GIFTS: GiftItem[] = [
 
 // --- MOCK DATA ---
 const ALL_ROOMS: Room[] = [
-    { id: 'room-1', name: 'الجلسة الماسية', image: 'https://placehold.co/100x100/7F00FF/FFFFFF.png', ownerId: 'admin-1' },
-    { id: 'room-2', name: 'أصدقاء للأبد', image: 'https://placehold.co/100x100/FFC300/000000.png', ownerId: 'admin-2' },
-    { id: 'room-3', name: 'سوالف وضحك', image: 'https://placehold.co/100x100/DAF7A6/333333.png', ownerId: 'admin-3' },
+    { id: 'room-1', name: 'خدمة العملاء', image: 'https://placehold.co/150x150/FFD700/000000.png', ownerId: 'admin-1', description: 'مرحبا بكم في خدمة عملاء YoSo', userCount: 346 },
+    { id: 'room-2', name: 'وكالة شحن البرك', image: 'https://placehold.co/150x150/000000/FFFFFF.png', ownerId: 'admin-2', description: 'اهلا ومرحبا بكم في روم عائلة البركان', userCount: 186 },
+    { id: 'room-3', name: 'وكالة الأخوات', image: 'https://placehold.co/150x150/FF69B4/FFFFFF.png', ownerId: 'admin-3', description: 'مرحبا بالجميع', userCount: 151 },
+    { id: 'room-4', name: 'حياكم الله', image: 'https://placehold.co/150x150/228B22/FFFFFF.png', ownerId: 'admin-4', description: 'مش يخصك', userCount: 28 },
+    { id: 'room-5', name: 'وكالة مقهى يوسو', image: 'https://placehold.co/150x150/8A2BE2/FFFFFF.png', ownerId: 'admin-5', description: 'نمبر ون', userCount: 511 },
 ];
 
 
@@ -1064,26 +1069,35 @@ function RoomsListScreen({ onEnterRoom }: { onEnterRoom: (room: Room) => void })
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <header className="flex items-center justify-between mb-4">
-                <h1 className="text-2xl font-bold text-primary">الغرف المتاحة</h1>
-                <Button variant="outline">إنشاء غرفة</Button>
+                <Button variant="ghost" size="icon"><Search className="w-5 h-5"/></Button>
+                <h1 className="text-2xl font-bold text-primary">الغرف</h1>
+                <Button variant="outline" size="icon"><PlusCircle className="w-5 h-5"/></Button>
             </header>
-            <div className="flex-1 overflow-y-auto space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-3">
                 {ALL_ROOMS.map(room => (
-                    <Card key={room.id} className="bg-black/20 border-primary/30 overflow-hidden">
-                        <CardContent className="p-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <Avatar className="w-16 h-16">
-                                    <AvatarImage src={room.image} alt={room.name} />
-                                    <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="text-right">
-                                    <CardTitle className="text-lg">{room.name}</CardTitle>
-                                    <CardDescription>ID: {room.id}</CardDescription>
+                    <div 
+                        key={room.id} 
+                        onClick={() => onEnterRoom(room)} 
+                        className="bg-gradient-to-l from-yellow-900/20 via-yellow-600/20 to-yellow-900/20 p-0.5 rounded-2xl cursor-pointer"
+                    >
+                        <div className="bg-[#412c1c] rounded-2xl p-3 flex items-center gap-4">
+                            <div className="relative flex-shrink-0">
+                                <img src={room.image} alt={room.name} className="w-20 h-20 rounded-lg object-cover" />
+                                <div className="absolute -top-2 -left-2 bg-black/50 border border-yellow-500 rounded-md px-2 py-0.5 text-xs font-bold flex items-center gap-1">
+                                    <Signal className="w-3 h-3 text-green-400" />
+                                    <span>{room.userCount}</span>
                                 </div>
                             </div>
-                            <Button onClick={() => onEnterRoom(room)}>إنضمام</Button>
-                        </CardContent>
-                    </Card>
+                            <div className="flex-1 text-right overflow-hidden">
+                                <h2 className="font-bold text-lg text-white truncate">{room.name}</h2>
+                                <p className="text-sm text-gray-300 truncate">{room.description}</p>
+                                <div className="flex items-center justify-end gap-1 mt-1">
+                                    <span className="text-xs text-gray-400">ID: {room.id}</span>
+                                    <Trophy className="w-3 h-3 text-yellow-400" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
         </div>
@@ -1254,7 +1268,7 @@ export default function HomePage() {
     if (name.trim()) {
       const newUserProfile: UserProfile = { 
         name: name.trim(), 
-        image: 'https://placehold.co/128x128.png',
+        image: `https://placehold.co/128x128.png`,
         userId: `user_${Date.now()}` // Simple unique ID
       };
       setUserProfile(newUserProfile);
