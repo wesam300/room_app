@@ -558,7 +558,7 @@ function RoomScreen({
 
     const handleSendGift = (gift: GiftItem, recipient: UserProfile, quantity: number) => {
         const totalCost = gift.price * quantity;
-
+    
         if (balance < totalCost) {
             toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
             return;
@@ -566,12 +566,8 @@ function RoomScreen({
         
         // Update balances first
         onBalanceChange(prev => prev - totalCost);
-        if (recipient.userId === user.userId) { // This check is flawed if sender != current user, but for now it's fine.
-            const silverValue = totalCost * 0.20;
-            onSilverBalanceChange(prev => prev + silverValue);
-        }
-
-        // Then update room supporters
+        
+        // Update room supporters
         setRoomSupporters(prev => {
             const existingSupporterIndex = prev.findIndex(s => s.user.userId === user.userId);
             let newSupporters = [...prev];
@@ -582,10 +578,15 @@ function RoomScreen({
             } else {
                 newSupporters.push({ user, totalGiftValue: totalCost });
             }
-            // Sort by total gift value descending and return
             return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
         });
-
+    
+        // Update silver balance for the recipient
+        if (recipient.userId === user.userId) { // In a real app, this should be handled on the server. For now, we assume recipient is the current user.
+            const silverValue = totalCost * 0.20;
+            onSilverBalanceChange(prev => prev + silverValue);
+        }
+    
         // Finally, show toast and close dialog
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
         setIsGiftDialogOpen(false);
@@ -1313,7 +1314,7 @@ function MainApp({
 
     const handleGameClick = () => {
         toast({ title: "اللعبة موجودة داخل الغرف" });
-    }
+    };
 
     if (view === 'in_room' && currentRoom) {
         return <RoomScreen 
