@@ -71,9 +71,7 @@ const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
 ];
 
-// --- MOCK DATA ---
-// We will now manage rooms in state instead of a constant array.
-// const ALL_ROOMS: Room[] = [ ... ];
+const DAILY_REWARD_AMOUNT = 10000000;
 
 
 function formatNumber(num: number): string {
@@ -539,6 +537,13 @@ function RoomScreen({
    
        return (
             <header className="flex items-center justify-between p-3">
+                {isOwner ? (
+                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                        {roomInfoContent}
+                    </EditRoomDialog>
+                ) : (
+                    roomInfoContent
+                )}
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full" onClick={onExit}>
@@ -546,13 +551,6 @@ function RoomScreen({
                         </Button>
                     </AlertDialogTrigger>
                 </AlertDialog>
-                 {isOwner ? (
-                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                        {roomInfoContent}
-                    </EditRoomDialog>
-                ) : (
-                    roomInfoContent
-                )}
            </header>
        )
    }
@@ -583,15 +581,6 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
-                        <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -626,6 +615,15 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                        <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
@@ -1016,18 +1014,6 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                </button>
                  <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1038,6 +1024,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
             </div>
@@ -1149,17 +1147,39 @@ function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Ro
     )
 }
 
-function EventsScreen({ onClaimReward }: { onClaimReward: () => void }) {
+function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaimReward: () => void, canClaim: boolean, timeUntilNextClaim: string }) {
+    const { toast } = useToast();
+
+    const handleClaimClick = () => {
+        if (canClaim) {
+            onClaimReward();
+            toast({
+                title: "🎉 مبروك! 🎉",
+                description: `لقد استلمت ${formatNumber(DAILY_REWARD_AMOUNT)} كوينز!`,
+            });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "لا يمكنك الاستلام الآن",
+                description: "لقد استلمت جائزتك اليومية بالفعل.",
+            });
+        }
+    };
+
     return (
         <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-4">
             <h1 className="text-4xl font-bold mb-4 animate-pulse">الأحداث</h1>
             <p className="text-lg mb-8">استلم جائزتك اليومية!</p>
             <Button 
-                onClick={onClaimReward}
+                onClick={handleClaimClick}
+                disabled={!canClaim}
                 size="lg"
-                className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xl py-8 px-12 rounded-2xl shadow-lg transition-transform transform hover:scale-105"
+                className={cn(
+                    "text-black font-bold text-xl py-8 px-12 rounded-2xl shadow-lg transition-all transform hover:scale-105",
+                    canClaim ? "bg-yellow-400 hover:bg-yellow-500" : "bg-gray-500 cursor-not-allowed"
+                )}
             >
-                استلم 10,000,000
+                {canClaim ? `استلم ${formatNumber(DAILY_REWARD_AMOUNT)}` : `الاستلام القادم بعد: ${timeUntilNextClaim}`}
             </Button>
         </div>
     );
@@ -1172,7 +1192,9 @@ function MainApp({
     balance, 
     setBalance, 
     silverBalance,
-    setSilverBalance
+    setSilverBalance,
+    lastClaimTimestamp,
+    setLastClaimTimestamp
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
@@ -1180,14 +1202,63 @@ function MainApp({
     balance: number, 
     setBalance: (updater: (prev: number) => number) => void,
     silverBalance: number,
-    setSilverBalance: (updater: (prev: number) => number) => void
+    setSilverBalance: (updater: (prev: number) => number) => void,
+    lastClaimTimestamp: number | null,
+    setLastClaimTimestamp: (timestamp: number | null) => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [allRooms, setAllRooms] = useState<Room[]>([]);
+    
+    // Daily Reward State
+    const [canClaim, setCanClaim] = useState(false);
+    const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
 
     const { toast } = useToast();
+    
+     // Daily Reward Timer Logic
+    useEffect(() => {
+        const updateClaimTimer = () => {
+            const now = new Date();
+            const iraqTimezoneOffset = 3 * 60; // UTC+3
+            const nowUtc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
+            const nowIraq = new Date(nowUtc + (iraqTimezoneOffset * 60 * 1000));
+
+            const nextClaimDate = new Date(nowIraq);
+            nextClaimDate.setHours(24, 0, 0, 0); // Next day at 00:00 Iraq time
+
+            if (lastClaimTimestamp) {
+                const lastClaimDate = new Date(lastClaimTimestamp);
+                
+                // Adjust last claim date to Iraq time for comparison
+                const lastClaimUtc = lastClaimDate.getTime() + (lastClaimDate.getTimezoneOffset() * 60 * 1000);
+                const lastClaimIraq = new Date(lastClaimUtc + (iraqTimezoneOffset * 60 * 1000));
+
+                if (lastClaimIraq.getFullYear() === nowIraq.getFullYear() &&
+                    lastClaimIraq.getMonth() === nowIraq.getMonth() &&
+                    lastClaimIraq.getDate() === nowIraq.getDate()) {
+                    // Already claimed today (in Iraq time)
+                    setCanClaim(false);
+                    const diff = nextClaimDate.getTime() - nowIraq.getTime();
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    setTimeUntilNextClaim(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+                    return;
+                }
+            }
+
+            // Can claim now
+            setCanClaim(true);
+            setTimeUntilNextClaim('جاهزة للاستلام!');
+        };
+
+        updateClaimTimer();
+        const interval = setInterval(updateClaimTimer, 1000);
+        return () => clearInterval(interval);
+    }, [lastClaimTimestamp]);
+
 
     const handleEnterRoom = (room: Room) => {
         setCurrentRoom(room);
@@ -1232,11 +1303,10 @@ function MainApp({
     };
     
     const handleClaimEventReward = () => {
-        setBalance(prev => prev + 10000000);
-        toast({
-            title: "🎉 مبروك! 🎉",
-            description: "لقد استلمت 10,000,000 كوينز!",
-        });
+        if(canClaim){
+            setBalance(prev => prev + DAILY_REWARD_AMOUNT);
+            setLastClaimTimestamp(Date.now());
+        }
     };
 
     const renderContent = () => {
@@ -1254,7 +1324,11 @@ function MainApp({
             );
         }
         if (view === 'events') {
-            return <EventsScreen onClaimReward={handleClaimEventReward} />;
+            return <EventsScreen 
+                        onClaimReward={handleClaimEventReward} 
+                        canClaim={canClaim} 
+                        timeUntilNextClaim={timeUntilNextClaim} 
+                    />;
         }
         if (view === 'profile') {
             if (profileView === 'coins') {
@@ -1285,9 +1359,9 @@ function MainApp({
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
             </main>
-            {view !== 'inRoom' && (
-                <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
-                    <button 
+             {view !== 'inRoom' && (
+                 <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
+                     <button 
                         onClick={() => { setView('roomsList'); setProfileView('profile'); }}
                         className={cn(
                             "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
@@ -1330,6 +1404,8 @@ export default function HomePage() {
   // Use local state for balance for now
   const [balance, setBalance] = useState(10000000); 
   const [silverBalance, setSilverBalance] = useState(50000);
+  const [lastClaimTimestamp, setLastClaimTimestamp] = useState<number | null>(null);
+
 
   useEffect(() => {
     // This effect runs only on the client-side
@@ -1337,8 +1413,19 @@ export default function HomePage() {
     if (savedUser) {
       setUserProfile(JSON.parse(savedUser));
     }
+    const savedClaimTimestamp = localStorage.getItem("dailyRewardLastClaim");
+    if (savedClaimTimestamp) {
+        setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
+    }
     setIsLoading(false); // Finished loading from localStorage
   }, []);
+  
+  useEffect(() => {
+    // This effect saves the claim timestamp to localStorage whenever it changes
+    if (lastClaimTimestamp) {
+      localStorage.setItem("dailyRewardLastClaim", lastClaimTimestamp.toString());
+    }
+  }, [lastClaimTimestamp]);
 
   const handleSaveProfile = (name: string) => {
     if (name.trim()) {
@@ -1376,7 +1463,7 @@ export default function HomePage() {
 
   if (isLoading) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#4a2b23] text-white p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
         </div>
     );
@@ -1385,7 +1472,7 @@ export default function HomePage() {
 
   if (!userProfile) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-[#4a2b23] text-white p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <div className="w-full max-w-sm text-center">
                 <h1 className="text-2xl font-bold mb-4">إنشاء ملف شخصي</h1>
                 <p className="text-gray-300 mb-8">أكمل ملفك الشخصي للمتابعة</p>
@@ -1427,5 +1514,7 @@ export default function HomePage() {
             setBalance={setBalance}
             silverBalance={silverBalance}
             setSilverBalance={setSilverBalance}
+            lastClaimTimestamp={lastClaimTimestamp}
+            setLastClaimTimestamp={setLastClaimTimestamp}
         />;
 }
