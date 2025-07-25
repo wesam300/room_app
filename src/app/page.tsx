@@ -1262,35 +1262,36 @@ function MainApp({
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
             </main>
-            <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
-                 <button 
-                    onClick={() => { setView('roomsList'); setProfileView('profile'); }}
-                    className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
-                        view === 'roomsList' || view === 'inRoom' ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                    )}>
-                    <MessageSquare className="w-6 h-6" />
-                    <span className="text-xs font-medium">الغرف</span>
-                </button>
-                 <button 
-                    onClick={view !== 'inRoom' ? handleGameClick : undefined}
-                    className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
-                         view === 'inRoom' ? "text-primary cursor-default" : "cursor-pointer hover:text-foreground"
-                    )}>
-                    <Gamepad2 className="w-6 h-6" />
-                    <span className="text-xs font-medium">اللعبة</span>
-                </button>
-                <button 
-                     onClick={() => setView('profile')}
-                    className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
-                         view === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                    )}>
-                    <User className="w-6 h-6" />
-                    <span className="text-xs font-medium">أنا</span>
-                </button>
-            </footer>
+            {view !== 'inRoom' && (
+                <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
+                    <button 
+                        onClick={() => { setView('roomsList'); setProfileView('profile'); }}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                            view === 'roomsList' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        )}>
+                        <MessageSquare className="w-6 h-6" />
+                        <span className="text-xs font-medium">الغرف</span>
+                    </button>
+                    <button 
+                        onClick={handleGameClick}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                        )}>
+                        <Gamepad2 className="w-6 h-6" />
+                        <span className="text-xs font-medium">اللعبة</span>
+                    </button>
+                    <button 
+                        onClick={() => setView('profile')}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                            view === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        )}>
+                        <User className="w-6 h-6" />
+                        <span className="text-xs font-medium">أنا</span>
+                    </button>
+                </footer>
+            )}
         </div>
     );
 }
