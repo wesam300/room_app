@@ -523,19 +523,16 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
         )}
       </AnimatePresence>
       <div className="w-full max-w-sm flex flex-col items-center">
-        <header className="w-full flex justify-between items-center mb-2 gap-4">
-            {/* New Balance Display */}
-            <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
-                <div className="flex flex-col items-center justify-center">
-                    <span className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</span>
-                    <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
-                </div>
+        <header className="w-full flex justify-between items-center mb-4 gap-2">
+            <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 text-center border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
+                <div className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</div>
+                <div className="text-lg font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</div>
+            </div>
+            <div className="flex-1 bg-black/20 rounded-lg p-2 text-center border border-yellow-400/30">
+                <div className="text-sm font-bold text-yellow-300">الجولة</div>
+                <div className="text-lg font-bold text-white">{displayRoundId}</div>
             </div>
         </header>
-
-        <div className="text-center mb-4 text-yellow-300 font-bold text-lg bg-black/20 py-1 px-4 rounded-full border border-yellow-400/30">
-          الجولة: {displayRoundId}
-        </div>
       </div>
 
 
