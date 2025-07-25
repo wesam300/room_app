@@ -15,9 +15,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
-import { db } from '@/lib/firebase';
-import { ref, onValue, set, push, remove, get, child, serverTimestamp, runTransaction } from 'firebase/database';
-
 
 // --- Types ---
 interface UserProfile {
@@ -31,7 +28,6 @@ interface Room {
     name: string;
     image: string;
     ownerId: string;
-    memberCount?: number;
 }
 
 interface ChatMessage {
@@ -66,7 +62,7 @@ const BOT_USER: UserProfile = {
     userId: "bot-001"
 };
 
-const ADMIN_USER_ID = '327521';
+const ADMIN_USER_ID = 'your-admin-user-id'; // Replace with a real admin ID
 
 const GIFTS: GiftItem[] = [
     { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
@@ -84,222 +80,17 @@ function formatNumber(num: number): string {
     return num.toLocaleString('en-US');
 }
 
-// --- Rooms Feature Components ---
-
-function CreateRoomDialog({ user, onRoomCreated }: { user: UserProfile, onRoomCreated: (room: Room) => void }) {
-    const [roomName, setRoomName] = useState("");
-    const { toast } = useToast();
-    const [isOpen, setIsOpen] = useState(false);
-    const placeholderImage = "https://placehold.co/100x100.png";
-
-    const handleCreateRoom = async () => {
-        if (!roomName) {
-            toast({ variant: "destructive", title: "بيانات غير مكتملة", description: "يرجى إدخال اسم للغرفة." });
-            return;
-        }
-
-        const roomsRef = ref(db, 'rooms');
-        const newRoomRef = push(roomsRef);
-        
-        const newRoom: Room = {
-            id: newRoomRef.key!,
-            name: roomName,
-            image: placeholderImage,
-            ownerId: user.userId,
-            memberCount: 0
-        };
-
-        try {
-            await set(newRoomRef, newRoom);
-            toast({ title: "تم إنشاء الغرفة بنجاح!" });
-            onRoomCreated(newRoom);
-            setIsOpen(false);
-            setRoomName("");
-        } catch (error) {
-            console.error("Error creating room: ", error);
-            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من إنشاء الغرفة." });
-        }
-    };
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                 <Button variant="ghost" size="sm">
-                    <PlusCircle className="ml-2 h-4 w-4" />
-                    إنشاء غرفة
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle className="text-right">إنشاء غرفة جديدة</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4 text-right">
-                    <div className="flex flex-col items-center gap-4">
-                        <Avatar className="w-24 h-24">
-                            <AvatarImage src={placeholderImage} />
-                            <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
-                        </Avatar>
-                        <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية.</p>
-                    </div>
-                     <Input
-                        id="name"
-                        placeholder="أدخل اسم الغرفة..."
-                        value={roomName}
-                        onChange={(e) => setRoomName(e.target.value)}
-                        className="text-right"
-                    />
-                </div>
-                 <Button onClick={handleCreateRoom} type="submit">إنشاء</Button>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-const defaultRoom: Room = {
-    id: 'default-room-123',
-    name: 'الغرفة الرئيسية',
-    image: 'https://placehold.co/100x100/8e44ad/ffffff.png',
-    ownerId: 'system',
-};
-
-function RoomsListScreen({ user, onEnterRoom, onRoomUpdated }: { user: UserProfile, onEnterRoom: (room: Room) => void, onRoomUpdated: (updatedRoom: Room) => void }) {
-    const [allRooms, setAllRooms] = useState<Room[]>([]);
-    const { toast } = useToast();
-    
-    useEffect(() => {
-        const roomsRef = ref(db, 'rooms');
-        // onValue listens for data changes at a location
-        const unsubscribe = onValue(roomsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const roomsList: Room[] = Object.keys(data).map(key => ({
-                    id: key,
-                    ...data[key]
-                }));
-                setAllRooms(roomsList);
-            } else {
-                setAllRooms([]);
-            }
-        });
-
-        // Detach listener on cleanup
-        return () => unsubscribe();
-    }, []);
-
-
-    const handleRoomCreated = (newRoom: Room) => {
-        // The onValue listener will handle adding the room to the state.
-        // We can directly enter the room.
-        onEnterRoom(newRoom);
-    }
-    
-    const handleDeleteRoom = async (roomIdToDelete: string) => {
-        const roomToDelete = allRooms.find(room => room.id === roomIdToDelete);
-        if (roomToDelete && roomToDelete.ownerId !== user.userId) {
-            toast({variant: "destructive", title: "غير مصرح به", description: "لا يمكنك حذف غرفة ليست ملكك."});
-            return;
-        }
-        
-        try {
-            const roomRef = ref(db, `rooms/${roomIdToDelete}`);
-            await remove(roomRef);
-            toast({ title: "تم حذف الغرفة بنجاح!" });
-            // The onValue listener will automatically update the UI.
-        } catch (error) {
-            console.error("Failed to delete room:", error);
-            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حذف الغرفة." });
-        }
-    };
-
-
-    return (
-        <div className="flex flex-col h-full">
-            <header className="flex items-center justify-between p-2 border-b">
-                <CreateRoomDialog user={user} onRoomCreated={handleRoomCreated} />
-                <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-bold">الغرف</h1>
-                </div>
-            </header>
-            <div className="flex-1 p-4 text-right">
-                {allRooms.length === 0 ? (
-                    <p className="text-muted-foreground text-center mt-10">لا توجد غرف متاحة حاليًا. كن أول من ينشئ واحدة!</p>
-                ) : (
-                    <div className="grid gap-3">
-                        {allRooms.map(room => (
-                            <div key={room.id} className="relative group">
-                                <button onClick={() => onEnterRoom(room)} className="w-full text-right p-0.5 bg-gradient-to-b from-yellow-300 to-yellow-500 rounded-2xl shadow-lg">
-                                    <div className="bg-gradient-to-b from-yellow-50 via-amber-50 to-yellow-100 rounded-[14px] p-3 flex items-center justify-between gap-3">
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-bold text-lg text-gray-800">{room.name}</h3>
-                                                    <p className="text-sm text-gray-500 mt-1">مرحبا بكم في غرفة {room.name}</p>
-                                                </div>
-                                                <div className="bg-amber-400 text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                                                    <span>{room.memberCount || 0}</span>
-                                                    <svg width="12" height="10" viewBox="0 0 12 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 0H9.33333V10H11V0Z" fill="white"/><path d="M7.33333 3.33333H5.66667V10H7.33333V3.33333Z" fill="white"/><path d="M3.66667 6.66667H2V10H3.66667V6.66667Z" fill="white"/></svg>
-                                                </div>
-                                            </div>
-                                            <div className="mt-4 flex items-center gap-2">
-                                                <div className="bg-purple-800 text-white text-xs font-bold px-1.5 py-0.5 rounded-sm">ID</div>
-                                                <span className="text-gray-600 font-semibold">{room.id}</span>
-                                            </div>
-                                        </div>
-                                        <div className="w-20 h-20 rounded-lg p-0.5 bg-gradient-to-b from-yellow-400 to-yellow-600">
-                                            <Avatar className="w-full h-full rounded-md">
-                                                <AvatarImage src={room.image} alt={room.name} />
-                                                <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
-                                            </Avatar>
-                                        </div>
-                                    </div>
-                                </button>
-                                 {room.ownerId === user.userId && (
-                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="destructive" size="icon" className="absolute top-2 left-2 w-8 h-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    سيتم حذف هذه الغرفة بشكل دائم. لا يمكن التراجع عن هذا الإجراء.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDeleteRoom(room.id)}>حذف</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                 )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}
 
 function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomUpdated: (updatedRoom: Room) => void, children: React.ReactNode }) {
     const [roomName, setRoomName] = useState(room.name);
     const { toast } = useToast();
     const placeholderImage = "https://placehold.co/100x100.png";
 
-    const handleSaveChanges = async () => {
+    const handleSaveChanges = () => {
+        // In a real app, you would save this to your database
         const updatedRoomData = { ...room, name: roomName, image: placeholderImage };
-        
-        try {
-            const roomRef = ref(db, `rooms/${room.id}`);
-            await set(roomRef, updatedRoomData);
-            onRoomUpdated(updatedRoomData);
-            toast({ title: "تم تحديث الغرفة!" });
-        } catch (error) {
-            console.error("Failed to update room:", error);
-            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تعديل الغرفة." });
-        }
+        onRoomUpdated(updatedRoomData);
+        toast({ title: "تم تحديث الغرفة!" });
     };
 
     return (
@@ -442,16 +233,16 @@ function RoomScreen({
     onExit, 
     onRoomUpdated, 
     balance, 
-    onBalanceChange,
-    onSilverBalanceChange
+    setBalance,
+    setSilverBalance
 }: { 
     room: Room, 
     user: UserProfile, 
     onExit: () => void, 
     onRoomUpdated: (updatedRoom: Room) => void, 
     balance: number, 
-    onBalanceChange: (updater: (prev: number) => number) => void,
-    onSilverBalanceChange: (updater: (prev: number) => number) => void
+    setBalance: (updater: (prev: number) => number) => void,
+    setSilverBalance: (updater: (prev: number) => number) => void
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
@@ -495,16 +286,6 @@ function RoomScreen({
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [chatMessages]);
-
-    useEffect(() => {
-        const roomRef = ref(db, `rooms/${room.id}/memberCount`);
-        runTransaction(roomRef, (currentCount) => (currentCount || 0) + 1);
-
-        return () => {
-            runTransaction(roomRef, (currentCount) => (currentCount || 1) - 1);
-        };
-    }, [room.id]);
-
 
      const handleCopyId = () => {
         navigator.clipboard.writeText(room.id);
@@ -583,7 +364,7 @@ function RoomScreen({
             return;
         }
 
-        onBalanceChange(prev => prev - totalCost);
+        setBalance(prev => prev - totalCost);
         
         let newSupporters = [...roomSupporters];
         const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
@@ -597,7 +378,7 @@ function RoomScreen({
         setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
 
         if (recipient.userId === user.userId) { // Simplified for client-side
-            onSilverBalanceChange(prevSilver => prevSilver + (totalCost * 0.20));
+            setSilverBalance(prevSilver => prevSilver + (totalCost * 0.20));
         }
         
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
@@ -858,7 +639,7 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame balance={balance} onBalanceChange={onBalanceChange} />
+                               <FruityFortuneGame balance={balance} onBalanceChange={setBalance} />
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -1110,49 +891,30 @@ function SilverScreen({
     );
 }
 
-function AdminPanel() {
+function AdminPanel({ onAddCoins, onBanUser }: { onAddCoins: (userId: string, amount: number) => void, onBanUser: (userId: string) => void }) {
     const { toast } = useToast();
     const [addCoinsUserId, setAddCoinsUserId] = useState("");
     const [addCoinsAmount, setAddCoinsAmount] = useState("");
     const [banUserId, setBanUserId] = useState("");
 
-    const handleAddCoins = async () => {
+    const handleAddCoins = () => {
         const amount = parseInt(addCoinsAmount, 10);
         if (!addCoinsUserId || !addCoinsAmount || isNaN(amount)) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
             return;
         }
-
-        try {
-            const userBalanceRef = ref(db, `users/${addCoinsUserId}/balance`);
-            await runTransaction(userBalanceRef, (currentBalance) => (currentBalance || 0) + amount);
-            
-            const snapshot = await get(child(ref(db), `users/${addCoinsUserId}/balance`));
-            const newBalance = snapshot.val();
-            
-            toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${addCoinsUserId} إلى ${newBalance.toLocaleString()}.` });
-            setAddCoinsUserId("");
-            setAddCoinsAmount("");
-        } catch (e) {
-            console.error("Error adding coins: ", e);
-            toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من تحديث الرصيد." });
-        }
+        onAddCoins(addCoinsUserId, amount);
+        setAddCoinsUserId("");
+        setAddCoinsAmount("");
     };
 
-    const handleBanUser = async () => {
+    const handleBanUser = () => {
         if (!banUserId) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID المستخدم." });
             return;
         }
-        try {
-            const bannedUserRef = ref(db, `bannedUsers/${banUserId}`);
-            await set(bannedUserRef, true);
-            toast({ title: "تم حظر المستخدم!", description: `المستخدم ${banUserId} لن يتمكن من الدخول للتطبيق.` });
-            setBanUserId("");
-        } catch (e) {
-            console.error("Error banning user: ", e);
-            toast({ variant: "destructive", title: "خطأ", description: "لم نتمكن من حظر المستخدم." });
-        }
+        onBanUser(banUserId);
+        setBanUserId("");
     };
 
     return (
@@ -1205,6 +967,8 @@ function ProfileScreen({
     silverBalance,
     onNavigate,
     onLogout,
+    onAddCoins,
+    onBanUser
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
@@ -1212,6 +976,8 @@ function ProfileScreen({
     silverBalance: number,
     onNavigate: (view: 'coins' | 'silver') => void,
     onLogout: () => void,
+    onAddCoins: (userId: string, amount: number) => void,
+    onBanUser: (userId: string) => void
 }) {
     const { toast } = useToast();
     const isAdmin = user.userId === ADMIN_USER_ID;
@@ -1270,112 +1036,128 @@ function ProfileScreen({
                     </div>
                 </button>
             </div>
-            {isAdmin && <AdminPanel />}
+            {isAdmin && <AdminPanel onAddCoins={onAddCoins} onBanUser={onBanUser} />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
         </div>
     );
 }
 
-
 function MainApp({ 
     user, 
     onUserUpdate, 
+    onReset,
     balance, 
-    onBalanceChange, 
+    setBalance, 
     silverBalance,
-    onSilverBalanceChange,
-    onLogout
+    setSilverBalance
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
+    onReset: () => void,
     balance: number, 
-    onBalanceChange: (updater: (prev: number) => number) => void,
+    setBalance: (updater: (prev: number) => number) => void,
     silverBalance: number,
-    onSilverBalanceChange: (updater: (prev: number) => number) => void,
-    onLogout: () => void,
+    setSilverBalance: (updater: (prev: number) => number) => void
 }) {
-    const [activeTab, setActiveTab] = useState<'rooms' | 'profile'>('rooms');
+    const [view, setView] = useState<'room' | 'profile'>('room');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const { toast } = useToast();
 
+    const [currentRoom, setCurrentRoom] = useState<Room>({
+        id: 'default-room-123',
+        name: 'الغرفة الرئيسية',
+        image: 'https://placehold.co/100x100/8e44ad/ffffff.png',
+        ownerId: user.userId, // Let's make the current user the owner for simplicity
+    });
+
     const handleRoomUpdated = (updatedRoom: Room) => {
-        // In this simplified version, this might not be needed if we only have one room.
+        setCurrentRoom(updatedRoom);
     };
 
     const handleUserUpdateAndReset = (updatedUser: UserProfile) => {
         onUserUpdate(updatedUser);
+        setProfileView('profile'); // Go back to main profile view after edit
     };
 
     const handleConvertSilver = () => {
-        onBalanceChange(prev => prev + silverBalance);
-        onSilverBalanceChange(() => 0); // Reset silver balance
+        setBalance(prev => prev + silverBalance);
+        setSilverBalance(() => 0); // Reset silver balance
     };
     
+    // Admin functions passed down for simplicity
+     const handleAddCoins = (userId: string, amount: number) => {
+        // In a real app, this would be a server-side call.
+        // Here we just toast for demonstration.
+        toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${userId} بمقدار ${amount}.` });
+        // You might want to update a local state of users if you are managing them client-side
+    };
+
+    const handleBanUser = (userId: string) => {
+        toast({ title: "تم حظر المستخدم!", description: `المستخدم ${userId} لن يتمكن من الدخول للتطبيق.` });
+        // You would manage a banned users list in your DB
+    };
+
     const handleGameClick = useCallback(() => {
         toast({ title: "اللعبة موجودة داخل الغرف" });
     }, [toast]);
 
-    const renderMainContent = () => {
-        if (activeTab === 'profile') {
-            switch (profileView) {
-                case 'coins':
-                    return <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />;
-                case 'silver':
-                    return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
-                case 'profile':
-                default:
-                    return <ProfileScreen 
-                        user={user} 
-                        onUserUpdate={handleUserUpdateAndReset} 
-                        balance={balance} 
-                        silverBalance={silverBalance}
-                        onNavigate={setProfileView}
-                        onLogout={onLogout}
-                    />;
-            }
-        }
-        // Default to room view
-        return <RoomScreen 
-            room={defaultRoom}
-            user={user} 
-            onExit={() => setActiveTab('rooms')} 
-            onRoomUpdated={handleRoomUpdated} 
-            balance={balance} 
-            onBalanceChange={onBalanceChange} 
-            onSilverBalanceChange={onSilverBalanceChange}
-        />;
-    }
-
     return (
         <div className="flex flex-col h-screen">
             <main className="flex-1 overflow-y-auto bg-background">
-                 {renderMainContent()}
+                {view === 'room' ? (
+                     <RoomScreen 
+                        room={currentRoom}
+                        user={user} 
+                        onExit={() => setView('profile')} 
+                        onRoomUpdated={handleRoomUpdated} 
+                        balance={balance} 
+                        setBalance={setBalance} 
+                        setSilverBalance={setSilverBalance}
+                     />
+                ) : (
+                    profileView === 'coins' ? (
+                        <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />
+                    ) : profileView === 'silver' ? (
+                        <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />
+                    ) : (
+                        <ProfileScreen 
+                            user={user} 
+                            onUserUpdate={handleUserUpdateAndReset} 
+                            balance={balance} 
+                            silverBalance={silverBalance}
+                            onNavigate={setProfileView}
+                            onLogout={onReset}
+                            onAddCoins={handleAddCoins}
+                            onBanUser={handleBanUser}
+                        />
+                    )
+                )}
             </main>
             <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                  <button 
-                    onClick={() => { setActiveTab('rooms'); setProfileView('profile'); }}
+                    onClick={() => { setView('room'); setProfileView('profile'); }}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
-                        activeTab === 'rooms' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        view === 'room' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
                     <MessageSquare className="w-6 h-6" />
                     <span className="text-xs font-medium">الغرف</span>
                 </button>
                  <button 
-                    onClick={handleGameClick}
+                    onClick={view === 'room' ? undefined : handleGameClick}
                     className={cn(
-                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground cursor-pointer",
-                        "hover:text-foreground"
+                        "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors text-muted-foreground",
+                        view === 'room' ? "cursor-default" : "cursor-pointer hover:text-foreground"
                     )}>
                     <Gamepad2 className="w-6 h-6" />
                     <span className="text-xs font-medium">اللعبة</span>
                 </button>
                 <button 
-                     onClick={() => setActiveTab('profile')}
+                     onClick={() => setView('profile')}
                     className={cn(
                         "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
-                         activeTab === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                         view === 'profile' ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     )}>
                     <User className="w-6 h-6" />
                     <span className="text-xs font-medium">أنا</span>
@@ -1385,140 +1167,37 @@ function MainApp({
     );
 }
 
-
 // --- Root Component & Profile Gate ---
 export default function HomePage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [balance, setBalance] = useState(0);
-  const [silverBalance, setSilverBalance] = useState(0);
-  
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
-  const [authStep, setAuthStep] = useState<'loading' | 'login' | 'create_profile' | 'authenticated'>('loading');
-  const [tempUserId, setTempUserId] = useState<string | null>(null);
-
+  
+  // Use local state for balance for now
+  const [balance, setBalance] = useState(10000000); 
+  const [silverBalance, setSilverBalance] = useState(50000);
 
   useEffect(() => {
-    const localUserId = localStorage.getItem("userId");
-    if (!localUserId) {
-        setAuthStep('login');
-        setIsLoading(false);
-        return;
+    // Check for user profile in localStorage on initial load
+    const savedUser = localStorage.getItem("userProfile");
+    if (savedUser) {
+      setUserProfile(JSON.parse(savedUser));
     }
+  }, []);
 
-    const fetchUserData = async () => {
-        const bannedRef = ref(db, `bannedUsers/${localUserId}`);
-        const bannedSnapshot = await get(bannedRef);
-        if (bannedSnapshot.exists()) {
-            localStorage.removeItem("userId");
-            toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
-            setAuthStep('login');
-            setIsLoading(false);
-            return;
-        }
-
-        const userRef = ref(db, `users/${localUserId}`);
-        const snapshot = await get(userRef);
-        
-        if (snapshot.exists()) {
-            const userData = snapshot.val();
-            setUserProfile({
-                userId: localUserId,
-                name: userData.name,
-                image: userData.image,
-            });
-
-            // Set up listeners for real-time balance updates
-            const balanceRef = ref(db, `users/${localUserId}/balance`);
-            onValue(balanceRef, (snap) => setBalance(snap.val() || 0));
-            
-            const silverBalanceRef = ref(db, `users/${localUserId}/silverBalance`);
-            onValue(silverBalanceRef, (snap) => setSilverBalance(snap.val() || 0));
-
-            setAuthStep('authenticated');
-        } else {
-            // If user exists in localStorage but not in DB, log them out.
-            localStorage.removeItem("userId");
-            setAuthStep('login');
-        }
-        setIsLoading(false);
-    };
-    
-    fetchUserData();
-  }, [toast]);
-  
-  const handleUserUpdate = async (updatedUser: UserProfile) => {
-        try {
-            const userRef = ref(db, `users/${updatedUser.userId}`);
-            await set(userRef, {
-                name: updatedUser.name,
-                image: updatedUser.image,
-                balance: balance,
-                silverBalance: silverBalance
-            });
-            setUserProfile(updatedUser);
-        } catch(e) {
-            console.error("Error updating user profile in DB: ", e);
-            toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من تحديث الملف الشخصي." });
-        }
-  };
-  
-  const handleBalanceChange = (updater: (prev: number) => number) => {
-      if (!userProfile) return;
-      const userBalanceRef = ref(db, `users/${userProfile.userId}/balance`);
-      runTransaction(userBalanceRef, (currentBalance) => updater(currentBalance || 0))
-          .catch((error) => {
-              console.error("Transaction failed: ", error);
-              toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ الرصيد." });
-          });
-  };
-  
-  const handleSilverBalanceChange = (updater: (prev: number) => number) => {
-      if (!userProfile) return;
-      const userSilverBalanceRef = ref(db, `users/${userProfile.userId}/silverBalance`);
-      runTransaction(userSilverBalanceRef, (currentBalance) => updater(currentBalance || 0))
-          .catch((error) => {
-              console.error("Transaction failed: ", error);
-              toast({ variant: "destructive", title: "خطأ في التخزين", description: "لا يمكن حفظ رصيد الفضة." });
-          });
-  };
-
-  const handleSaveProfile = async (name: string) => {
-    if (name.trim() && tempUserId) {
+  const handleSaveProfile = (name: string) => {
+    if (name.trim()) {
       const newUserProfile: UserProfile = { 
         name: name.trim(), 
         image: 'https://placehold.co/128x128.png',
-        userId: tempUserId
+        userId: `user_${Date.now()}` // Simple unique ID
       };
-      
-      try {
-        const initialBalance = tempUserId === ADMIN_USER_ID ? 1000000000 : 10000000;
-        const userRef = ref(db, `users/${tempUserId}`);
-        await set(userRef, {
-            name: newUserProfile.name,
-            image: newUserProfile.image,
-            balance: initialBalance,
-            silverBalance: 0,
-            createdAt: serverTimestamp()
-        });
-        
-        localStorage.setItem("userId", tempUserId);
-        
-        setUserProfile(newUserProfile);
-        setBalance(initialBalance);
-        setSilverBalance(0);
-        setAuthStep('authenticated');
-
-        toast({
-            title: "تم حفظ الملف الشخصي",
-            description: "مرحبًا بك في التطبيق!",
-        });
-      } catch (e) {
-         console.error("Error saving profile to DB: ", e);
-         toast({ variant: "destructive", title: "حدث خطأ", description: "لم نتمكن من حفظ الملف الشخصي." });
-      }
-
+      setUserProfile(newUserProfile);
+      localStorage.setItem("userProfile", JSON.stringify(newUserProfile));
+      toast({
+          title: "تم حفظ الملف الشخصي",
+          description: "مرحبًا بك في التطبيق!",
+      });
     } else {
        toast({
           variant: "destructive",
@@ -1527,56 +1206,20 @@ export default function HomePage() {
       });
     }
   };
+
+  const handleUserUpdate = (updatedUser: UserProfile) => {
+      setUserProfile(updatedUser);
+      localStorage.setItem("userProfile", JSON.stringify(updatedUser));
+  };
   
-  const handleLogout = () => {
-    try {
-        localStorage.removeItem('userId');
-    } catch(e) {
-        console.error("Error clearing localStorage", e);
-    }
+  const handleReset = () => {
+    localStorage.removeItem('userProfile');
     setUserProfile(null); 
     setNameInput("");
-    setBalance(0);
-    setSilverBalance(0);
-    setAuthStep('login'); 
     toast({ title: "تم تسجيل الخروج" });
   }
 
-  const handleGoogleLogin = async () => {
-    const newId = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    const bannedRef = ref(db, `bannedUsers/${newId}`);
-    const bannedSnapshot = await get(bannedRef);
-    if (bannedSnapshot.exists()) {
-        toast({ variant: "destructive", title: "تم حظرك", description: "لا يمكنك الوصول إلى هذا التطبيق." });
-        return;
-    }
-
-    setTempUserId(newId);
-    setAuthStep('create_profile');
-  };
-
-  if (isLoading || authStep === 'loading') {
-      return (
-          <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
-             {/* Loading spinner or placeholder */}
-          </div>
-      )
-  }
-
-  if (authStep === 'authenticated' && userProfile) {
-    return <MainApp 
-                user={userProfile} 
-                onLogout={handleLogout} 
-                onUserUpdate={handleUserUpdate} 
-                balance={balance} 
-                onBalanceChange={handleBalanceChange}
-                silverBalance={silverBalance}
-                onSilverBalanceChange={handleSilverBalanceChange}
-            />;
-  }
-
-  if (authStep === 'create_profile') {
+  if (!userProfile) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-[#4a2b23] text-white p-4">
             <div className="w-full max-w-sm text-center">
@@ -1602,28 +1245,23 @@ export default function HomePage() {
                     حفظ ومتابعة
                 </Button>
             </div>
+             <div className="text-center text-xs text-gray-300 pt-8">
+                <p>من خلال الاستمرار، فإنك توافق على</p>
+                <p>
+                    <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
+                </p>
+            </div>
         </div>
     );
   }
 
-  // Login Screen (Default)
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-[#4a2b23] text-white p-4">
-        <div className="flex flex-col items-center justify-center flex-1">
-            <img src="https://placehold.co/150x150/FFB300/000000.png?text=LOGO" alt="App Logo" className="mb-8 rounded-3xl" data-ai-hint="game logo" />
-            <Button className="w-full max-w-xs bg-white text-black hover:bg-gray-200" size="lg" onClick={handleGoogleLogin}>
-                <svg className="w-6 h-6 mr-4" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M21.35,11.1H12.18V13.83H18.69C18.36,17.64 15.19,19.27 12.19,19.27C9.37,19.27 7,17.24 7,14.5C7,11.76 9.37,9.73 12.19,9.73C13.59,9.73 14.63,10.26 15.24,10.82L17.29,8.77C15.82,7.44 14.12,6.73 12.19,6.73C8.8,6.73 6,9.55 6,13C6,16.45 8.8,19.27 12.19,19.27C15.58,19.27 18.2,17.21 18.2,14.05C18.2,13.09 18.1,12.57 17.95,12.04C18.8,11.56 19.56,11.15 20.4,11.15L21.35,11.1Z" />
-                </svg>
-                تسجيل الدخول عبر جوجل
-            </Button>
-        </div>
-        <div className="text-center text-xs text-gray-300 pb-4">
-            <p>من خلال الاستمرار، فإنك توافق على</p>
-            <p>
-                <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
-            </p>
-        </div>
-    </div>
-  );
+  return <MainApp 
+            user={userProfile} 
+            onReset={handleReset} 
+            onUserUpdate={handleUserUpdate} 
+            balance={balance} 
+            setBalance={setBalance}
+            silverBalance={silverBalance}
+            setSilverBalance={setSilverBalance}
+        />;
 }
