@@ -538,21 +538,21 @@ function RoomScreen({
        );
    
        return (
-           <header className="flex items-center justify-between p-3">
-               <AlertDialog>
-                   <AlertDialogTrigger asChild>
-                       <Button variant="ghost" size="icon" className="bg-black/20 rounded-full" onClick={onExit}>
-                           <ChevronLeft className="w-6 h-6 text-primary" />
-                       </Button>
-                   </AlertDialogTrigger>
-               </AlertDialog>
-               {isOwner ? (
-                   <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                       {roomInfoContent}
-                   </EditRoomDialog>
-               ) : (
-                   roomInfoContent
-               )}
+            <header className="flex items-center justify-between p-3">
+                 {isOwner ? (
+                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                        {roomInfoContent}
+                    </EditRoomDialog>
+                ) : (
+                    roomInfoContent
+                )}
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full" onClick={onExit}>
+                            <ChevronLeft className="w-6 h-6 text-primary" />
+                        </Button>
+                    </AlertDialogTrigger>
+                </AlertDialog>
            </header>
        )
    }
@@ -583,20 +583,11 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
-                         <div className="flex items-center gap-2">
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
-                                    <span className="font-bold text-sm">{formatNumber(totalRoomSupport)}</span>
                                     <Trophy className="w-5 h-5 text-yellow-400"/>
+                                    <span className="font-bold text-sm">{formatNumber(totalRoomSupport)}</span>
                                 </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-64" dir="rtl">
@@ -626,6 +617,15 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                         <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
@@ -1001,17 +1001,17 @@ function ProfileScreen({
                     </Button>
                 </EditProfileDialog>
                 <div className="flex items-center gap-3">
-                    <div className="text-right">
-                        <h2 className="text-lg font-bold">{user.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
-                            <span>ID: {user.userId}</span>
-                            <Copy className="w-3 h-3" />
-                        </button>
-                    </div>
                     <Avatar className="w-14 h-14">
                         <AvatarImage src={user.image} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
+                    <div className="text-right">
+                        <h2 className="text-lg font-bold">{user.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.userId}</span>
+                        </button>
+                    </div>
                 </div>
              </div>
 
@@ -1149,6 +1149,22 @@ function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Ro
     )
 }
 
+function EventsScreen({ onClaimReward }: { onClaimReward: () => void }) {
+    return (
+        <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-4">
+            <h1 className="text-4xl font-bold mb-4 animate-pulse">الأحداث</h1>
+            <p className="text-lg mb-8">استلم جائزتك اليومية!</p>
+            <Button 
+                onClick={onClaimReward}
+                size="lg"
+                className="bg-yellow-400 hover:bg-yellow-500 text-black font-bold text-xl py-8 px-12 rounded-2xl shadow-lg transition-transform transform hover:scale-105"
+            >
+                استلم 10,000,000
+            </Button>
+        </div>
+    );
+}
+
 function MainApp({ 
     user, 
     onUserUpdate, 
@@ -1166,7 +1182,7 @@ function MainApp({
     silverBalance: number,
     setSilverBalance: (updater: (prev: number) => number) => void
 }) {
-    const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile'>('roomsList');
+    const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [allRooms, setAllRooms] = useState<Room[]>([]);
@@ -1218,6 +1234,14 @@ function MainApp({
     const handleGameClick = useCallback(() => {
         toast({ title: "اللعبة موجودة داخل الغرف" });
     }, [toast]);
+    
+    const handleClaimEventReward = () => {
+        setBalance(prev => prev + 10000000);
+        toast({
+            title: "🎉 مبروك! 🎉",
+            description: "لقد استلمت 10,000,000 كوينز!",
+        });
+    };
 
     const renderContent = () => {
         if (view === 'inRoom' && currentRoom) {
@@ -1232,6 +1256,9 @@ function MainApp({
                     setSilverBalance={setSilverBalance}
                 />
             );
+        }
+        if (view === 'events') {
+            return <EventsScreen onClaimReward={handleClaimEventReward} />;
         }
         if (view === 'profile') {
             if (profileView === 'coins') {
@@ -1272,6 +1299,15 @@ function MainApp({
                         )}>
                         <MessageSquare className="w-6 h-6" />
                         <span className="text-xs font-medium">الغرف</span>
+                    </button>
+                    <button 
+                        onClick={() => setView('events')}
+                        className={cn(
+                            "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                            view === 'events' ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                        )}>
+                        <Gift className="w-6 h-6" />
+                        <span className="text-xs font-medium">الأحداث</span>
                     </button>
                     <button 
                         onClick={handleGameClick}
