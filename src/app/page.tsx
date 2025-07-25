@@ -43,6 +43,7 @@ interface MicSlot {
     user: UserProfile | null;
     isMuted: boolean;
     isLocked: boolean;
+    isSpeaking: boolean;
 }
 
 interface GiftItem {
@@ -149,15 +150,12 @@ function GiftDialog({
     const [quantity, setQuantity] = useState(1);
     const QUANTITY_OPTIONS = [1, 5, 10, 100];
 
-    // This effect runs when the dialog is opened or the initialRecipient changes.
-    // It sets the initial recipient if one is provided.
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && initialRecipient) {
             setSelectedRecipient(initialRecipient);
         }
-    }, [initialRecipient, isOpen]);
+    }, [isOpen, initialRecipient]);
 
-    // This effect resets the selected recipient and quantity when the dialog is closed.
     useEffect(() => {
         if (!isOpen) {
             setSelectedRecipient(null);
@@ -252,9 +250,10 @@ function RoomScreen({
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
-        Array(10).fill(null).map((_, i) => i === 0 ? { user: BOT_USER, isMuted: true, isLocked: false } : { user: null, isMuted: false, isLocked: false })
+        Array(10).fill(null).map((_, i) => i === 0 
+            ? { user: BOT_USER, isMuted: true, isLocked: false, isSpeaking: false } 
+            : { user: null, isMuted: false, isLocked: false, isSpeaking: false })
      );
-     const [isSpeaking, setIsSpeaking] = useState(false);
      const [isGameVisible, setIsGameVisible] = useState(false);
      
      const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
@@ -272,20 +271,29 @@ function RoomScreen({
 
     const [isRoomMuted, setIsRoomMuted] = useState(false);
 
-     useEffect(() => {
-        if (myMicIndex !== -1 && !micSlots[myMicIndex].isMuted) {
-             const interval = setInterval(() => {
-                setIsSpeaking(true);
-                setTimeout(() => setIsSpeaking(false), 1500);
-            }, 4000);
-            return () => {
-                clearInterval(interval);
-                setIsSpeaking(false);
-            };
-        } else {
-            setIsSpeaking(false);
-        }
-     }, [myMicIndex, micSlots]);
+    useEffect(() => {
+        // Speaking animation simulation for all users on mics
+        const interval = setInterval(() => {
+            setMicSlots(prevSlots => 
+                prevSlots.map((slot, index) => {
+                    if (slot.user && !slot.isMuted) {
+                        // Randomly decide if a user starts "speaking"
+                        const startsSpeaking = Math.random() > 0.7; // 30% chance to start speaking
+                        if (startsSpeaking) {
+                           return { ...slot, isSpeaking: true };
+                        }
+                    }
+                    // If already speaking, turn it off after a delay
+                    if (slot.isSpeaking) {
+                        return { ...slot, isSpeaking: false };
+                    }
+                    return slot;
+                })
+            );
+        }, 1500); // Check every 1.5 seconds
+
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -322,7 +330,7 @@ function RoomScreen({
          setMicSlots(prev => {
             const newSlots = [...prev];
             if (newSlots[indexToDescend].user) {
-                newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
+                newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked, isSpeaking: false };
             }
             return newSlots;
         });
@@ -334,7 +342,7 @@ function RoomScreen({
                 const newSlots = [...prevSlots];
                 const currentSlot = newSlots[myMicIndex];
                 if (currentSlot) {
-                    newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
+                    newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted, isSpeaking: false };
                 }
                 return newSlots;
             });
@@ -402,65 +410,15 @@ function RoomScreen({
     const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
         const isCurrentUserOnThisMic = slot.user?.userId === user.userId;
         const isMutedForMe = isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted;
-        const showSpeakingAnimation = !isMutedForMe && ((isCurrentUserOnThisMic && isSpeaking) || (!isCurrentUserOnThisMic && slot.user && isSpeaking));
+        const showSpeakingAnimation = !isMutedForMe && slot.isSpeaking;
 
         const handleCopyUserId = (id: string) => {
             navigator.clipboard.writeText(id);
             toast({ title: "تم نسخ ID المستخدم" });
         };
-
-        const triggerContent = (
-             <div className="flex flex-col items-center gap-1 cursor-pointer">
-                <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
-                     {slot.user ? (
-                        <div className="relative w-full h-full">
-                            <AnimatePresence>
-                                {showSpeakingAnimation && (
-                                     <motion.div
-                                        className="absolute inset-0 rounded-full border-2 border-yellow-300"
-                                        animate={{
-                                            scale: [1, 1.3, 1],
-                                            opacity: [0.8, 0, 0.8],
-                                        }}
-                                        transition={{
-                                            duration: 1.5,
-                                            repeat: Infinity,
-                                            ease: "easeInOut",
-                                        }}
-                                    />
-                                )}
-                            </AnimatePresence>
-                            <Avatar className="w-full h-full">
-                                <AvatarImage src={slot.user.image} alt={slot.user.name} />
-                                <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                             {(isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted) ? (
-                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                                    <XCircle className="w-8 h-8 text-red-500"/>
-                                </div>
-                            ) : null }
-                             {isOwner && slot.user.userId === user.userId && (
-                                <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
-                                    OWNER
-                                </div>
-                            )}
-                        </div>
-                    ) : slot.isLocked ? (
-                        <Lock className="w-8 h-8 text-primary/50" />
-                    ) : (
-                        <Mic className="w-8 h-8 text-primary" />
-                    )}
-                </div>
-                <div className="flex items-center gap-1">
-                   <span className="text-xs text-muted-foreground truncate max-w-16">
-                     {slot.user ? slot.user.name : `no.${index + 1}`}
-                   </span>
-                </div>
-            </div>
-        );
-
+        
         const popoverContent = (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 p-2">
                 {isCurrentUserOnThisMic ? (
                     <>
                         <Button variant="outline" onClick={handleToggleMute}>
@@ -507,9 +465,55 @@ function RoomScreen({
         return (
              <Popover>
                 <PopoverTrigger asChild>
-                   {triggerContent}
+                     <div className="flex flex-col items-center gap-1 cursor-pointer">
+                        <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
+                             {slot.user ? (
+                                <div className="relative w-full h-full">
+                                    <AnimatePresence>
+                                        {showSpeakingAnimation && (
+                                             <motion.div
+                                                className="absolute inset-0 rounded-full border-2 border-yellow-300"
+                                                animate={{
+                                                    scale: [1, 1.3, 1],
+                                                    opacity: [0.8, 0, 0.8],
+                                                }}
+                                                transition={{
+                                                    duration: 1.5,
+                                                    repeat: Infinity,
+                                                    ease: "easeInOut",
+                                                }}
+                                            />
+                                        )}
+                                    </AnimatePresence>
+                                    <Avatar className="w-full h-full">
+                                        <AvatarImage src={slot.user.image} alt={slot.user.name} />
+                                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                     {(isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted) ? (
+                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
+                                            <XCircle className="w-8 h-8 text-red-500"/>
+                                        </div>
+                                    ) : null }
+                                     {isOwner && slot.user.userId === user.userId && (
+                                        <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
+                                            OWNER
+                                        </div>
+                                    )}
+                                </div>
+                            ) : slot.isLocked ? (
+                                <Lock className="w-8 h-8 text-primary/50" />
+                            ) : (
+                                <Mic className="w-8 h-8 text-primary" />
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                           <span className="text-xs text-muted-foreground truncate max-w-16">
+                             {slot.user ? slot.user.name : `no.${index + 1}`}
+                           </span>
+                        </div>
+                    </div>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" dir="rtl">
+                <PopoverContent className="w-auto p-0" dir="rtl">
                    {popoverContent}
                 </PopoverContent>
             </Popover>
@@ -537,13 +541,6 @@ function RoomScreen({
    
        return (
             <header className="flex items-center justify-between p-3">
-                {isOwner ? (
-                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                        {roomInfoContent}
-                    </EditRoomDialog>
-                ) : (
-                    roomInfoContent
-                )}
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full" onClick={onExit}>
@@ -551,6 +548,13 @@ function RoomScreen({
                         </Button>
                     </AlertDialogTrigger>
                 </AlertDialog>
+                {isOwner ? (
+                    <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                        {roomInfoContent}
+                    </EditRoomDialog>
+                ) : (
+                    roomInfoContent
+                )}
            </header>
        )
    }
@@ -581,6 +585,15 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
+                         <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -615,15 +628,6 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
-                        <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
@@ -999,10 +1003,6 @@ function ProfileScreen({
                     </Button>
                 </EditProfileDialog>
                 <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
@@ -1010,6 +1010,10 @@ function ProfileScreen({
                             <span>ID: {user.userId}</span>
                         </button>
                     </div>
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
                 </div>
              </div>
 
