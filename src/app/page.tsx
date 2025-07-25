@@ -72,13 +72,8 @@ const GIFTS: GiftItem[] = [
 ];
 
 // --- MOCK DATA ---
-const ALL_ROOMS: Room[] = [
-    { id: 'room-1', name: 'خدمة العملاء', image: 'https://placehold.co/150x150/FFD700/000000.png', ownerId: 'admin-1', description: 'مرحبا بكم في خدمة عملاء YoSo', userCount: 346 },
-    { id: 'room-2', name: 'وكالة شحن البرك', image: 'https://placehold.co/150x150/000000/FFFFFF.png', ownerId: 'admin-2', description: 'اهلا ومرحبا بكم في روم عائلة البركان', userCount: 186 },
-    { id: 'room-3', name: 'وكالة الأخوات', image: 'https://placehold.co/150x150/FF69B4/FFFFFF.png', ownerId: 'admin-3', description: 'مرحبا بالجميع', userCount: 151 },
-    { id: 'room-4', name: 'حياكم الله', image: 'https://placehold.co/150x150/228B22/FFFFFF.png', ownerId: 'admin-4', description: 'مش يخصك', userCount: 28 },
-    { id: 'room-5', name: 'وكالة مقهى يوسو', image: 'https://placehold.co/150x150/8A2BE2/FFFFFF.png', ownerId: 'admin-5', description: 'نمبر ون', userCount: 511 },
-];
+// We will now manage rooms in state instead of a constant array.
+// const ALL_ROOMS: Room[] = [ ... ];
 
 
 function formatNumber(num: number): string {
@@ -546,22 +541,10 @@ function RoomScreen({
            <header className="flex items-center justify-between p-3">
                 <AlertDialog>
                    <AlertDialogTrigger asChild>
-                       <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                           <Power className="w-5 h-5 text-primary" />
+                       <Button variant="ghost" size="icon" className="bg-black/20 rounded-full" onClick={onExit}>
+                           <ChevronLeft className="w-6 h-6 text-primary" />
                        </Button>
                    </AlertDialogTrigger>
-                   <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>الخروج من الغرفة</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            هل أنت متأكد أنك تريد الخروج؟ ستعود إلى قائمة الغرف.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={onExit}>الخروج</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
                </AlertDialog>
              {isOwner ? (
                  <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
@@ -1065,16 +1048,78 @@ function ProfileScreen({
     );
 }
 
-function RoomsListScreen({ onEnterRoom }: { onEnterRoom: (room: Room) => void }) {
+function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean, onOpenChange: (open: boolean) => void, onCreateRoom: (name: string, description: string) => void }) {
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+
+    const handleSubmit = () => {
+        if (name.trim() && description.trim()) {
+            onCreateRoom(name.trim(), description.trim());
+            setName('');
+            setDescription('');
+            onOpenChange(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="text-right">إنشاء غرفة جديدة</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4 text-right">
+                    <Input 
+                        placeholder="اسم الغرفة" 
+                        value={name} 
+                        onChange={(e) => setName(e.target.value)} 
+                        className="text-right"
+                    />
+                    <Input 
+                        placeholder="وصف الغرفة" 
+                        value={description} 
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="text-right"
+                    />
+                </div>
+                <Button onClick={handleSubmit}>إنشاء</Button>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Room[], onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Room) => void, user: UserProfile }) {
+    const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+    const { toast } = useToast();
+
+    const handleCreateRoom = (name: string, description: string) => {
+        const newRoom: Room = {
+            id: String(Math.floor(100000 + Math.random() * 900000)), // 6-digit random ID
+            name,
+            description,
+            ownerId: user.userId,
+            image: `https://placehold.co/150x150.png`,
+            userCount: 1
+        };
+        onCreateRoom(newRoom);
+        toast({ title: "تم إنشاء الغرفة بنجاح!" });
+    };
+
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <header className="flex items-center justify-between mb-4">
                 <Button variant="ghost" size="icon"><Search className="w-5 h-5"/></Button>
                 <h1 className="text-2xl font-bold text-primary">الغرف</h1>
-                <Button variant="outline" size="icon"><PlusCircle className="w-5 h-5"/></Button>
+                <Button variant="outline" size="icon" onClick={() => setIsCreateRoomOpen(true)}><PlusCircle className="w-5 h-5"/></Button>
             </header>
+            <CreateRoomDialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen} onCreateRoom={handleCreateRoom} />
             <div className="flex-1 overflow-y-auto space-y-3">
-                {ALL_ROOMS.map(room => (
+                {rooms.length === 0 ? (
+                     <div className="text-center text-muted-foreground mt-20">
+                        <p>لا توجد غرف متاحة حالياً.</p>
+                        <p>انقر على علامة + لإنشاء غرفة جديدة!</p>
+                    </div>
+                ) : rooms.map(room => (
                     <div 
                         key={room.id} 
                         onClick={() => onEnterRoom(room)} 
@@ -1124,6 +1169,7 @@ function MainApp({
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+    const [allRooms, setAllRooms] = useState<Room[]>([]);
 
     const { toast } = useToast();
 
@@ -1139,6 +1185,11 @@ function MainApp({
 
     const handleRoomUpdated = (updatedRoom: Room) => {
         setCurrentRoom(updatedRoom);
+        setAllRooms(prevRooms => prevRooms.map(r => r.id === updatedRoom.id ? updatedRoom : r));
+    };
+
+    const handleCreateRoom = (newRoom: Room) => {
+        setAllRooms(prevRooms => [newRoom, ...prevRooms]);
     };
 
     const handleUserUpdateAndReset = (updatedUser: UserProfile) => {
@@ -1202,7 +1253,7 @@ function MainApp({
                 />
             );
         }
-        return <RoomsListScreen onEnterRoom={handleEnterRoom} />;
+        return <RoomsListScreen rooms={allRooms} onEnterRoom={handleEnterRoom} onCreateRoom={handleCreateRoom} user={user}/>;
     };
 
 
