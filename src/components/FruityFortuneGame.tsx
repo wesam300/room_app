@@ -11,7 +11,6 @@ const BET_AMOUNTS = [100000, 500000, 1000000, 5000000, 10000000];
 const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
-const DAILY_REWARD_AMOUNT = 10000000;
 const MAX_BET_SLOTS = 6;
 
 const FRUIT_KEYS = Object.keys(FRUITS) as FruitKey[];
@@ -206,11 +205,6 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
   const [isSpinning, setIsSpinning] = useState(false);
   const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number} | null>(null);
 
-  // Daily Reward State
-  const [lastClaimTimestamp, setLastClaimTimestamp] = useState<number | null>(null);
-  const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
-  const [canClaim, setCanClaim] = useState(false);
-  
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({});
   
@@ -232,12 +226,6 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
     const now = Date.now();
     const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
     setRoundId(currentRoundId);
-
-    // --- Load Daily Reward ---
-    const savedClaimTimestamp = localStorage.getItem('fruityFortuneLastClaim');
-    if (savedClaimTimestamp) {
-        setLastClaimTimestamp(parseInt(savedClaimTimestamp, 10));
-    }
     
     // --- Load History & Sync Missed Rounds ---
     const savedHistory = localStorage.getItem('fruityFortuneHistory');
@@ -321,9 +309,6 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
   // Save state to localStorage whenever it changes
   useEffect(() => {
     if (isClient) {
-      if (lastClaimTimestamp) {
-          localStorage.setItem('fruityFortuneLastClaim', lastClaimTimestamp.toString());
-      }
       if (history.length > 0) {
           localStorage.setItem('fruityFortuneHistory', JSON.stringify(history.slice(0, 50))); // Save more history
           localStorage.setItem('fruityFortuneLastSyncedRound', roundId.toString());
@@ -335,61 +320,7 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
           localStorage.removeItem('fruityFortuneBets');
       }
     }
-  }, [lastClaimTimestamp, bets, roundId, isClient, history]);
-
-
-   // Daily Reward Timer Logic
-   useEffect(() => {
-    const updateClaimTimer = () => {
-        const now = new Date();
-        const iraqTimezoneOffset = 3 * 60; // UTC+3
-        const nowUtc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
-        const nowIraq = new Date(nowUtc + (iraqTimezoneOffset * 60 * 1000));
-
-        const nextClaimDate = new Date(nowIraq);
-        nextClaimDate.setHours(24, 0, 0, 0); // Next day at 00:00 Iraq time
-
-        if (lastClaimTimestamp) {
-            const lastClaimDate = new Date(lastClaimTimestamp);
-            const lastClaimUtc = lastClaimDate.getTime() + (lastClaimDate.getTimezoneOffset() * 60 * 1000);
-            const lastClaimIraq = new Date(lastClaimUtc + (iraqTimezoneOffset * 60 * 1000));
-            
-            if (lastClaimIraq.getFullYear() === nowIraq.getFullYear() &&
-                lastClaimIraq.getMonth() === nowIraq.getMonth() &&
-                lastClaimIraq.getDate() === nowIraq.getDate()) {
-                // Already claimed today
-                setCanClaim(false);
-                const diff = nextClaimDate.getTime() - nowIraq.getTime();
-                const hours = Math.floor(diff / (1000 * 60 * 60));
-                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                setTimeUntilNextClaim(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-                return;
-            }
-        }
-
-        // Can claim now
-        setCanClaim(true);
-        setTimeUntilNextClaim('جاهزة للاستلام!');
-    };
-
-    updateClaimTimer();
-    const interval = setInterval(updateClaimTimer, 1000);
-    return () => clearInterval(interval);
-}, [lastClaimTimestamp]);
-
-const handleClaimReward = () => {
-    if (canClaim) {
-        onBalanceChange(prev => prev + DAILY_REWARD_AMOUNT);
-        const now = Date.now();
-        setLastClaimTimestamp(now);
-        setCanClaim(false);
-        toast({ title: "تم استلام الجائزة!", description: `تمت إضافة ${formatNumber(DAILY_REWARD_AMOUNT)} إلى رصيدك.`, variant: "default" });
-    } else {
-        toast({ title: "لا يمكنك الاستلام الآن", description: "لقد استلمت جائزتك اليومية بالفعل.", variant: "destructive" });
-    }
-};
-
+  }, [bets, roundId, isClient, history]);
   
   // The main game loop, driven by a simple interval
   useEffect(() => {
@@ -600,24 +531,6 @@ const handleClaimReward = () => {
                     <span className="text-xl font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</span>
                 </div>
             </div>
-
-            {/* Existing Claim Reward Button */}
-            <button 
-                onClick={handleClaimReward}
-                disabled={!canClaim}
-                className={cn(
-                    "bg-black/30 px-4 py-2 rounded-full border border-yellow-400/50 flex flex-col items-center text-center transition-all duration-300",
-                    canClaim ? "cursor-pointer hover:bg-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.4)]" : "cursor-not-allowed opacity-60"
-                )}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-white font-bold">استلام الجائزة</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-gift text-yellow-400"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 5a4.8 8 0 0 1 4.5 3 2.5 2.5 0 0 1 0 5"/></svg>
-              </div>
-              <span className={cn("text-xs mt-1", canClaim ? "text-green-400" : "text-gray-400")}>
-                {timeUntilNextClaim}
-              </span>
-            </button>
         </header>
 
         <div className="text-center mb-4 text-yellow-300 font-bold text-lg bg-black/20 py-1 px-4 rounded-full border border-yellow-400/30">
