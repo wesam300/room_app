@@ -563,31 +563,26 @@ function RoomScreen({
             toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
             return;
         }
-        
-        // Update balances first
+
+        const newBalance = balance - totalCost;
         onBalanceChange(prev => prev - totalCost);
         
-        // Update room supporters
-        setRoomSupporters(prev => {
-            const existingSupporterIndex = prev.findIndex(s => s.user.userId === user.userId);
-            let newSupporters = [...prev];
-            if (existingSupporterIndex !== -1) {
-                const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
-                updatedSupporter.totalGiftValue += totalCost;
-                newSupporters[existingSupporterIndex] = updatedSupporter;
-            } else {
-                newSupporters.push({ user, totalGiftValue: totalCost });
-            }
-            return newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue);
-        });
+        let newSupporters = [...roomSupporters];
+        const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
+        if (existingSupporterIndex !== -1) {
+            const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
+            updatedSupporter.totalGiftValue += totalCost;
+            newSupporters[existingSupporterIndex] = updatedSupporter;
+        } else {
+            newSupporters.push({ user, totalGiftValue: totalCost });
+        }
+        setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
     
-        // Update silver balance for the recipient
         if (recipient.userId === user.userId) { // In a real app, this should be handled on the server. For now, we assume recipient is the current user.
             const silverValue = totalCost * 0.20;
             onSilverBalanceChange(prev => prev + silverValue);
         }
     
-        // Finally, show toast and close dialog
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
         setIsGiftDialogOpen(false);
     };
@@ -1234,18 +1229,6 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                </button>
                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1256,6 +1239,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
             </div>
