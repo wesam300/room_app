@@ -161,13 +161,14 @@ function GiftSheet({
     useEffect(() => {
         if (isOpen && initialRecipient) {
             setSelectedRecipient(initialRecipient);
+        } else if (isOpen && !initialRecipient && usersOnMics.length > 0) {
+            setSelectedRecipient(usersOnMics[0]);
         }
-    }, [isOpen, initialRecipient]);
+    }, [isOpen, initialRecipient, usersOnMics]);
 
     useEffect(() => {
         if (!isOpen) {
             // Reset state when sheet closes
-            setSelectedRecipient(null);
             setSelectedGift(null);
             setQuantity(1);
         }
@@ -182,13 +183,6 @@ function GiftSheet({
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto max-h-[70vh] flex flex-col p-0">
-                <SheetHeader className="p-4 text-right shrink-0">
-                    <SheetTitle className="text-primary">إرسال هدية</SheetTitle>
-                    <SheetDescription>
-                        اختر مستلمًا وهدية لإرسالها.
-                    </SheetDescription>
-                </SheetHeader>
-
                 {/* Recipient Selection */}
                 <div className="px-4 py-2 shrink-0">
                     <h3 className="text-sm font-semibold mb-2 text-right">إرسال إلى:</h3>
@@ -229,7 +223,7 @@ function GiftSheet({
                                 )}
                             >
                                 <img src={gift.image} data-ai-hint="gift present" alt={gift.name} className="w-3/4 h-3/4 object-contain" />
-                                 <div className="flex items-center gap-1 mt-1">
+                                <div className="flex items-center gap-1 mt-1">
                                     <span className="text-xs font-bold text-white">{formatNumber(gift.price)}</span>
                                     <Trophy className="w-3 h-3 text-yellow-400" />
                                 </div>
@@ -431,6 +425,22 @@ function RoomScreen({
   
       return (
         <header className="flex items-center justify-between p-3">
+            <div className="flex items-center gap-2">
+                {isOwner ? (
+                     <Dialog>
+                        <DialogTrigger asChild>
+                             <div className="cursor-pointer">{roomInfoDisplay}</div>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                                <div style={{ display: 'none' }} />
+                            </EditRoomDialog>
+                        </DialogContent>
+                    </Dialog>
+                ) : (
+                    roomInfoDisplay
+                )}
+            </div>
             <AlertDialog>
                 <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
@@ -450,20 +460,6 @@ function RoomScreen({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <div className="flex items-center gap-2">
-                {isOwner ? (
-                     <Dialog>
-                        <DialogTrigger asChild>
-                             <div className="cursor-pointer">{roomInfoDisplay}</div>
-                        </DialogTrigger>
-                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                            <div style={{ display: 'none' }} />
-                        </EditRoomDialog>
-                    </Dialog>
-                ) : (
-                    roomInfoDisplay
-                )}
-            </div>
         </header>
       )
   }
@@ -494,6 +490,15 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
+                         <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -528,15 +533,6 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
-                         <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
@@ -940,18 +936,6 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
-                </button>
                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -962,6 +946,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
                         <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
             </div>
