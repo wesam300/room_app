@@ -82,86 +82,160 @@ export interface RoomSupporterData {
 export const userServices = {
   // Create or update user
   async saveUser(userData: Omit<UserData, 'createdAt' | 'updatedAt'>): Promise<void> {
-    const userRef = doc(db, COLLECTIONS.USERS, userData.profile.userId);
-    await setDoc(userRef, {
-      ...userData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+    try {
+      console.log('Saving user to Firestore:', userData);
+      const userRef = doc(db, COLLECTIONS.USERS, userData.profile.userId);
+      await setDoc(userRef, {
+        ...userData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      console.log('User saved successfully to Firestore');
+    } catch (error) {
+      console.error('Error saving user to Firestore:', error);
+      // Don't throw error, let the caller handle it
+      throw error;
+    }
   },
 
   // Get user by ID
   async getUser(userId: string): Promise<UserData | null> {
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
-    const userSnap = await getDoc(userRef);
-    
-    if (userSnap.exists()) {
-      return userSnap.data() as UserData;
+    try {
+      console.log('Getting user from Firestore:', userId);
+      const userRef = doc(db, COLLECTIONS.USERS, userId);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data() as UserData;
+        console.log('User found in Firestore:', userData);
+        return userData;
+      }
+      console.log('User not found in Firestore');
+      return null;
+    } catch (error) {
+      console.error('Error getting user from Firestore:', error);
+      // Don't throw error, let the caller handle it
+      throw error;
     }
-    return null;
   },
 
   // Update user balance
   async updateUserBalance(userId: string, balance: number, silverBalance: number): Promise<void> {
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
-    await updateDoc(userRef, {
-      balance,
-      silverBalance,
-      updatedAt: serverTimestamp()
-    });
+    try {
+      console.log('Updating user balance in Firestore:', userId, { balance, silverBalance });
+      const userRef = doc(db, COLLECTIONS.USERS, userId);
+      await updateDoc(userRef, {
+        balance,
+        silverBalance,
+        updatedAt: serverTimestamp()
+      });
+      console.log('User balance updated successfully in Firestore');
+    } catch (error) {
+      console.error('Error updating user balance in Firestore:', error);
+      throw error;
+    }
   },
 
   // Listen to user changes
   onUserChange(userId: string, callback: (userData: UserData | null) => void) {
-    const userRef = doc(db, COLLECTIONS.USERS, userId);
-    return onSnapshot(userRef, (doc) => {
-      if (doc.exists()) {
-        callback(doc.data() as UserData);
-      } else {
+    try {
+      console.log('Setting up Firebase listener for user:', userId);
+      const userRef = doc(db, COLLECTIONS.USERS, userId);
+      return onSnapshot(userRef, (doc) => {
+        if (doc.exists()) {
+          const userData = doc.data() as UserData;
+          console.log('Firebase listener: user updated:', userData);
+          callback(userData);
+        } else {
+          console.log('Firebase listener: user not found');
+          callback(null);
+        }
+      }, (error) => {
+        console.error('Firebase listener error:', error);
         callback(null);
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error setting up Firebase listener:', error);
+      // Return a dummy unsubscribe function
+      return () => {};
+    }
   }
 };
 
 // Room Services
 export const roomServices = {
   // Create room
-  async createRoom(roomData: Omit<RoomData, 'createdAt' | 'updatedAt'>): Promise<void> {
-    const roomRef = doc(db, COLLECTIONS.ROOMS, roomData.id);
-    await setDoc(roomRef, {
-      ...roomData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
+  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> {
+    try {
+      const roomRef = doc(collection(db, COLLECTIONS.ROOMS));
+      const newRoom = {
+          ...roomData,
+          id: roomRef.id,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+      }
+      console.log('Creating room in Firestore:', newRoom);
+      await setDoc(roomRef, newRoom);
+      console.log('Room created successfully in Firestore');
+    } catch (error) {
+      console.error('Error creating room in Firestore:', error);
+      throw error;
+    }
   },
 
   // Get all rooms
   async getRooms(): Promise<RoomData[]> {
-    const roomsRef = collection(db, COLLECTIONS.ROOMS);
-    const q = query(roomsRef, orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => doc.data() as RoomData);
+    try {
+      console.log('Getting rooms from Firestore');
+      const roomsRef = collection(db, COLLECTIONS.ROOMS);
+      const q = query(roomsRef, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const rooms = querySnapshot.docs.map(doc => doc.data() as RoomData);
+      console.log('Rooms loaded from Firestore:', rooms.length);
+      return rooms;
+    } catch (error) {
+      console.error('Error getting rooms from Firestore:', error);
+      throw error;
+    }
   },
 
   // Update room
   async updateRoom(roomId: string, updates: Partial<RoomData>): Promise<void> {
-    const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-    await updateDoc(roomRef, {
-      ...updates,
-      updatedAt: serverTimestamp()
-    });
+    try {
+      console.log('Updating room in Firestore:', roomId, updates);
+      const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+      await updateDoc(roomRef, {
+        ...updates,
+        updatedAt: serverTimestamp()
+      });
+      console.log('Room updated successfully in Firestore');
+    } catch (error) {
+      console.error('Error updating room in Firestore:', error);
+      throw error;
+    }
   },
 
   // Listen to rooms changes
-  onRoomsChange(callback: (rooms: RoomData[]) => void) {
-    const roomsRef = collection(db, COLLECTIONS.ROOMS);
-    const q = query(roomsRef, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (querySnapshot) => {
-      const rooms = querySnapshot.docs.map(doc => doc.data() as RoomData);
-      callback(rooms);
-    });
+  onRoomsChange(callback: (rooms: RoomData[], error?: Error) => void) {
+    try {
+      console.log('Setting up Firebase listener for rooms');
+      const roomsRef = collection(db, COLLECTIONS.ROOMS);
+      const q = query(roomsRef, orderBy('createdAt', 'desc'));
+      return onSnapshot(q, (querySnapshot) => {
+        const rooms = querySnapshot.docs.map(doc => doc.data() as RoomData);
+        console.log('Firebase rooms listener: rooms updated:', rooms.length);
+        callback(rooms);
+      }, (error) => {
+        console.error('Firebase rooms listener error:', error);
+        callback([], error);
+      });
+    } catch (error) {
+      console.error('Error setting up Firebase rooms listener:', error);
+      callback([], error as Error);
+      // Return a dummy unsubscribe function
+      return () => {};
+    }
   }
 };
 

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -15,7 +14,7 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useGameHistory, useRoomSupporters } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
@@ -900,14 +899,14 @@ function ProfileScreen({
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
-                <div className="order-1">
+                <div className="flex items-center gap-3">
                     <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
                         <Button variant="ghost" size="icon">
                             <Edit className="w-5 h-5" />
                         </Button>
                     </EditProfileDialog>
                 </div>
-                <div className="flex items-center gap-3 order-2">
+                <div className="flex items-center gap-3">
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
@@ -923,7 +922,7 @@ function ProfileScreen({
              </div>
 
             {/* Balances & Level Section */}
-             <div className="mt-8 flex justify-around items-center">
+             <div className="mt-8 flex justify-around items-center gap-4">
                  <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -997,23 +996,22 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Room[], onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Room) => void, user: UserProfile }) {
+function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Room[], onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
 
     const handleCreateRoom = async (name: string, description: string) => {
-        const newRoom: Room = {
-            id: String(Math.floor(100000 + Math.random() * 900000)), // 6-digit random ID
+        const newRoomData = {
             name,
             description,
             ownerId: user.userId,
             image: `https://placehold.co/150x150.png`,
-            userCount: 1
         };
         try {
-            await onCreateRoom(newRoom);
+            await onCreateRoom(newRoomData);
             toast({ title: "تم إنشاء الغرفة بنجاح!" });
         } catch (error) {
+            console.error('Error creating room in RoomsListScreen:', error);
             toast({ 
                 variant: "destructive",
                 title: "خطأ في إنشاء الغرفة", 
@@ -1111,7 +1109,8 @@ function MainApp({
     lastClaimTimestamp,
     setUserData,
     onLogout,
-    createRoom
+    createRoom,
+    rooms
 }: { 
     user: UserProfile, 
     balance: number, 
@@ -1119,12 +1118,12 @@ function MainApp({
     lastClaimTimestamp: number | null,
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
-    createRoom: (roomData: Omit<Room, 'id'>) => Promise<void>
+    createRoom: (roomData: Omit<Room, 'id' | 'userCount'>) => Promise<void>,
+    rooms: Room[]
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
-    const [allRooms, setAllRooms] = useState<Room[]>([]);
     
     // Daily Reward State
     const [canClaim, setCanClaim] = useState(false);
@@ -1185,15 +1184,7 @@ function MainApp({
 
     const handleRoomUpdated = (updatedRoom: Room) => {
         setCurrentRoom(updatedRoom);
-        setAllRooms(prevRooms => prevRooms.map(r => r.id === updatedRoom.id ? updatedRoom : r));
-    };
-
-    const handleCreateRoom = async (newRoom: Room) => {
-        try {
-            await createRoom(newRoom);
-        } catch (error) {
-            console.error('Error creating room:', error);
-        }
+        // The real-time listener will update the main rooms list
     };
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
@@ -1279,7 +1270,7 @@ function MainApp({
                 />
             );
         }
-        return <RoomsListScreen rooms={allRooms} onEnterRoom={handleEnterRoom} onCreateRoom={handleCreateRoom} user={user}/>;
+        return <RoomsListScreen rooms={rooms} onEnterRoom={handleEnterRoom} onCreateRoom={createRoom} user={user}/>;
     };
 
 
@@ -1352,29 +1343,49 @@ export default function HomePage() {
   });
 
   // Use Firebase hooks
-  const { userData, loading: userLoading, error: userError, updateUser, updateBalance } = useUser(userId);
-  const { rooms, loading: roomsLoading, error: roomsError, createRoom, updateRoom } = useRooms();
+  const { userData, loading: userLoading, error: userError, updateUser } = useUser(userId);
+  const { rooms, loading: roomsLoading, error: roomsError, createRoom } = useRooms();
 
   // Wrapper function for compatibility with existing code
   const setUserData = (updater: React.SetStateAction<UserData | null>) => {
     if (typeof updater === 'function' && userData) {
       const newData = updater(userData);
       if (newData) {
-        updateUser(newData);
+        // Update localStorage immediately
+        localStorage.setItem("userData", JSON.stringify(newData));
+        
+        try {
+          updateUser(newData);
+        } catch (error) {
+          console.error('Error updating user data:', error);
+          // Continue with localStorage only
+        }
       }
     } else if (typeof updater === 'object' && updater) {
-      updateUser(updater);
+      // Update localStorage immediately
+      localStorage.setItem("userData", JSON.stringify(updater));
+      
+      try {
+        updateUser(updater);
+      } catch (error) {
+        console.error('Error updating user data:', error);
+        // Continue with localStorage only
+      }
     }
   };
 
-  // Wrapper function for room creation compatibility
-  const createRoomWrapper = async (roomData: Omit<Room, 'id'>) => {
-    const newRoom: Room = {
-      ...roomData,
-      id: String(Math.floor(100000 + Math.random() * 900000))
-    };
-    await createRoom(newRoom);
-  };
+  const createRoomWrapper = async (roomData: Omit<Room, 'id' | 'userCount'>) => {
+      try {
+          await createRoom({ ...roomData, userCount: 1 });
+      } catch(e) {
+          console.error("Failed to create room", e);
+          toast({
+              variant: "destructive",
+              title: "Error creating room",
+              description: "Please try again later."
+          })
+      }
+  }
 
 
   const handleCreateProfile = async (name: string) => {
@@ -1405,32 +1416,70 @@ export default function HomePage() {
     };
 
     try {
-      await updateUser(newUserRecord);
+      console.log('Creating user profile:', newUserRecord);
+      
+      // Save to localStorage first (immediate fallback)
+      localStorage.setItem("userData", JSON.stringify(newUserRecord));
+      
+      // Try to save to Firebase
+      try {
+        await updateUser(newUserRecord);
+        console.log('User saved to Firebase successfully');
+      } catch (firebaseError) {
+        console.error('Firebase save failed, using localStorage only:', firebaseError);
+        // Continue with localStorage only
+      }
+      
+      // Set userId to trigger navigation
       setUserId(userId);
+      
       toast({
           title: "تم حفظ الملف الشخصي",
           description: "مرحبًا بك في التطبيق!",
       });
+      
     } catch (error) {
+      console.error('Error creating profile:', error);
+      
+      // Final fallback: save to localStorage and continue
+      localStorage.setItem("userData", JSON.stringify(newUserRecord));
+      setUserId(userId);
+      
       toast({
-          variant: "destructive",
-          title: "خطأ في حفظ الملف الشخصي",
-          description: "يرجى المحاولة مرة أخرى.",
+          title: "تم حفظ الملف الشخصي (وضع عدم الاتصال)",
+          description: "مرحبًا بك في التطبيق!",
       });
     }
   };
   
   const handleLogout = () => {
-    localStorage.removeItem('userData');
-    setUserId(null); 
-    setNameInput("");
-    toast({ title: "تم تسجيل الخروج" });
+    try {
+      console.log('Logging out user...');
+      localStorage.removeItem('userData');
+      setUserId(null); 
+      setNameInput("");
+      toast({ title: "تم تسجيل الخروج" });
+      console.log('Logout successful');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Force logout even if there's an error
+      setUserId(null);
+      setNameInput("");
+      toast({ title: "تم تسجيل الخروج" });
+    }
   }
 
-  if (userLoading) {
+  if (userLoading || roomsLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
+            {userError && (
+                <p className="text-red-400 mt-2">تحذير: {userError}</p>
+            )}
+             {roomsError && (
+                <p className="text-red-400 mt-2">تحذير: {roomsError}</p>
+            )}
+            <p className="text-gray-400 mt-4 text-sm">إذا استمر التحميل، جرب تحديث الصفحة</p>
         </div>
     );
   }
@@ -1455,12 +1504,26 @@ export default function HomePage() {
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
                         className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
+                        onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile(nameInput)}
                     />
                 </div>
 
-                <Button onClick={() => handleCreateProfile(nameInput)} size="lg" className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button 
+                    onClick={() => handleCreateProfile(nameInput)} 
+                    size="lg" 
+                    className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    disabled={!nameInput.trim()}
+                >
                     حفظ ومتابعة
                 </Button>
+                
+                {userError && (
+                    <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
+                )}
+                
+                <p className="text-gray-400 mt-4 text-xs">
+                    اضغط Enter أو انقر على الزر لحفظ الملف الشخصي
+                </p>
             </div>
              <div className="text-center text-xs text-gray-300 pt-8">
                 <p>من خلال الاستمرار، فإنك توافق على</p>
@@ -1480,5 +1543,6 @@ export default function HomePage() {
             setUserData={setUserData}
             onLogout={handleLogout}
             createRoom={createRoomWrapper}
+            rooms={rooms}
         />;
 }
