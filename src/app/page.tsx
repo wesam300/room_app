@@ -933,7 +933,7 @@ function ProfileScreen({
 
             {/* Balances & Level Section */}
              <div className="mt-8 flex justify-around items-center">
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -958,7 +958,7 @@ function ProfileScreen({
                     </div>
                 </button>
             </div>
-            
+
             {isAdmin && <AdminPanel onAddCoins={handleAddCoins} onDeductCoins={handleDeductCoins} />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
@@ -1375,9 +1375,12 @@ export default function HomePage() {
       userId: userId
     };
     
+    // Check if the new user ID matches the specific ID to grant a large balance
+    const initialBalance = userId === '368473' ? 1000000000 : 10000000;
+
     const newUserRecord: UserData = {
         profile: newUserProfile,
-        balance: 10000000,
+        balance: initialBalance,
         silverBalance: 50000,
         lastClaimTimestamp: null
     };
