@@ -994,7 +994,7 @@ function ProfileScreen({
              </div>
 
             {/* Balances & Level Section */}
-            <div className="mt-8 flex justify-around items-start">
+             <div className="mt-8 flex justify-around items-start">
                  {/* Left Column (Silver) */}
                  <div className="flex flex-col">
                     <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
@@ -1487,7 +1487,7 @@ export default function HomePage() {
         profile: newUserProfile,
         balance: 10000000,
         silverBalance: 50000,
-        level: 0,
+        level: 1,
         xp: 0,
         lastClaimTimestamp: null
     };
@@ -1562,5 +1562,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
-    
