@@ -3,8 +3,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { db } from "@/lib/firebase";
-import { ref, onValue, set, update, get, child } from "firebase/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -264,16 +262,16 @@ function RoomScreen({
     onExit, 
     onRoomUpdated, 
     balance, 
-    onBalanceChange,
-    onSilverBalanceChange
+    setBalance, // Use direct setter for simplicity now
+    setSilverBalance // Use direct setter
 }: { 
     room: Room, 
     user: UserProfile, 
     onExit: () => void, 
     onRoomUpdated: (updatedRoom: Room) => void, 
     balance: number, 
-    onBalanceChange: (updater: (prev: number) => number) => void,
-    onSilverBalanceChange: (updater: (prev: number) => number) => void
+    setBalance: React.Dispatch<React.SetStateAction<number>>,
+    setSilverBalance: React.Dispatch<React.SetStateAction<number>>
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
@@ -382,7 +380,7 @@ function RoomScreen({
             return;
         }
 
-        onBalanceChange(prev => prev - totalCost);
+        setBalance(prev => prev - totalCost);
         
         let newSupporters = [...roomSupporters];
         const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
@@ -395,17 +393,8 @@ function RoomScreen({
         }
         setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
 
-        if (recipient.userId !== user.userId) { 
-             const recipientRef = ref(db, 'users/' + recipient.userId);
-             get(recipientRef).then((snapshot) => {
-                if(snapshot.exists()){
-                    const currentSilver = snapshot.val().silverBalance || 0;
-                    update(recipientRef, { silverBalance: currentSilver + (totalCost * 0.20)});
-                }
-             });
-        } else {
-             onSilverBalanceChange(prevSilver => prevSilver + (totalCost * 0.20));
-        }
+        // Simplified: Silver balance logic for local state
+        setSilverBalance(prevSilver => prevSilver + (totalCost * 0.20));
         
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
         setIsGiftSheetOpen(false);
@@ -570,7 +559,7 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame user={user} balance={balance} onBalanceChange={onBalanceChange} />
+                               <FruityFortuneGame user={user} balance={balance} onBalanceChange={(updater) => setBalance(updater)} />
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -823,103 +812,54 @@ function SilverScreen({
     );
 }
 
-function AdminPanel({ 
-    onAddCoins, 
+function AdminPanel({
+    onAddCoins,
     onDeductCoins,
-    onBanUser,
-    onUnbanUser
-}: { 
-    onAddCoins: (userId: string, amount: number) => void, 
-    onDeductCoins: (userId: string, amount: number) => void, 
-    onBanUser: (userId: string) => void,
-    onUnbanUser: (userId: string) => void
+}: {
+    onAddCoins: (amount: number) => void;
+    onDeductCoins: (amount: number) => void;
 }) {
     const { toast } = useToast();
-    const [coinsUserId, setCoinsUserId] = useState("");
-    const [coinsAmount, setCoinsAmount] = useState("");
-    const [banUserId, setBanUserId] = useState("");
+    const [amount, setAmount] = useState("");
 
-    const handleAddCoins = () => {
-        const amount = parseInt(coinsAmount, 10);
-        if (!coinsUserId || !coinsAmount || isNaN(amount)) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
+    const handleAdd = () => {
+        const numAmount = parseInt(amount, 10);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            toast({ variant: "destructive", title: "مبلغ غير صحيح", description: "يرجى إدخال مبلغ صحيح." });
             return;
         }
-        onAddCoins(coinsUserId, amount);
-        setCoinsUserId("");
-        setCoinsAmount("");
-    };
-    
-    const handleDeductCoins = () => {
-        const amount = parseInt(coinsAmount, 10);
-        if (!coinsUserId || !coinsAmount || isNaN(amount)) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
-            return;
-        }
-        onDeductCoins(coinsUserId, amount);
-        setCoinsUserId("");
-        setCoinsAmount("");
+        onAddCoins(numAmount);
+        toast({ title: "تمت إضافة الكوينز بنجاح!" });
+        setAmount("");
     };
 
-    const handleBanUser = () => {
-        if (!banUserId) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID المستخدم." });
+    const handleDeduct = () => {
+        const numAmount = parseInt(amount, 10);
+        if (isNaN(numAmount) || numAmount <= 0) {
+            toast({ variant: "destructive", title: "مبلغ غير صحيح", description: "يرجى إدخال مبلغ صحيح." });
             return;
         }
-        onBanUser(banUserId);
-        setBanUserId("");
-    };
-    
-    const handleUnbanUser = () => {
-        if (!banUserId) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID المستخدم." });
-            return;
-        }
-        onUnbanUser(banUserId);
-        setBanUserId("");
+        onDeductCoins(numAmount);
+        toast({ title: "تم خصم الكوينز بنجاح!" });
+        setAmount("");
     };
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
             <h3 className="text-lg font-bold text-center text-primary mb-4">لوحة تحكم المشرف</h3>
-            <div className="space-y-6">
-                {/* Modify Coins Section */}
+            <div className="space-y-4">
                 <div className="space-y-2">
-                    <h4 className="font-semibold text-right">تعديل رصيد مستخدم</h4>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Input
-                            placeholder="User ID"
-                            value={coinsUserId}
-                            onChange={(e) => setCoinsUserId(e.target.value)}
-                            className="text-left"
-                        />
-                        <Input
-                            type="number"
-                            placeholder="المبلغ"
-                            value={coinsAmount}
-                            onChange={(e) => setCoinsAmount(e.target.value)}
-                             className="text-left"
-                        />
-                    </div>
-                     <div className="flex gap-2 mt-2">
-                        <Button onClick={handleAddCoins} className="w-full">إضافة</Button>
-                        <Button onClick={handleDeductCoins} variant="secondary" className="w-full">خصم</Button>
-                    </div>
-                </div>
-                {/* Ban/Unban User Section */}
-                <div className="space-y-2">
-                    <h4 className="font-semibold text-right">إدارة حظر المستخدمين</h4>
-                     <div className="flex flex-col sm:flex-row gap-2">
-                        <Input
-                            placeholder="User ID"
-                            value={banUserId}
-                            onChange={(e) => setBanUserId(e.target.value)}
-                            className="text-left flex-1"
-                        />
-                     </div>
-                     <div className="flex gap-2 mt-2">
-                        <Button onClick={handleBanUser} variant="destructive" className="w-full">حظر</Button>
-                        <Button onClick={handleUnbanUser} variant="outline" className="w-full">رفع الحظر</Button>
+                    <h4 className="font-semibold text-right">تعديل رصيدك</h4>
+                    <Input
+                        type="number"
+                        placeholder="المبلغ"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="text-left"
+                    />
+                    <div className="flex gap-2 mt-2">
+                        <Button onClick={handleAdd} className="w-full">إضافة</Button>
+                        <Button onClick={handleDeduct} variant="destructive" className="w-full">خصم</Button>
                     </div>
                 </div>
             </div>
@@ -931,25 +871,19 @@ function AdminPanel({
 function ProfileScreen({ 
     user, 
     onUserUpdate, 
-    balance, 
+    balance,
+    setBalance,
     silverBalance,
     onNavigate,
     onLogout,
-    onAddCoins,
-    onDeductCoins,
-    onBanUser,
-    onUnbanUser
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    balance: number, 
+    balance: number,
+    setBalance: React.Dispatch<React.SetStateAction<number>>,
     silverBalance: number,
     onNavigate: (view: 'coins' | 'silver') => void,
     onLogout: () => void,
-    onAddCoins: (userId: string, amount: number) => void,
-    onDeductCoins: (userId: string, amount: number) => void,
-    onBanUser: (userId: string) => void,
-    onUnbanUser: (userId: string) => void
 }) {
     const { toast } = useToast();
     const isAdmin = user.userId === ADMIN_USER_ID;
@@ -957,6 +891,14 @@ function ProfileScreen({
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.userId);
         toast({ title: "تم نسخ ID المستخدم" });
+    };
+    
+    const handleAddCoins = (amount: number) => {
+        setBalance(prev => prev + amount);
+    };
+    
+    const handleDeductCoins = (amount: number) => {
+        setBalance(prev => Math.max(0, prev - amount));
     };
 
     return (
@@ -1016,7 +958,7 @@ function ProfileScreen({
                     </div>
                 </button>
             </div>
-            {isAdmin && <AdminPanel onAddCoins={onAddCoins} onDeductCoins={onDeductCoins} onBanUser={onBanUser} onUnbanUser={onUnbanUser} />}
+            {isAdmin && <AdminPanel onAddCoins={handleAddCoins} onDeductCoins={handleDeductCoins} />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
         </div>
@@ -1164,24 +1106,18 @@ function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaim
 
 function MainApp({ 
     user, 
-    onUserUpdate, 
-    onLogout,
     balance, 
-    onBalanceChange, 
     silverBalance,
-    onSilverBalanceChange,
     lastClaimTimestamp,
-    onLastClaimTimestampChange
+    setUserData,
+    onLogout
 }: { 
     user: UserProfile, 
-    onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    onLogout: () => void,
     balance: number, 
-    onBalanceChange: (updater: (prev: number) => number) => void,
     silverBalance: number,
-    onSilverBalanceChange: (updater: (prev: number) => number) => void,
     lastClaimTimestamp: number | null,
-    onLastClaimTimestampChange: (timestamp: number | null) => void,
+    setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
+    onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
@@ -1191,8 +1127,6 @@ function MainApp({
     // Daily Reward State
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
-
-    const { toast } = useToast();
     
      // Daily Reward Timer Logic
     useEffect(() => {
@@ -1255,65 +1189,39 @@ function MainApp({
     const handleCreateRoom = (newRoom: Room) => {
         setAllRooms(prevRooms => [newRoom, ...prevRooms]);
     };
+    
+    const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
+        setUserData(prev => prev ? ({ ...prev, profile: { ...prev.profile, ...updatedProfile }}) : null);
+    };
 
     const handleUserUpdateAndReset = (updatedUser: Pick<UserProfile, 'name' | 'image'>) => {
-        onUserUpdate(updatedUser);
+        handleUserUpdate(updatedUser);
         setProfileView('profile'); // Go back to main profile view after edit
     };
 
+    const handleBalanceChange = (updater: (prev: number) => number) => {
+        setUserData(prev => prev ? ({ ...prev, balance: updater(prev.balance) }) : null);
+    };
+
+    const handleSilverBalanceChange = (updater: (prev: number) => number) => {
+        setUserData(prev => prev ? ({ ...prev, silverBalance: updater(prev.silverBalance) }) : null);
+    };
+
     const handleConvertSilver = () => {
-        onBalanceChange(prev => prev + silverBalance);
-        onSilverBalanceChange(() => 0); // Reset silver balance
+        setUserData(prev => {
+            if (!prev) return null;
+            return { ...prev, balance: prev.balance + prev.silverBalance, silverBalance: 0 };
+        });
     };
     
-    const handleAddCoins = async (userId: string, amount: number) => {
-        const userRef = ref(db, 'users/' + userId);
-        try {
-            const snapshot = await get(userRef);
-            if(snapshot.exists()){
-                const currentBalance = snapshot.val().balance || 0;
-                await update(userRef, { balance: currentBalance + amount });
-                toast({ title: "تمت إضافة الكوينز بنجاح!", description: `تم تحديث رصيد ${userId}.` });
-            } else {
-                 toast({ variant: "destructive", title: "مستخدم غير موجود", description: `المستخدم ${userId} غير موجود.` });
-            }
-        } catch (error) {
-            console.error(error);
-            toast({ variant: "destructive", title: "خطأ", description: "حدث خطأ أثناء إضافة الكوينز." });
-        }
-    };
-    
-    const handleDeductCoins = async (userId: string, amount: number) => {
-         const userRef = ref(db, 'users/' + userId);
-        try {
-            const snapshot = await get(userRef);
-            if(snapshot.exists()){
-                const currentBalance = snapshot.val().balance || 0;
-                await update(userRef, { balance: Math.max(0, currentBalance - amount) });
-                toast({ title: "تم خصم الكوينز بنجاح!", description: `تم تحديث رصيد ${userId}.` });
-            } else {
-                 toast({ variant: "destructive", title: "مستخدم غير موجود", description: `المستخدم ${userId} غير موجود.` });
-            }
-        } catch (error) {
-            console.error(error);
-            toast({ variant: "destructive", title: "خطأ", description: "حدث خطأ أثناء خصم الكوينز." });
-        }
-    };
-
-    const handleBanUser = (userId: string) => {
-        // In a real app, you would set a "banned: true" flag in the database
-        toast({ title: "تم حظر المستخدم!", description: `المستخدم ${userId} لن يتمكن من الدخول للتطبيق.` });
-    };
-
-    const handleUnbanUser = (userId: string) => {
-         // In a real app, you would set "banned: false"
-        toast({ title: "تم رفع الحظر!", description: `يمكن للمستخدم ${userId} الآن الدخول للتطبيق.` });
+    const handleLastClaimTimestampChange = (timestamp: number | null) => {
+         setUserData(prev => prev ? ({ ...prev, lastClaimTimestamp: timestamp }) : null);
     };
 
     const handleClaimEventReward = () => {
         if(canClaim){
-            onBalanceChange(prev => prev + DAILY_REWARD_AMOUNT);
-            onLastClaimTimestampChange(Date.now());
+            handleBalanceChange(prev => prev + DAILY_REWARD_AMOUNT);
+            handleLastClaimTimestampChange(Date.now());
         }
     };
 
@@ -1325,9 +1233,9 @@ function MainApp({
                     user={user} 
                     onExit={handleExitRoom} 
                     onRoomUpdated={handleRoomUpdated} 
-                    balance={balance} 
-                    onBalanceChange={onBalanceChange} 
-                    onSilverBalanceChange={onSilverBalanceChange}
+                    balance={balance}
+                    setBalance={(updater) => handleBalanceChange(updater)}
+                    setSilverBalance={(updater) => handleSilverBalanceChange(updater)}
                 />
             );
         }
@@ -1349,14 +1257,11 @@ function MainApp({
                 <ProfileScreen 
                     user={user} 
                     onUserUpdate={handleUserUpdateAndReset} 
-                    balance={balance} 
+                    balance={balance}
+                    setBalance={(updater) => handleBalanceChange(updater)}
                     silverBalance={silverBalance}
                     onNavigate={setProfileView}
                     onLogout={onLogout}
-                    onAddCoins={onAddCoins}
-                    onDeductCoins={handleDeductCoins}
-                    onBanUser={onBanUser}
-                    onUnbanUser={onUnbanUser}
                 />
             );
         }
@@ -1418,30 +1323,31 @@ export default function HomePage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   
-  // This effect runs only on the client-side to check for a logged-in user
   useEffect(() => {
-    const loggedInUserId = localStorage.getItem("loggedInUserId");
-    if (loggedInUserId) {
-        const userRef = ref(db, 'users/' + loggedInUserId);
-        
-        // Use onValue for real-time updates
-        const unsubscribe = onValue(userRef, (snapshot) => {
-            if (snapshot.exists()) {
-                setUserData(snapshot.val());
-            } else {
-                // The user ID from localStorage is invalid, clear it
-                localStorage.removeItem("loggedInUserId");
-                setUserData(null);
-            }
-            setIsLoading(false);
-        });
-
-        // Cleanup the listener when the component unmounts
-        return () => unsubscribe();
-    } else {
-        setIsLoading(false);
+    try {
+      const savedUserData = localStorage.getItem("userData");
+      if (savedUserData) {
+        setUserData(JSON.parse(savedUserData));
+      }
+    } catch (error) {
+      console.error("Failed to parse user data from localStorage", error);
+      setUserData(null);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    if (userData) {
+      try {
+        localStorage.setItem("userData", JSON.stringify(userData));
+      } catch (error) {
+        console.error("Failed to save user data to localStorage", error);
+      }
+    }
+  }, [userData]);
+
 
   const handleCreateProfile = (name: string) => {
     if (!name.trim()) {
@@ -1467,53 +1373,15 @@ export default function HomePage() {
         lastClaimTimestamp: null
     };
 
-    // Save to Firebase
-    const userRef = ref(db, 'users/' + userId);
-    set(userRef, newUserRecord).then(() => {
-      localStorage.setItem("loggedInUserId", userId);
-      setUserData(newUserRecord); // Set local state immediately
-      setIsLoading(false); // <--- THIS IS THE FIX
-      toast({
-          title: "تم حفظ الملف الشخصي",
-          description: "مرحبًا بك في التطبيق!",
-      });
-    }).catch((error) => {
-      console.error("Failed to save user to Firebase:", error);
-      toast({ variant: "destructive", title: "خطأ في التسجيل" });
+    setUserData(newUserRecord);
+    toast({
+        title: "تم حفظ الملف الشخصي",
+        description: "مرحبًا بك في التطبيق!",
     });
-  };
-
-  const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
-      if (!userData) return;
-      const userRef = ref(db, 'users/' + userData.profile.userId + '/profile');
-      update(userRef, updatedProfile).catch((error) => {
-           console.error("Failed to update user:", error);
-           toast({ variant: "destructive", title: "فشل تحديث الملف الشخصي" });
-      });
-  };
-
-  const handleBalanceChange = (updater: (prev: number) => number) => {
-      if (!userData) return;
-      const newBalance = updater(userData.balance);
-      const userRef = ref(db, 'users/' + userData.profile.userId);
-      update(userRef, { balance: newBalance });
-  };
-  
-  const handleSilverBalanceChange = (updater: (prev: number) => number) => {
-      if (!userData) return;
-      const newSilverBalance = updater(userData.silverBalance);
-      const userRef = ref(db, 'users/' + userData.profile.userId);
-      update(userRef, { silverBalance: newSilverBalance });
-  };
-  
-  const handleLastClaimTimestampChange = (timestamp: number | null) => {
-       if (!userData) return;
-       const userRef = ref(db, 'users/' + userData.profile.userId);
-       update(userRef, { lastClaimTimestamp: timestamp });
   };
   
   const handleLogout = () => {
-    localStorage.removeItem('loggedInUserId');
+    localStorage.removeItem('userData');
     setUserData(null); 
     setNameInput("");
     toast({ title: "تم تسجيل الخروج" });
@@ -1566,14 +1434,10 @@ export default function HomePage() {
 
   return <MainApp 
             user={userData.profile} 
-            onLogout={handleLogout} 
-            onUserUpdate={handleUserUpdate} 
-            balance={userData.balance} 
-            onBalanceChange={handleBalanceChange}
+            balance={userData.balance}
             silverBalance={userData.silverBalance}
-            onSilverBalanceChange={handleSilverBalanceChange}
             lastClaimTimestamp={userData.lastClaimTimestamp}
-            onLastClaimTimestampChange={handleLastClaimTimestampChange}
+            setUserData={setUserData}
+            onLogout={handleLogout}
         />;
 }
-
