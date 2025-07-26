@@ -1113,10 +1113,15 @@ function MainApp({
 
     useEffect(() => {
         if (currentRoom) {
-            const updatedRoom = rooms.find(r => r.id === currentRoom.id) || null;
-            setCurrentRoom(updatedRoom);
+            // Find the updated room data from the live list
+            const updatedRoom = rooms.find(r => r.id === currentRoom.id);
+            // Only update if the new data is valid and has the necessary properties (like micSlots)
+            // This prevents overwriting a good state with a partially loaded one.
+            if (updatedRoom && updatedRoom.micSlots) {
+                setCurrentRoom(updatedRoom);
+            }
         }
-    }, [rooms, currentRoom]);
+    }, [rooms, currentRoom?.id]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
