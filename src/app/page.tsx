@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -18,6 +19,7 @@ import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
+import { RoomData, MicSlotData, roomServices } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -26,26 +28,14 @@ interface UserProfile {
     userId: string;
 }
 
-interface Room {
-    id: string;
-    name: string;
-    image: string;
-    ownerId: string;
-    description: string;
-    userCount: number;
-    tags?: string[];
-}
+type Room = RoomData;
+export type MicSlot = MicSlotData;
 
 interface ChatMessage {
     id: string;
     user: UserProfile;
     text: string;
-}
-
-export interface MicSlot {
-    user: UserProfile | null;
-    isMuted: boolean;
-    isLocked: boolean;
+    createdAt: any;
 }
 
 interface GiftItem {
@@ -96,14 +86,13 @@ function formatNumber(num: number): string {
 }
 
 
-function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomUpdated: (updatedRoom: Room) => void, children: React.ReactNode }) {
+function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomUpdated: (updatedRoom: Partial<Room>) => void, children: React.ReactNode }) {
     const [roomName, setRoomName] = useState(room.name);
     const { toast } = useToast();
     const placeholderImage = "https://placehold.co/100x100.png";
 
     const handleSaveChanges = () => {
-        // In a real app, you would save this to your database
-        const updatedRoomData = { ...room, name: roomName, image: placeholderImage };
+        const updatedRoomData = { name: roomName, image: placeholderImage };
         onRoomUpdated(updatedRoomData);
         toast({ title: "تم تحديث الغرفة!" });
     };
@@ -164,7 +153,6 @@ function GiftSheet({
             if (initialRecipient) {
                 setSelectedRecipient(initialRecipient);
             } else if (usersOnMics.length > 0) {
-                // Only set default if no recipient is selected yet
                 if (!selectedRecipient) {
                     setSelectedRecipient(usersOnMics[0]);
                 }
@@ -174,7 +162,6 @@ function GiftSheet({
 
     useEffect(() => {
         if (!isOpen) {
-            // Reset state when sheet closes
             setSelectedGift(null);
             setQuantity(1);
             setSelectedRecipient(null);
@@ -190,7 +177,6 @@ function GiftSheet({
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto max-h-[70vh] flex flex-col p-0">
-                {/* Recipient Selection */}
                 <div className="px-4 py-2 shrink-0">
                     <h3 className="text-sm font-semibold mb-2 text-right">إرسال إلى:</h3>
                     {usersOnMics.length > 0 ? (
@@ -217,7 +203,6 @@ function GiftSheet({
                     )}
                 </div>
 
-                {/* Gift Selection Grid */}
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-4 gap-4">
                         {GIFTS.map(gift => (
@@ -238,7 +223,6 @@ function GiftSheet({
                     </div>
                 </div>
 
-                {/* Footer Action Bar */}
                 <div className="flex items-center justify-between p-4 border-t border-primary/20 mt-auto shrink-0">
                     <div className="flex items-center gap-2">
                         <Trophy className="w-6 h-6 text-yellow-400" />
@@ -263,18 +247,13 @@ function RoomScreen({
     onExit, 
     onRoomUpdated, 
     balance, 
-    setBalance, // Use direct setter for simplicity now
-    setSilverBalance, // Use direct setter
+    setBalance,
+    setSilverBalance,
 }) {
      const { toast } = useToast();
-     const [micSlots, setMicSlots] = useState<MicSlot[]>(
-        Array(15).fill(null).map((_, i) => i === 0 
-            ? { user: BOT_USER, isMuted: true, isLocked: false } 
-            : { user: null, isMuted: false, isLocked: false })
-     );
      const [isGameVisible, setIsGameVisible] = useState(false);
      
-     const myMicIndex = micSlots.findIndex(slot => slot.user?.userId === user.userId);
+     const myMicIndex = room.micSlots.findIndex(slot => slot.user?.userId === user.userId);
      const isOwner = user.userId === room.ownerId;
      
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -287,9 +266,6 @@ function RoomScreen({
     const [roomSupporters, setRoomSupporters] = useState<Supporter[]>([]);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
-    const [isRoomMuted, setIsRoomMuted] = useState(false);
-
-
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -301,56 +277,57 @@ function RoomScreen({
         toast({ title: "تم نسخ ID الغرفة" });
     };
 
+    const handleUpdateRoomData = async (updates: Partial<RoomData>) => {
+        try {
+            await roomServices.updateRoomData(room.id, updates);
+        } catch (error) {
+            console.error("Error updating room data:", error);
+            toast({ variant: "destructive", title: "خطأ", description: "لم يتم تحديث الغرفة. حاول مرة أخرى."});
+        }
+    };
+
     const handleAscend = (index: number) => {
         if (myMicIndex !== -1) {
             toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر."});
             return;
         }
-        if (micSlots[index].user) {
+        const newSlots = [...room.micSlots];
+        if (newSlots[index].user) {
             toast({ variant: "destructive", description: "هذا المايك مشغول."});
             return;
         }
-        if (micSlots[index].isLocked) {
+        if (newSlots[index].isLocked) {
             toast({ variant: "destructive", description: "هذا المايك مقفل."});
             return;
         }
-        setMicSlots(prev => {
-            const newSlots = [...prev];
-            newSlots[index] = { ...newSlots[index], user: user, isMuted: false };
-            return newSlots;
-        });
+        newSlots[index] = { ...newSlots[index], user: user, isMuted: false };
+        handleUpdateRoomData({ micSlots: newSlots });
     }
 
     const handleDescend = (indexToDescend: number) => {
-         setMicSlots(prev => {
-            const newSlots = [...prev];
-            if (newSlots[indexToDescend].user) {
-                newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
-            }
-            return newSlots;
-        });
+        const newSlots = [...room.micSlots];
+        if (newSlots[indexToDescend].user) {
+            newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
+            handleUpdateRoomData({ micSlots: newSlots });
+        }
     }
     
     const handleToggleMute = () => {
         if (myMicIndex !== -1) {
-            setMicSlots(prevSlots => {
-                const newSlots = [...prevSlots];
-                const currentSlot = newSlots[myMicIndex];
-                if (currentSlot) {
-                    newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
-                }
-                return newSlots;
-            });
+            const newSlots = [...room.micSlots];
+            const currentSlot = newSlots[myMicIndex];
+            if (currentSlot) {
+                newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
+                handleUpdateRoomData({ micSlots: newSlots });
+            }
         }
     };
 
     const handleToggleLock = (index: number) => {
         if (isOwner) {
-            setMicSlots(prev => {
-                const newSlots = [...prev];
-                newSlots[index] = { ...newSlots[index], isLocked: !newSlots[index].isLocked };
-                return newSlots;
-            });
+            const newSlots = [...room.micSlots];
+            newSlots[index] = { ...newSlots[index], isLocked: !newSlots[index].isLocked };
+            handleUpdateRoomData({ micSlots: newSlots });
         }
     }
     
@@ -360,6 +337,7 @@ function RoomScreen({
             id: Date.now().toString(),
             user: user,
             text: chatInput.trim(),
+            createdAt: new Date(),
         };
         setChatMessages(prev => [...prev, newMessage]);
         setChatInput("");
@@ -386,20 +364,22 @@ function RoomScreen({
         }
         setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
 
-        // Simplified: Silver balance logic for local state
         setSilverBalance(prevSilver => prevSilver + (totalCost * 0.20));
         
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
         setIsGiftSheetOpen(false);
     };
 
+    const handleToggleRoomMute = () => {
+        handleUpdateRoomData({ isRoomMuted: !room.isRoomMuted });
+    };
 
     const handleOpenGiftSheet = (recipient: UserProfile | null) => {
         setInitialRecipientForGift(recipient);
         setIsGiftSheetOpen(true);
     };
 
-    const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
+    const usersOnMics = room.micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomHeader = () => {
       const roomInfoDisplay = (
@@ -442,7 +422,7 @@ function RoomScreen({
                 </AlertDialogContent>
             </AlertDialog>
             {isOwner ? (
-                <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                <EditRoomDialog room={room} onRoomUpdated={(updates) => handleUpdateRoomData(updates)}>
                      {roomInfoDisplay}
                 </EditRoomDialog>
             ) : (
@@ -480,12 +460,16 @@ function RoomScreen({
                     <div className="flex items-center justify-between px-4 mt-2">
                         <div className="flex items-center gap-2">
                            <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
+                             {(room.attendees || []).slice(0, 3).map(attendee => (
+                               <Avatar key={attendee.userId} className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src={attendee.image} />
+                                   <AvatarFallback>{attendee.name.charAt(0)}</AvatarFallback>
                                </Avatar>
+                             ))}
                            </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
+                                {room.userCount}
+                            </div>
                         </div>
                         <Popover>
                             <PopoverTrigger asChild>
@@ -524,13 +508,13 @@ function RoomScreen({
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
-                        {micSlots.map((slot, index) => (
+                        {room.micSlots.map((slot, index) => (
                             <RoomMic 
                                 key={index} 
                                 slot={slot} 
                                 index={index}
                                 isOwner={isOwner}
-                                isRoomMuted={isRoomMuted}
+                                isRoomMuted={room.isRoomMuted}
                                 currentUser={user}
                                 onAscend={handleAscend}
                                 onDescend={handleDescend}
@@ -605,9 +589,9 @@ function RoomScreen({
                                 variant="ghost" 
                                 size="icon" 
                                 className="bg-black/40 rounded-full h-12 w-12 flex-shrink-0"
-                                onClick={() => setIsRoomMuted(prev => !prev)}
+                                onClick={handleToggleRoomMute}
                             >
-                                {isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
+                                {room.isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
                             </Button>
                              <Button 
                                 variant="ghost" 
@@ -632,8 +616,6 @@ function RoomScreen({
         </div>
     );
 }
-
-// --- NEW PROFILE & COINS SCREEN ---
 
 function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile, onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, children: React.ReactNode }) {
     const [name, setName] = useState(user.name);
@@ -698,7 +680,6 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                 <div></div>
             </header>
             
-            {/* Balance Card */}
             <div className="relative bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl p-4 flex items-center justify-between shadow-lg mb-6 overflow-hidden">
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/checkered-light-emboss.png')] opacity-10"></div>
                 <div className="flex items-center gap-4 z-10">
@@ -719,7 +700,6 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                 </div>
             </div>
 
-            {/* Recharge Section */}
             <div>
                 <h3 className="font-bold text-lg mb-2 text-right">شحن</h3>
                 <div className="bg-[#2a2d36] rounded-xl p-4">
@@ -897,7 +877,6 @@ function ProfileScreen({
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
-             {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
@@ -921,9 +900,8 @@ function ProfileScreen({
                 </div>
              </div>
 
-            {/* Balances & Level Section */}
              <div className="mt-8 flex justify-around items-center gap-4">
-                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -996,7 +974,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Room[], onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount'>) => void, user: UserProfile }) {
+function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Room[], onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
 
@@ -1110,7 +1088,7 @@ function MainApp({
     setUserData,
     onLogout,
     createRoom,
-    rooms
+    rooms: initialRooms
 }: { 
     user: UserProfile, 
     balance: number, 
@@ -1118,39 +1096,41 @@ function MainApp({
     lastClaimTimestamp: number | null,
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
-    createRoom: (roomData: Omit<Room, 'id' | 'userCount'>) => Promise<void>,
+    createRoom: (roomData: Omit<RoomData, 'id'| 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => Promise<void>,
     rooms: Room[]
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
-    
-    // Daily Reward State
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
+    const { rooms } = useRooms();
+
+    useEffect(() => {
+        if (currentRoom) {
+            const updatedRoom = rooms.find(r => r.id === currentRoom.id) || null;
+            setCurrentRoom(updatedRoom);
+        }
+    }, [rooms, currentRoom]);
     
-     // Daily Reward Timer Logic
     useEffect(() => {
         const updateClaimTimer = () => {
             const now = new Date();
-            const iraqTimezoneOffset = 3 * 60; // UTC+3
+            const iraqTimezoneOffset = 3 * 60;
             const nowUtc = now.getTime() + (now.getTimezoneOffset() * 60 * 1000);
             const nowIraq = new Date(nowUtc + (iraqTimezoneOffset * 60 * 1000));
 
             const nextClaimDate = new Date(nowIraq);
-            nextClaimDate.setHours(24, 0, 0, 0); // Next day at 00:00 Iraq time
+            nextClaimDate.setHours(24, 0, 0, 0);
 
             if (lastClaimTimestamp) {
                 const lastClaimDate = new Date(lastClaimTimestamp);
-                
-                // Adjust last claim date to Iraq time for comparison
                 const lastClaimUtc = lastClaimDate.getTime() + (lastClaimDate.getTimezoneOffset() * 60 * 1000);
                 const lastClaimIraq = new Date(lastClaimUtc + (iraqTimezoneOffset * 60 * 1000));
 
                 if (lastClaimIraq.getFullYear() === nowIraq.getFullYear() &&
                     lastClaimIraq.getMonth() === nowIraq.getMonth() &&
                     lastClaimIraq.getDate() === nowIraq.getDate()) {
-                    // Already claimed today (in Iraq time)
                     setCanClaim(false);
                     const diff = nextClaimDate.getTime() - nowIraq.getTime();
                     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -1160,31 +1140,39 @@ function MainApp({
                     return;
                 }
             }
-
-            // Can claim now
             setCanClaim(true);
             setTimeUntilNextClaim('جاهزة للاستلام!');
         };
-
         updateClaimTimer();
         const interval = setInterval(updateClaimTimer, 1000);
         return () => clearInterval(interval);
     }, [lastClaimTimestamp]);
 
-
-    const handleEnterRoom = (room: Room) => {
-        setCurrentRoom(room);
-        setView('inRoom');
+    const handleEnterRoom = async (room: Room) => {
+        try {
+            await roomServices.joinRoom(room.id, user);
+            const freshRoomData = rooms.find(r => r.id === room.id);
+            setCurrentRoom(freshRoomData || room);
+            setView('inRoom');
+        } catch (error) {
+            console.error("Error joining room:", error);
+        }
     }
 
-    const handleExitRoom = () => {
+    const handleExitRoom = async () => {
+        if (currentRoom) {
+            try {
+                await roomServices.leaveRoom(currentRoom.id, user);
+            } catch (error) {
+                console.error("Error leaving room:", error);
+            }
+        }
         setCurrentRoom(null);
         setView('roomsList');
     }
 
     const handleRoomUpdated = (updatedRoom: Room) => {
         setCurrentRoom(updatedRoom);
-        // The real-time listener will update the main rooms list
     };
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
@@ -1193,7 +1181,7 @@ function MainApp({
 
     const handleUserUpdateAndReset = (updatedUser: Pick<UserProfile, 'name' | 'image'>) => {
         handleUserUpdate(updatedUser);
-        setProfileView('profile'); // Go back to main profile view after edit
+        setProfileView('profile');
     };
 
     const handleBalanceChange = (updater: ((prev: number) => number) | number) => {
@@ -1321,12 +1309,10 @@ interface UserData {
     lastClaimTimestamp: number | null;
 }
 
-// --- Root Component & Profile Gate ---
 export default function HomePage() {
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
   
-  // Get user ID from localStorage (fallback)
   const [userId, setUserId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const savedUserData = localStorage.getItem("userData");
@@ -1342,41 +1328,33 @@ export default function HomePage() {
     return null;
   });
 
-  // Use Firebase hooks
   const { userData, loading: userLoading, error: userError, updateUser } = useUser(userId);
   const { rooms, loading: roomsLoading, error: roomsError, createRoom } = useRooms();
 
-  // Wrapper function for compatibility with existing code
   const setUserData = (updater: React.SetStateAction<UserData | null>) => {
     if (typeof updater === 'function' && userData) {
       const newData = updater(userData);
       if (newData) {
-        // Update localStorage immediately
         localStorage.setItem("userData", JSON.stringify(newData));
-        
         try {
           updateUser(newData);
         } catch (error) {
           console.error('Error updating user data:', error);
-          // Continue with localStorage only
         }
       }
     } else if (typeof updater === 'object' && updater) {
-      // Update localStorage immediately
       localStorage.setItem("userData", JSON.stringify(updater));
-      
       try {
         updateUser(updater);
       } catch (error) {
         console.error('Error updating user data:', error);
-        // Continue with localStorage only
       }
     }
   };
 
-  const createRoomWrapper = async (roomData: Omit<Room, 'id' | 'userCount'>) => {
+  const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'userCount'| 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => {
       try {
-          await createRoom({ ...roomData, userCount: 1 });
+          await createRoom(roomData);
       } catch(e) {
           console.error("Failed to create room", e);
           toast({
@@ -1405,7 +1383,6 @@ export default function HomePage() {
       userId: userId
     };
     
-    // Check if the new user ID matches the specific ID to grant a large balance
     const initialBalance = userId === '368473' ? 1000000000 : 10000000;
 
     const newUserRecord: UserData = {
@@ -1416,23 +1393,13 @@ export default function HomePage() {
     };
 
     try {
-      console.log('Creating user profile:', newUserRecord);
-      
-      // Save to localStorage first (immediate fallback)
       localStorage.setItem("userData", JSON.stringify(newUserRecord));
-      
-      // Try to save to Firebase
       try {
         await updateUser(newUserRecord);
-        console.log('User saved to Firebase successfully');
       } catch (firebaseError) {
         console.error('Firebase save failed, using localStorage only:', firebaseError);
-        // Continue with localStorage only
       }
-      
-      // Set userId to trigger navigation
       setUserId(userId);
-      
       toast({
           title: "تم حفظ الملف الشخصي",
           description: "مرحبًا بك في التطبيق!",
@@ -1440,11 +1407,8 @@ export default function HomePage() {
       
     } catch (error) {
       console.error('Error creating profile:', error);
-      
-      // Final fallback: save to localStorage and continue
       localStorage.setItem("userData", JSON.stringify(newUserRecord));
       setUserId(userId);
-      
       toast({
           title: "تم حفظ الملف الشخصي (وضع عدم الاتصال)",
           description: "مرحبًا بك في التطبيق!",
@@ -1454,15 +1418,12 @@ export default function HomePage() {
   
   const handleLogout = () => {
     try {
-      console.log('Logging out user...');
       localStorage.removeItem('userData');
       setUserId(null); 
       setNameInput("");
       toast({ title: "تم تسجيل الخروج" });
-      console.log('Logout successful');
     } catch (error) {
       console.error('Error during logout:', error);
-      // Force logout even if there's an error
       setUserId(null);
       setNameInput("");
       toast({ title: "تم تسجيل الخروج" });

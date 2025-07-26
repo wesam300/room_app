@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Mic, XCircle, Lock, Unlock, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { MicSlot } from '@/app/page';
+import type { MicSlotData } from '@/lib/firebaseServices';
 
 interface UserProfile {
     name: string;
@@ -18,7 +18,7 @@ interface UserProfile {
 }
 
 interface RoomMicProps {
-    slot: MicSlot;
+    slot: MicSlotData;
     index: number;
     isOwner: boolean;
     isRoomMuted: boolean;
@@ -46,7 +46,6 @@ export default function RoomMic({
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    // Self-contained speaking animation logic
     useEffect(() => {
         if (!slot.user || slot.isMuted) {
             setIsSpeaking(false);

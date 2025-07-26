@@ -16,69 +16,35 @@ export const useUser = (userId: string | null) => {
 
     setLoading(true);
     setError(null);
+    let unsubscribe: () => void = () => {};
 
-    // Try to load from localStorage first (faster)
     const loadUser = async () => {
       try {
-        // Check localStorage first
-        const savedUserData = localStorage.getItem("userData");
-        if (savedUserData) {
-          try {
-            const localUser = JSON.parse(savedUserData);
-            if (localUser.profile.userId === userId) {
-              console.log('User found in localStorage:', localUser);
-              setUserData(localUser);
-              setLoading(false);
-              
-              // Try to sync with Firebase in background
-              try {
-                const firebaseUser = await userServices.getUser(userId);
-                if (firebaseUser) {
-                  console.log('User found in Firebase, syncing...');
-                  setUserData(firebaseUser);
-                  localStorage.setItem("userData", JSON.stringify(firebaseUser));
-                } else {
-                  console.log('User not in Firebase, saving from localStorage...');
-                  await userServices.saveUser(localUser);
-                }
-              } catch (firebaseError) {
-                console.error('Firebase sync failed:', firebaseError);
-                // Continue with localStorage data
-              }
-              return;
+        const localData = localStorage.getItem("userData");
+        if (localData) {
+            const localUser = JSON.parse(localData);
+            if(localUser.profile.userId === userId) {
+                setUserData(localUser);
+                setLoading(false);
             }
-          } catch (parseError) {
-            console.error('Error parsing localStorage data:', parseError);
-          }
         }
 
-        // If not in localStorage, try Firebase
-        console.log('User not in localStorage, checking Firebase...');
-        const user = await userServices.getUser(userId);
-        if (user) {
-          console.log('User found in Firebase:', user);
-          setUserData(user);
-          localStorage.setItem("userData", JSON.stringify(user));
-        } else {
-          console.log('User not found anywhere');
-          setUserData(null);
+        const firebaseUser = await userServices.getUser(userId);
+        if (firebaseUser) {
+            setUserData(firebaseUser);
+            localStorage.setItem("userData", JSON.stringify(firebaseUser));
         }
+        
+        unsubscribe = userServices.onUserChange(userId, (user) => {
+            if (user) {
+                setUserData(user);
+                localStorage.setItem("userData", JSON.stringify(user));
+            }
+        });
+
       } catch (err) {
         console.error('Error loading user:', err);
         setError('Failed to load user data');
-        
-        // Final fallback: check localStorage again
-        const savedUserData = localStorage.getItem("userData");
-        if (savedUserData) {
-          try {
-            const localUser = JSON.parse(savedUserData);
-            if (localUser.profile.userId === userId) {
-              setUserData(localUser);
-            }
-          } catch (parseError) {
-            console.error('Error parsing localStorage data:', parseError);
-          }
-        }
       } finally {
         setLoading(false);
       }
@@ -86,62 +52,22 @@ export const useUser = (userId: string | null) => {
 
     loadUser();
 
-    // Set up real-time listener for Firebase changes
-    const unsubscribe = userServices.onUserChange(userId, (user) => {
-      if (user) {
-        console.log('Firebase user updated:', user);
-        setUserData(user);
-        localStorage.setItem("userData", JSON.stringify(user));
-      }
-      setLoading(false);
-    });
-
     return () => unsubscribe();
   }, [userId]);
 
   const updateUser = useCallback(async (updates: Partial<UserData>) => {
-    if (!userData) return;
-
-    const updatedUser = { ...userData, ...updates };
-    
-    // Update local state immediately
-    setUserData(updatedUser);
-    
-    // Update localStorage immediately
-    localStorage.setItem("userData", JSON.stringify(updatedUser));
-
+    if (!userId) return;
     try {
-      console.log('Updating user in Firebase:', updatedUser);
-      await userServices.saveUser(updatedUser);
-      console.log('User updated in Firebase successfully');
+        const userToUpdate = { ...(userData || {}), ...updates, profile: { ...userData?.profile, ...updates.profile, userId } };
+        await userServices.saveUser(userToUpdate as any);
     } catch (err) {
-      console.error('Error updating user in Firebase:', err);
-      setError('Failed to update user data in Firebase');
-      // Keep local changes, don't revert
+        console.error('Error updating user:', err);
+        setError('Failed to update user data');
     }
-  }, [userData]);
+  }, [userId, userData]);
 
-  const updateBalance = useCallback(async (balance: number, silverBalance: number) => {
-    if (!userData) return;
 
-    const updatedUser = { ...userData, balance, silverBalance };
-    
-    // Update local state immediately
-    setUserData(updatedUser);
-    
-    // Update localStorage immediately
-    localStorage.setItem("userData", JSON.stringify(updatedUser));
-
-    try {
-      await userServices.updateUserBalance(userData.profile.userId, balance, silverBalance);
-    } catch (err) {
-      console.error('Error updating balance in Firebase:', err);
-      setError('Failed to update balance in Firebase');
-      // Keep local changes, don't revert
-    }
-  }, [userData]);
-
-  return { userData, loading, error, updateUser, updateBalance };
+  return { userData, loading, error, updateUser };
 };
 
 // Hook for rooms
@@ -154,14 +80,12 @@ export const useRooms = () => {
     setLoading(true);
     setError(null);
 
-    // Set up real-time listener only
     const unsubscribe = roomServices.onRoomsChange((roomsData, err) => {
       if (err) {
         console.error('Error from room listener:', err);
         setError('Failed to load rooms in real-time');
-        setRooms([]); // Clear rooms on error
+        setRooms([]);
       } else {
-        console.log('Rooms updated from Firebase:', roomsData.length);
         setRooms(roomsData);
         setError(null);
       }
@@ -171,30 +95,17 @@ export const useRooms = () => {
     return () => unsubscribe();
   }, []);
 
-  const createRoom = useCallback(async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const createRoom = useCallback(async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' >) => {
     try {
-      console.log('Creating room in useRooms:', roomData);
       await roomServices.createRoom(roomData);
-      console.log('Room created successfully in useRooms');
     } catch (err) {
       console.error('Error creating room in useRooms:', err);
       setError('Failed to create room');
-      throw err; // Re-throw to let the component handle it
+      throw err;
     }
   }, []);
-
-  const updateRoom = useCallback(async (roomId: string, updates: Partial<RoomData>) => {
-    try {
-      console.log('Updating room in useRooms:', roomId, updates);
-      await roomServices.updateRoom(roomId, updates);
-      console.log('Room updated successfully in useRooms');
-    } catch (err) {
-      console.error('Error updating room in useRooms:', err);
-      setError('Failed to update room');
-    }
-  }, []);
-
-  return { rooms, loading, error, createRoom, updateRoom };
+  
+  return { rooms, loading, error, createRoom };
 };
 
 // Hook for chat messages
@@ -209,34 +120,16 @@ export const useChatMessages = (roomId: string | null) => {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
-
-    const loadMessages = async () => {
-      try {
-        const messagesData = await chatServices.getRoomMessages(roomId);
-        setMessages(messagesData);
-      } catch (err) {
-        console.error('Error loading messages:', err);
-        setError('Failed to load messages');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadMessages();
-
-    // Set up real-time listener
     const unsubscribe = chatServices.onRoomMessagesChange(roomId, (messagesData) => {
       setMessages(messagesData);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [roomId]);
 
-  const sendMessage = useCallback(async (messageData: Omit<ChatMessageData, 'createdAt'>) => {
+  const sendMessage = useCallback(async (messageData: Omit<ChatMessageData, 'id' |'createdAt'>) => {
     try {
       await chatServices.sendMessage(messageData);
     } catch (err) {
@@ -257,7 +150,6 @@ export const useGameHistory = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
-
     const loadHistory = async () => {
       try {
         const historyData = await gameServices.getGameHistory();
@@ -269,7 +161,6 @@ export const useGameHistory = () => {
         setLoading(false);
       }
     };
-
     loadHistory();
   }, []);
 
@@ -316,30 +207,12 @@ export const useRoomSupporters = (roomId: string | null) => {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
-
-    const loadSupporters = async () => {
-      try {
-        const supportersData = await supporterServices.getRoomSupporters(roomId);
-        setSupporters(supportersData);
-      } catch (err) {
-        console.error('Error loading supporters:', err);
-        setError('Failed to load supporters');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSupporters();
-
-    // Set up real-time listener
     const unsubscribe = supporterServices.onRoomSupportersChange(roomId, (supportersData) => {
       setSupporters(supportersData);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [roomId]);
 
@@ -353,4 +226,4 @@ export const useRoomSupporters = (roomId: string | null) => {
   }, []);
 
   return { supporters, loading, error, updateSupporter };
-}; 
+};
