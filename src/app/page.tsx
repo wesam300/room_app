@@ -814,21 +814,42 @@ function SilverScreen({
     );
 }
 
-function AdminPanel({ onAddCoins, onBanUser }: { onAddCoins: (userId: string, amount: number) => void, onBanUser: (userId: string) => void }) {
+function AdminPanel({ 
+    onAddCoins, 
+    onDeductCoins,
+    onBanUser,
+    onUnbanUser
+}: { 
+    onAddCoins: (userId: string, amount: number) => void, 
+    onDeductCoins: (userId: string, amount: number) => void, 
+    onBanUser: (userId: string) => void,
+    onUnbanUser: (userId: string) => void
+}) {
     const { toast } = useToast();
-    const [addCoinsUserId, setAddCoinsUserId] = useState("");
-    const [addCoinsAmount, setAddCoinsAmount] = useState("");
+    const [coinsUserId, setCoinsUserId] = useState("");
+    const [coinsAmount, setCoinsAmount] = useState("");
     const [banUserId, setBanUserId] = useState("");
 
     const handleAddCoins = () => {
-        const amount = parseInt(addCoinsAmount, 10);
-        if (!addCoinsUserId || !addCoinsAmount || isNaN(amount)) {
+        const amount = parseInt(coinsAmount, 10);
+        if (!coinsUserId || !coinsAmount || isNaN(amount)) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
             return;
         }
-        onAddCoins(addCoinsUserId, amount);
-        setAddCoinsUserId("");
-        setAddCoinsAmount("");
+        onAddCoins(coinsUserId, amount);
+        setCoinsUserId("");
+        setCoinsAmount("");
+    };
+    
+    const handleDeductCoins = () => {
+        const amount = parseInt(coinsAmount, 10);
+        if (!coinsUserId || !coinsAmount || isNaN(amount)) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID ومبلغ صحيحين." });
+            return;
+        }
+        onDeductCoins(coinsUserId, amount);
+        setCoinsUserId("");
+        setCoinsAmount("");
     };
 
     const handleBanUser = () => {
@@ -839,34 +860,46 @@ function AdminPanel({ onAddCoins, onBanUser }: { onAddCoins: (userId: string, am
         onBanUser(banUserId);
         setBanUserId("");
     };
+    
+    const handleUnbanUser = () => {
+        if (!banUserId) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال ID المستخدم." });
+            return;
+        }
+        onUnbanUser(banUserId);
+        setBanUserId("");
+    };
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
             <h3 className="text-lg font-bold text-center text-primary mb-4">لوحة تحكم المشرف</h3>
             <div className="space-y-6">
-                {/* Add Coins Section */}
+                {/* Modify Coins Section */}
                 <div className="space-y-2">
-                    <h4 className="font-semibold text-right">إضافة كوينز لمستخدم</h4>
+                    <h4 className="font-semibold text-right">تعديل رصيد مستخدم</h4>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <Input
                             placeholder="User ID"
-                            value={addCoinsUserId}
-                            onChange={(e) => setAddCoinsUserId(e.target.value)}
+                            value={coinsUserId}
+                            onChange={(e) => setCoinsUserId(e.target.value)}
                             className="text-left"
                         />
                         <Input
                             type="number"
                             placeholder="المبلغ"
-                            value={addCoinsAmount}
-                            onChange={(e) => setAddCoinsAmount(e.target.value)}
+                            value={coinsAmount}
+                            onChange={(e) => setCoinsAmount(e.target.value)}
                              className="text-left"
                         />
-                        <Button onClick={handleAddCoins} className="w-full sm:w-auto">إضافة</Button>
+                    </div>
+                     <div className="flex gap-2 mt-2">
+                        <Button onClick={handleAddCoins} className="w-full">إضافة</Button>
+                        <Button onClick={handleDeductCoins} variant="secondary" className="w-full">خصم</Button>
                     </div>
                 </div>
-                {/* Ban User Section */}
+                {/* Ban/Unban User Section */}
                 <div className="space-y-2">
-                    <h4 className="font-semibold text-right">حظر مستخدم</h4>
+                    <h4 className="font-semibold text-right">إدارة حظر المستخدمين</h4>
                      <div className="flex flex-col sm:flex-row gap-2">
                         <Input
                             placeholder="User ID"
@@ -874,7 +907,10 @@ function AdminPanel({ onAddCoins, onBanUser }: { onAddCoins: (userId: string, am
                             onChange={(e) => setBanUserId(e.target.value)}
                             className="text-left flex-1"
                         />
-                        <Button onClick={handleBanUser} variant="destructive" className="w-full sm:w-auto">حظر</Button>
+                     </div>
+                     <div className="flex gap-2 mt-2">
+                        <Button onClick={handleBanUser} variant="destructive" className="w-full">حظر</Button>
+                        <Button onClick={handleUnbanUser} variant="outline" className="w-full">رفع الحظر</Button>
                     </div>
                 </div>
             </div>
@@ -891,7 +927,9 @@ function ProfileScreen({
     onNavigate,
     onLogout,
     onAddCoins,
-    onBanUser
+    onDeductCoins,
+    onBanUser,
+    onUnbanUser
 }: { 
     user: UserProfile, 
     onUserUpdate: (updatedUser: UserProfile) => void, 
@@ -900,7 +938,9 @@ function ProfileScreen({
     onNavigate: (view: 'coins' | 'silver') => void,
     onLogout: () => void,
     onAddCoins: (userId: string, amount: number) => void,
-    onBanUser: (userId: string) => void
+    onDeductCoins: (userId: string, amount: number) => void,
+    onBanUser: (userId: string) => void,
+    onUnbanUser: (userId: string) => void
 }) {
     const { toast } = useToast();
     const isAdmin = user.userId === ADMIN_USER_ID;
@@ -914,12 +954,16 @@ function ProfileScreen({
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
+                {/* Edit Button on the left */}
+                <div className="order-1">
+                    <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                        <Button variant="ghost" size="icon">
+                            <Edit className="w-5 h-5" />
+                        </Button>
+                    </EditProfileDialog>
+                </div>
                 {/* User Info on the right */}
-                <div className="flex items-center gap-3">
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                <div className="flex items-center gap-3 order-2">
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
@@ -927,30 +971,15 @@ function ProfileScreen({
                             <span>ID: {user.userId}</span>
                         </button>
                     </div>
+                     <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
                 </div>
-                 {/* Edit Button on the left */}
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
              </div>
 
             {/* Balances Section */}
             <div className="mt-8 flex justify-center gap-4">
-                {/* Silver Button on the left */}
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                </button>
                  {/* Coins Button on the right */}
                  <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
@@ -964,8 +993,21 @@ function ProfileScreen({
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
+                {/* Silver Button on the left */}
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
             </div>
-            {isAdmin && <AdminPanel onAddCoins={onAddCoins} onBanUser={onBanUser} />}
+            {isAdmin && <AdminPanel onAddCoins={onAddCoins} onDeductCoins={onDeductCoins} onBanUser={onBanUser} onUnbanUser={onUnbanUser} />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
         </div>
@@ -1217,17 +1259,21 @@ function MainApp({
     
     // Admin functions passed down for simplicity
      const handleAddCoins = (userId: string, amount: number) => {
-        // In a real app, this would be a server-side call.
-        // Here we just toast for demonstration.
         toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${userId} بمقدار ${amount}.` });
-        // You might want to update a local state of users if you are managing them client-side
+    };
+    
+    const handleDeductCoins = (userId: string, amount: number) => {
+        toast({ title: "تم خصم الكوينز!", description: `تم خصم ${amount} من رصيد ${userId}.` });
     };
 
     const handleBanUser = (userId: string) => {
         toast({ title: "تم حظر المستخدم!", description: `المستخدم ${userId} لن يتمكن من الدخول للتطبيق.` });
-        // You would manage a banned users list in your DB
     };
-    
+
+    const handleUnbanUser = (userId: string) => {
+        toast({ title: "تم رفع الحظر!", description: `يمكن للمستخدم ${userId} الآن الدخول للتطبيق.` });
+    };
+
     const handleClaimEventReward = () => {
         if(canClaim){
             setBalance(prev => prev + DAILY_REWARD_AMOUNT);
@@ -1272,7 +1318,9 @@ function MainApp({
                     onNavigate={setProfileView}
                     onLogout={onLogout}
                     onAddCoins={handleAddCoins}
+                    onDeductCoins={handleDeductCoins}
                     onBanUser={handleBanUser}
+                    onUnbanUser={handleUnbanUser}
                 />
             );
         }
