@@ -178,8 +178,6 @@ function GiftSheet({
             onSendGift(selectedGift, selectedRecipient, quantity);
         }
     };
-
-    const totalCost = selectedGift ? selectedGift.price * quantity : 0;
     
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -226,12 +224,12 @@ function GiftSheet({
                                 key={gift.id}
                                 onClick={() => setSelectedGift(gift)}
                                 className={cn(
-                                    "relative aspect-square flex flex-col items-center justify-end p-2 rounded-lg bg-black/30 cursor-pointer transition-all border-2",
+                                    "relative aspect-square flex flex-col items-center justify-center p-2 rounded-lg bg-black/30 cursor-pointer transition-all border-2",
                                     selectedGift?.id === gift.id ? "border-primary" : "border-transparent hover:border-primary/50"
                                 )}
                             >
-                                <img src={gift.image} data-ai-hint="gift present" alt={gift.name} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 object-contain" />
-                                <div className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded-full">
+                                <img src={gift.image} data-ai-hint="gift present" alt={gift.name} className="w-3/4 h-3/4 object-contain" />
+                                 <div className="flex items-center gap-1 mt-1">
                                     <span className="text-xs font-bold text-white">{formatNumber(gift.price)}</span>
                                     <Trophy className="w-3 h-3 text-yellow-400" />
                                 </div>
@@ -251,7 +249,7 @@ function GiftSheet({
                         onClick={handleSendClick}
                         disabled={!selectedGift || !selectedRecipient}
                     >
-                        إرسال ({formatNumber(totalCost)})
+                        إرسال
                     </Button>
                 </div>
             </SheetContent>
@@ -413,55 +411,60 @@ function RoomScreen({
     const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomHeader = () => {
-        const roomInfoDisplay = (
-           <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
-              <Avatar className="w-10 h-10">
-                  <AvatarImage src={room.image} alt={room.name} />
-                  <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="text-right">
-                  <p className="font-bold text-sm">{room.name}</p>
-                  <div className="flex items-center justify-end gap-1.5">
-                      <span className="text-xs text-muted-foreground">{room.id}</span>
-                      <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                          <Copy className="h-3 w-3" />
-                      </button>
-                  </div>
-              </div>
+      const roomInfoDisplay = (
+        <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
+          <Avatar className="w-10 h-10">
+            <AvatarImage src={room.image} alt={room.name} />
+            <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="text-right">
+            <p className="font-bold text-sm">{room.name}</p>
+            <div className="flex items-center justify-end gap-1.5">
+              <span className="text-xs text-muted-foreground">{room.id}</span>
+              <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                <Copy className="h-3 w-3" />
+              </button>
+            </div>
           </div>
+        </div>
       );
   
       return (
-           <header className="flex items-center justify-between p-3">
-                <AlertDialog>
-                   <AlertDialogTrigger asChild>
-                       <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                           <X className="w-6 h-6 text-primary" />
-                       </Button>
-                   </AlertDialogTrigger>
-                   <AlertDialogContent>
-                       <AlertDialogHeader>
-                           <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                           <AlertDialogDescription>
-                               هل تريد حقًا مغادرة الغرفة؟
-                           </AlertDialogDescription>
-                       </AlertDialogHeader>
-                       <AlertDialogFooter>
-                           <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                           <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
-                       </AlertDialogFooter>
-                   </AlertDialogContent>
-               </AlertDialog>
-               <div className="flex items-center gap-2">
-                    {isOwner ? (
-                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+        <header className="flex items-center justify-between p-3">
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                        <X className="w-6 h-6 text-primary" />
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            هل تريد حقًا مغادرة الغرفة؟
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <div className="flex items-center gap-2">
+                {isOwner ? (
+                     <Dialog>
+                        <DialogTrigger asChild>
                              <div className="cursor-pointer">{roomInfoDisplay}</div>
+                        </DialogTrigger>
+                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                            <div style={{ display: 'none' }} />
                         </EditRoomDialog>
-                    ) : (
-                        roomInfoDisplay
-                    )}
-                </div>
-          </header>
+                    </Dialog>
+                ) : (
+                    roomInfoDisplay
+                )}
+            </div>
+        </header>
       )
   }
 
@@ -491,15 +494,6 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
-                        <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -534,6 +528,15 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                         <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
