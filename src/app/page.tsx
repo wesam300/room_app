@@ -973,10 +973,6 @@ function ProfileScreen({
                 </div>
                 {/* User Info on the right */}
                 <div className="flex items-center gap-3 order-2">
-                     <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
@@ -984,13 +980,17 @@ function ProfileScreen({
                             <span>ID: {user.userId}</span>
                         </button>
                     </div>
+                     <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
                 </div>
              </div>
 
             {/* Balances Section */}
             <div className="mt-8 flex justify-center gap-4">
                  {/* Coins Button on the right */}
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md order-2">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1003,7 +1003,7 @@ function ProfileScreen({
                     </div>
                 </button>
                 {/* Silver Button on the left */}
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md order-1">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1353,10 +1353,10 @@ function MainApp({
                     silverBalance={silverBalance}
                     onNavigate={setProfileView}
                     onLogout={onLogout}
-                    onAddCoins={handleAddCoins}
+                    onAddCoins={onAddCoins}
                     onDeductCoins={handleDeductCoins}
-                    onBanUser={handleBanUser}
-                    onUnbanUser={handleUnbanUser}
+                    onBanUser={onBanUser}
+                    onUnbanUser={onUnbanUser}
                 />
             );
         }
@@ -1444,42 +1444,43 @@ export default function HomePage() {
   }, []);
 
   const handleCreateProfile = (name: string) => {
-    if (name.trim()) {
-      const userId = String(Math.floor(100000 + Math.random() * 900000));
-      const newUserProfile: UserProfile = { 
-        name: name.trim(), 
-        image: `https://placehold.co/128x128.png`,
-        userId: userId
-      };
-      
-      const newUserRecord: UserData = {
-          profile: newUserProfile,
-          balance: 10000000,
-          silverBalance: 50000,
-          lastClaimTimestamp: null
-      };
-
-      // Save to Firebase
-      const userRef = ref(db, 'users/' + userId);
-      set(userRef, newUserRecord).then(() => {
-        localStorage.setItem("loggedInUserId", userId);
-        setUserData(newUserRecord); // Set local state immediately
-        toast({
-            title: "تم حفظ الملف الشخصي",
-            description: "مرحبًا بك في التطبيق!",
-        });
-      }).catch((error) => {
-        console.error("Failed to save user to Firebase:", error);
-        toast({ variant: "destructive", title: "خطأ في التسجيل" });
-      });
-
-    } else {
+    if (!name.trim()) {
        toast({
           variant: "destructive",
           title: "بيانات غير مكتملة",
           description: "يرجى إدخال الاسم.",
       });
+      return;
     }
+
+    const userId = String(Math.floor(100000 + Math.random() * 900000));
+    const newUserProfile: UserProfile = { 
+      name: name.trim(), 
+      image: `https://placehold.co/128x128.png`,
+      userId: userId
+    };
+    
+    const newUserRecord: UserData = {
+        profile: newUserProfile,
+        balance: 10000000,
+        silverBalance: 50000,
+        lastClaimTimestamp: null
+    };
+
+    // Save to Firebase
+    const userRef = ref(db, 'users/' + userId);
+    set(userRef, newUserRecord).then(() => {
+      localStorage.setItem("loggedInUserId", userId);
+      setUserData(newUserRecord); // Set local state immediately
+      setIsLoading(false); // <--- THIS IS THE FIX
+      toast({
+          title: "تم حفظ الملف الشخصي",
+          description: "مرحبًا بك في التطبيق!",
+      });
+    }).catch((error) => {
+      console.error("Failed to save user to Firebase:", error);
+      toast({ variant: "destructive", title: "خطأ في التسجيل" });
+    });
   };
 
   const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
@@ -1575,3 +1576,4 @@ export default function HomePage() {
             onLastClaimTimestampChange={handleLastClaimTimestampChange}
         />;
 }
+
