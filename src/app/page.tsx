@@ -828,11 +828,9 @@ function LevelScreen({
     level: number, 
     xp: number 
 }) {
-    const xpForCurrentLevel = level > 0 ? XP_PER_LEVEL : 0;
-    const xpForNextLevel = XP_PER_LEVEL;
-    const currentLevelXp = xp - xpForCurrentLevel;
-    const progressPercentage = level >= MAX_LEVEL ? 100 : Math.min((xp / xpForNextLevel) * 100, 100);
-    const xpRemaining = level >= MAX_LEVEL ? 0 : xpForNextLevel - xp;
+    const currentLevelXp = xp;
+    const progressPercentage = level >= MAX_LEVEL ? 100 : Math.min((currentLevelXp / XP_PER_LEVEL) * 100, 100);
+    const xpRemaining = level >= MAX_LEVEL ? 0 : XP_PER_LEVEL - currentLevelXp;
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
@@ -996,9 +994,24 @@ function ProfileScreen({
              </div>
 
             {/* Balances & Level Section */}
-            <div className="mt-8 flex justify-center gap-4">
+            <div className="mt-8 flex justify-around items-start">
+                 {/* Left Column (Silver) */}
+                 <div className="flex flex-col">
+                    <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                         <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                                <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-white font-bold">الفضية</p>
+                            <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                        </div>
+                    </button>
+                </div>
                 {/* Right Column (Coins & Level) */}
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col items-center gap-4">
                     <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                         <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1016,21 +1029,6 @@ function ProfileScreen({
                         <div className="text-right">
                             <p className="font-bold">المستوى</p>
                             <p className="text-sm">{level}</p>
-                        </div>
-                    </button>
-                </div>
-                {/* Left Column (Silver) */}
-                 <div className="flex flex-col">
-                    <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                         <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-white font-bold">الفضية</p>
-                            <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                         </div>
                     </button>
                 </div>
@@ -1281,7 +1279,7 @@ function MainApp({
         setProfileView('profile'); // Go back to main profile view after edit
     };
 
-    const handleBalanceChange = (updater: (prev: number) => number | number) => {
+    const handleBalanceChange = (updater: ((prev: number) => number) | number) => {
         setUserData(prev => {
             if (!prev) return null;
             const newBalance = typeof updater === 'function' ? updater(prev.balance) : updater;
@@ -1289,7 +1287,7 @@ function MainApp({
         });
     };
 
-    const handleSilverBalanceChange = (updater: (prev: number) => number | number) => {
+    const handleSilverBalanceChange = (updater: ((prev: number) => number) | number) => {
         setUserData(prev => {
             if (!prev) return null;
             const newSilverBalance = typeof updater === 'function' ? updater(prev.silverBalance) : updater;
@@ -1301,19 +1299,20 @@ function MainApp({
         setUserData(prev => {
             if (!prev || prev.level >= MAX_LEVEL) return prev;
 
-            let newXp = prev.xp + amount;
-            let newLevel = prev.level;
+            let currentXp = prev.xp + amount;
+            let currentLevel = prev.level;
             
-            while (newXp >= XP_PER_LEVEL && newLevel < MAX_LEVEL) {
-                newXp -= XP_PER_LEVEL;
-                newLevel++;
+            while (currentXp >= XP_PER_LEVEL && currentLevel < MAX_LEVEL) {
+                currentLevel++;
+                currentXp -= XP_PER_LEVEL;
             }
             
-            if (newLevel >= MAX_LEVEL) {
-                 newXp = 0; // Cap XP at max level
+            if (currentLevel >= MAX_LEVEL) {
+                 currentXp = 0; // Cap XP at max level
+                 currentLevel = MAX_LEVEL;
             }
 
-            return { ...prev, xp: newXp, level: newLevel };
+            return { ...prev, xp: currentXp, level: currentLevel };
         });
     }, [setUserData]);
 
@@ -1563,3 +1562,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
