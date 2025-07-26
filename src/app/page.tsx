@@ -70,10 +70,13 @@ const BOT_USER: UserProfile = {
 const ADMIN_USER_ID = 'your-admin-user-id'; // Replace with a real admin ID
 
 const GIFTS: GiftItem[] = [
-    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' },
-    { id: 'kanafeh', name: 'كنافة', price: 5000, image: 'https://placehold.co/150x150/ffab00/ffffff.png' },
-    { id: 'tea', name: 'شاي', price: 3000, image: 'https://placehold.co/150x150/d62828/ffffff.png' },
-    { id: 'dallah', name: 'دلة قهوة', price: 30000, image: 'https://placehold.co/150x150/f7b731/000000.png' },
+    { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
+    { id: 'perfume', name: 'عطر', price: 2000000, image: 'https://placehold.co/150x150/ff8a4d/ffffff.png' },
+    { id: 'car', name: 'سيارة رياضية', price: 5000000, image: 'https://placehold.co/150x150/ffc14d/ffffff.png' },
+    { id: 'plane', name: 'طائرة خاصة', price: 10000000, image: 'https://placehold.co/150x150/c1ff4d/000000.png' },
+    { id: 'yacht', name: 'يخت', price: 15000000, image: 'https://placehold.co/150x150/4dffc1/000000.png' },
+    { id: 'castle', name: 'قلعة', price: 30000000, image: 'https://placehold.co/150x150/4dc1ff/ffffff.png' },
+    { id: 'lion', name: 'الأسد الذهبي', price: 50000000, image: 'https://placehold.co/150x150/c14dff/ffffff.png' },
 ];
 
 const DAILY_REWARD_AMOUNT = 10000000;
@@ -180,8 +183,8 @@ function GiftSheet({
     
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-3/4 flex flex-col p-0">
-                <SheetHeader className="p-4 text-right">
+            <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto max-h-[70vh] flex flex-col p-0">
+                <SheetHeader className="p-4 text-right shrink-0">
                     <SheetTitle className="text-primary">إرسال هدية</SheetTitle>
                     <SheetDescription>
                         اختر مستلمًا وهدية لإرسالها.
@@ -189,7 +192,7 @@ function GiftSheet({
                 </SheetHeader>
 
                 {/* Recipient Selection */}
-                <div className="px-4 py-2">
+                <div className="px-4 py-2 shrink-0">
                     <h3 className="text-sm font-semibold mb-2 text-right">إرسال إلى:</h3>
                     {usersOnMics.length > 0 ? (
                         <div className="flex gap-2 overflow-x-auto pb-2">
@@ -238,7 +241,7 @@ function GiftSheet({
                 </div>
 
                 {/* Footer Action Bar */}
-                <div className="flex items-center justify-between p-4 border-t border-primary/20 mt-auto">
+                <div className="flex items-center justify-between p-4 border-t border-primary/20 mt-auto shrink-0">
                     <div className="flex items-center gap-2">
                         <Trophy className="w-6 h-6 text-yellow-400" />
                         <span className="font-bold text-lg">{formatNumber(balance)}</span>
@@ -430,18 +433,7 @@ function RoomScreen({
   
       return (
            <header className="flex items-center justify-between p-3">
-                <div className="flex items-center gap-2">
-                    {isOwner ? (
-                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                            <Button variant="ghost" size="icon" className="p-0 h-auto w-auto">
-                               {roomInfoDisplay}
-                            </Button>
-                        </EditRoomDialog>
-                    ) : (
-                        roomInfoDisplay
-                    )}
-                </div>
-                 <AlertDialog>
+                <AlertDialog>
                    <AlertDialogTrigger asChild>
                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
                            <X className="w-6 h-6 text-primary" />
@@ -460,6 +452,15 @@ function RoomScreen({
                        </AlertDialogFooter>
                    </AlertDialogContent>
                </AlertDialog>
+               <div className="flex items-center gap-2">
+                    {isOwner ? (
+                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                             <div className="cursor-pointer">{roomInfoDisplay}</div>
+                        </EditRoomDialog>
+                    ) : (
+                        roomInfoDisplay
+                    )}
+                </div>
           </header>
       )
   }
@@ -490,6 +491,15 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
+                        <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -524,15 +534,6 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
-                        <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
@@ -936,19 +937,7 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                    </div>
-                </button>
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -958,6 +947,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
             </div>
