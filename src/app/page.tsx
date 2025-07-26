@@ -67,7 +67,7 @@ const BOT_USER: UserProfile = {
     userId: "bot-001"
 };
 
-const ADMIN_USER_ID = 'your-admin-user-id'; // Replace with a real admin ID
+const ADMIN_USER_ID = '327521'; // Replace with a real admin ID
 
 const GIFTS: GiftItem[] = [
     { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
@@ -914,14 +914,12 @@ function ProfileScreen({
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
-                {/* Edit Button on the left */}
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
                 {/* User Info on the right */}
                 <div className="flex items-center gap-3">
+                    <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.image} alt={user.name} />
+                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
@@ -929,28 +927,17 @@ function ProfileScreen({
                             <span>ID: {user.userId}</span>
                         </button>
                     </div>
-                    <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
                 </div>
+                 {/* Edit Button on the left */}
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
              </div>
 
             {/* Balances Section */}
             <div className="mt-8 flex justify-center gap-4">
-                 {/* Coins Button on the right */}
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
-                </button>
                 {/* Silver Button on the left */}
                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
@@ -962,6 +949,19 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
                         <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                 {/* Coins Button on the right */}
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
             </div>
