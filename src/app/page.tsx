@@ -911,12 +911,9 @@ function ProfileScreen({
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
+             {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
+                {/* User Info on the right */}
                 <div className="flex items-center gap-3">
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
@@ -930,9 +927,17 @@ function ProfileScreen({
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                 </div>
+                {/* Edit Button on the left */}
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
              </div>
 
+            {/* Balances Section */}
             <div className="mt-8 flex justify-center gap-4">
+                 {/* Coins Button on the right */}
                  <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -945,6 +950,7 @@ function ProfileScreen({
                         <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
+                {/* Silver Button on the left */}
                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
