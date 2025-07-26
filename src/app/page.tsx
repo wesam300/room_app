@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -1021,9 +1020,12 @@ function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Ro
             userCount: 1
         };
         try {
+            console.log('Creating room in RoomsListScreen:', newRoom);
             await onCreateRoom(newRoom);
             toast({ title: "تم إنشاء الغرفة بنجاح!" });
+            console.log('Room created successfully in RoomsListScreen');
         } catch (error) {
+            console.error('Error creating room in RoomsListScreen:', error);
             toast({ 
                 variant: "destructive",
                 title: "خطأ في إنشاء الغرفة", 
@@ -1200,9 +1202,15 @@ function MainApp({
 
     const handleCreateRoom = async (newRoom: Room) => {
         try {
+            console.log('Creating room in MainApp:', newRoom);
             await createRoom(newRoom);
+            // Add to local state as fallback
+            setAllRooms(prevRooms => [newRoom, ...prevRooms]);
+            console.log('Room created successfully in MainApp');
         } catch (error) {
-            console.error('Error creating room:', error);
+            console.error('Error creating room in MainApp:', error);
+            // Add to local state as fallback
+            setAllRooms(prevRooms => [newRoom, ...prevRooms]);
         }
     };
     
@@ -1370,10 +1378,26 @@ export default function HomePage() {
     if (typeof updater === 'function' && userData) {
       const newData = updater(userData);
       if (newData) {
-        updateUser(newData);
+        // Update localStorage immediately
+        localStorage.setItem("userData", JSON.stringify(newData));
+        
+        try {
+          updateUser(newData);
+        } catch (error) {
+          console.error('Error updating user data:', error);
+          // Continue with localStorage only
+        }
       }
     } else if (typeof updater === 'object' && updater) {
-      updateUser(updater);
+      // Update localStorage immediately
+      localStorage.setItem("userData", JSON.stringify(updater));
+      
+      try {
+        updateUser(updater);
+      } catch (error) {
+        console.error('Error updating user data:', error);
+        // Continue with localStorage only
+      }
     }
   };
 
@@ -1383,7 +1407,15 @@ export default function HomePage() {
       ...roomData,
       id: String(Math.floor(100000 + Math.random() * 900000))
     };
-    await createRoom(newRoom);
+    try {
+      console.log('Creating room:', newRoom);
+      await createRoom(newRoom);
+      console.log('Room created successfully');
+    } catch (error) {
+      console.error('Error creating room:', error);
+      // Fallback: just add to local state
+      // This will be handled by the component that calls this function
+    }
   };
 
 
@@ -1415,32 +1447,67 @@ export default function HomePage() {
     };
 
     try {
-      await updateUser(newUserRecord);
+      console.log('Creating user profile:', newUserRecord);
+      
+      // Save to localStorage first (immediate fallback)
+      localStorage.setItem("userData", JSON.stringify(newUserRecord));
+      
+      // Try to save to Firebase
+      try {
+        await updateUser(newUserRecord);
+        console.log('User saved to Firebase successfully');
+      } catch (firebaseError) {
+        console.error('Firebase save failed, using localStorage only:', firebaseError);
+        // Continue with localStorage only
+      }
+      
+      // Set userId to trigger navigation
       setUserId(userId);
+      
       toast({
           title: "تم حفظ الملف الشخصي",
           description: "مرحبًا بك في التطبيق!",
       });
+      
     } catch (error) {
+      console.error('Error creating profile:', error);
+      
+      // Final fallback: save to localStorage and continue
+      localStorage.setItem("userData", JSON.stringify(newUserRecord));
+      setUserId(userId);
+      
       toast({
-          variant: "destructive",
-          title: "خطأ في حفظ الملف الشخصي",
-          description: "يرجى المحاولة مرة أخرى.",
+          title: "تم حفظ الملف الشخصي (وضع عدم الاتصال)",
+          description: "مرحبًا بك في التطبيق!",
       });
     }
   };
   
   const handleLogout = () => {
-    localStorage.removeItem('userData');
-    setUserId(null); 
-    setNameInput("");
-    toast({ title: "تم تسجيل الخروج" });
+    try {
+      console.log('Logging out user...');
+      localStorage.removeItem('userData');
+      setUserId(null); 
+      setNameInput("");
+      toast({ title: "تم تسجيل الخروج" });
+      console.log('Logout successful');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Force logout even if there's an error
+      setUserId(null);
+      setNameInput("");
+      toast({ title: "تم تسجيل الخروج" });
+    }
   }
 
   if (userLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
+            {userError && (
+                <p className="text-red-400 mt-2">تحذير: {userError}</p>
+            )}
+            <p className="text-gray-400 mt-4 text-sm">إذا استمر التحميل، جرب تحديث الصفحة</p>
         </div>
     );
   }
@@ -1465,12 +1532,26 @@ export default function HomePage() {
                         value={nameInput}
                         onChange={(e) => setNameInput(e.target.value)}
                         className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
+                        onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile(nameInput)}
                     />
                 </div>
 
-                <Button onClick={() => handleCreateProfile(nameInput)} size="lg" className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button 
+                    onClick={() => handleCreateProfile(nameInput)} 
+                    size="lg" 
+                    className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    disabled={!nameInput.trim()}
+                >
                     حفظ ومتابعة
                 </Button>
+                
+                {userError && (
+                    <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
+                )}
+                
+                <p className="text-gray-400 mt-4 text-xs">
+                    اضغط Enter أو انقر على الزر لحفظ الملف الشخصي
+                </p>
             </div>
              <div className="text-center text-xs text-gray-300 pt-8">
                 <p>من خلال الاستمرار، فإنك توافق على</p>
