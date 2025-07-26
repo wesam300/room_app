@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
+import RoomMic from "@/components/RoomMic";
 
 // --- Types ---
 interface UserProfile {
@@ -39,11 +40,10 @@ interface ChatMessage {
     text: string;
 }
 
-interface MicSlot {
+export interface MicSlot {
     user: UserProfile | null;
     isMuted: boolean;
     isLocked: boolean;
-    isSpeaking: boolean;
 }
 
 interface GiftItem {
@@ -251,8 +251,8 @@ function RoomScreen({
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
         Array(10).fill(null).map((_, i) => i === 0 
-            ? { user: BOT_USER, isMuted: true, isLocked: false, isSpeaking: false } 
-            : { user: null, isMuted: false, isLocked: false, isSpeaking: false })
+            ? { user: BOT_USER, isMuted: true, isLocked: false } 
+            : { user: null, isMuted: false, isLocked: false })
      );
      const [isGameVisible, setIsGameVisible] = useState(false);
      
@@ -271,29 +271,6 @@ function RoomScreen({
 
     const [isRoomMuted, setIsRoomMuted] = useState(false);
 
-    useEffect(() => {
-        // Speaking animation simulation for all users on mics
-        const interval = setInterval(() => {
-            setMicSlots(prevSlots => 
-                prevSlots.map((slot, index) => {
-                    if (slot.user && !slot.isMuted) {
-                        // Randomly decide if a user starts "speaking"
-                        const startsSpeaking = Math.random() > 0.7; // 30% chance to start speaking
-                        if (startsSpeaking) {
-                           return { ...slot, isSpeaking: true };
-                        }
-                    }
-                    // If already speaking, turn it off after a delay
-                    if (slot.isSpeaking) {
-                        return { ...slot, isSpeaking: false };
-                    }
-                    return slot;
-                })
-            );
-        }, 1500); // Check every 1.5 seconds
-
-        return () => clearInterval(interval);
-    }, []);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -330,7 +307,7 @@ function RoomScreen({
          setMicSlots(prev => {
             const newSlots = [...prev];
             if (newSlots[indexToDescend].user) {
-                newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked, isSpeaking: false };
+                newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
             }
             return newSlots;
         });
@@ -342,7 +319,7 @@ function RoomScreen({
                 const newSlots = [...prevSlots];
                 const currentSlot = newSlots[myMicIndex];
                 if (currentSlot) {
-                    newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted, isSpeaking: false };
+                    newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
                 }
                 return newSlots;
             });
@@ -407,119 +384,6 @@ function RoomScreen({
 
     const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
-    const RoomMic = ({slot, index}: {slot: MicSlot, index: number}) => {
-        const isCurrentUserOnThisMic = slot.user?.userId === user.userId;
-        const isMutedForMe = isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted;
-        const showSpeakingAnimation = !isMutedForMe && slot.isSpeaking;
-
-        const handleCopyUserId = (id: string) => {
-            navigator.clipboard.writeText(id);
-            toast({ title: "تم نسخ ID المستخدم" });
-        };
-        
-        const popoverContent = (
-            <div className="flex flex-col gap-2 p-2">
-                {isCurrentUserOnThisMic ? (
-                    <>
-                        <Button variant="outline" onClick={handleToggleMute}>
-                            {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
-                        </Button>
-                        <Button variant="destructive" onClick={() => handleDescend(index)}>النزول من المايك</Button>
-                        <Button onClick={() => handleOpenGiftDialog(user)}>إرسال هدية</Button>
-                    </>
-                ) : !slot.user ? (
-                    isOwner ? (
-                        slot.isLocked ? (
-                            <Button onClick={() => handleToggleLock(index)}>فتح المايك <Unlock className="mr-2"/></Button>
-                        ) : (
-                            <>
-                                <Button onClick={() => handleAscend(index)}>الصعود على المايك</Button>
-                                <Button variant="secondary" onClick={() => handleToggleLock(index)}>قفل المايك <Lock className="mr-2"/></Button>
-                            </>
-                        )
-                    ) : (
-                         <Button onClick={() => handleAscend(index)} disabled={slot.isLocked}>الصعود على المايك</Button>
-                    )
-                ) : ( 
-                   <div className="flex flex-col items-center gap-3 text-center">
-                       <Avatar className="w-16 h-16">
-                           <AvatarImage src={slot.user.image} alt={slot.user.name} />
-                           <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
-                       </Avatar>
-                       <p className="font-bold">{slot.user.name}</p>
-                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                           <span>ID: {slot.user.userId}</span>
-                           <button onClick={() => handleCopyUserId(slot.user!.userId)}>
-                               <Copy className="w-3 h-3" />
-                           </button>
-                       </div>
-                       <Button onClick={() => handleOpenGiftDialog(slot.user!)}>إرسال هدية</Button>
-                       {isOwner && (
-                           <Button variant="destructive" size="sm" onClick={() => handleDescend(index)}>طرد من المايك</Button>
-                       )}
-                   </div>
-                )}
-            </div>
-        );
-
-        return (
-             <Popover>
-                <PopoverTrigger asChild>
-                     <div className="flex flex-col items-center gap-1 cursor-pointer">
-                        <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
-                             {slot.user ? (
-                                <div className="relative w-full h-full">
-                                    <AnimatePresence>
-                                        {showSpeakingAnimation && (
-                                             <motion.div
-                                                className="absolute inset-0 rounded-full border-2 border-yellow-300"
-                                                animate={{
-                                                    scale: [1, 1.3, 1],
-                                                    opacity: [0.8, 0, 0.8],
-                                                }}
-                                                transition={{
-                                                    duration: 1.5,
-                                                    repeat: Infinity,
-                                                    ease: "easeInOut",
-                                                }}
-                                            />
-                                        )}
-                                    </AnimatePresence>
-                                    <Avatar className="w-full h-full">
-                                        <AvatarImage src={slot.user.image} alt={slot.user.name} />
-                                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                     {(isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted) ? (
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                                            <XCircle className="w-8 h-8 text-red-500"/>
-                                        </div>
-                                    ) : null }
-                                     {isOwner && slot.user.userId === user.userId && (
-                                        <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
-                                            OWNER
-                                        </div>
-                                    )}
-                                </div>
-                            ) : slot.isLocked ? (
-                                <Lock className="w-8 h-8 text-primary/50" />
-                            ) : (
-                                <Mic className="w-8 h-8 text-primary" />
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                           <span className="text-xs text-muted-foreground truncate max-w-16">
-                             {slot.user ? slot.user.name : `no.${index + 1}`}
-                           </span>
-                        </div>
-                    </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" dir="rtl">
-                   {popoverContent}
-                </PopoverContent>
-            </Popover>
-        )
-    }
-
     const RoomHeader = () => {
         const roomInfoContent = (
             <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20 cursor-pointer">
@@ -543,10 +407,22 @@ function RoomScreen({
             <header className="flex items-center justify-between p-3">
                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full" onClick={onExit}>
+                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
                             <ChevronLeft className="w-6 h-6 text-primary" />
                         </Button>
                     </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                هل تريد حقًا مغادرة الغرفة؟
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
                 </AlertDialog>
                 {isOwner ? (
                     <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
@@ -585,15 +461,6 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
-                         <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -628,11 +495,33 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                        <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
-                        {micSlots.slice(0, 5).map((slot, index) => <RoomMic key={index} slot={slot} index={index} />)}
-                        {micSlots.slice(5, 10).map((slot, index) => <RoomMic key={index+5} slot={slot} index={index+5} />)}
+                        {micSlots.map((slot, index) => (
+                            <RoomMic 
+                                key={index} 
+                                slot={slot} 
+                                index={index}
+                                isOwner={isOwner}
+                                isRoomMuted={isRoomMuted}
+                                currentUser={user}
+                                onAscend={handleAscend}
+                                onDescend={handleDescend}
+                                onToggleLock={handleToggleLock}
+                                onToggleMute={handleToggleMute}
+                                onOpenGiftDialog={handleOpenGiftDialog}
+                            />
+                        ))}
                     </div>
                 </div>
 
@@ -1018,19 +907,7 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
-                </button>
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1040,6 +917,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
                         <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
             </div>
