@@ -1257,15 +1257,23 @@ function MainApp({
         setSilverBalance(() => 0); // Reset silver balance
     };
     
-    // Admin functions passed down for simplicity
      const handleAddCoins = (userId: string, amount: number) => {
-        // In a real app, this would be a server call.
-        // For now, we just show a toast as confirmation.
-        toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${userId} بمقدار ${amount}.` });
+        if (userId === user.userId) {
+            setBalance(prev => prev + amount);
+            toast({ title: "تم تحديث رصيدك!", description: `تمت إضافة ${amount.toLocaleString()} كوينز إلى حسابك.` });
+        } else {
+            // In a real app, this would be a server call.
+            toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${userId} بمقدار ${amount}.` });
+        }
     };
     
     const handleDeductCoins = (userId: string, amount: number) => {
-        toast({ title: "تم خصم الكوينز!", description: `تم خصم ${amount} من رصيد ${userId}.` });
+        if (userId === user.userId) {
+            setBalance(prev => Math.max(0, prev - amount)); // Ensure balance doesn't go below 0
+            toast({ title: "تم تحديث رصيدك!", description: `تم خصم ${amount.toLocaleString()} كوينز من حسابك.` });
+        } else {
+            toast({ title: "تم خصم الكوينز!", description: `تم خصم ${amount} من رصيد ${userId}.` });
+        }
     };
 
     const handleBanUser = (userId: string) => {
