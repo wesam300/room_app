@@ -913,6 +913,12 @@ function ProfileScreen({
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
+                {/* Edit Button on the left */}
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
                 {/* User Info on the right */}
                 <div className="flex items-center gap-3">
                     <div className="text-right">
@@ -927,12 +933,6 @@ function ProfileScreen({
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                 </div>
-                {/* Edit Button on the left */}
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
              </div>
 
             {/* Balances Section */}
