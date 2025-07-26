@@ -131,7 +131,7 @@ export default function RoomMic({
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
                  <div className="flex flex-col items-center gap-1 cursor-pointer">
-                    <div className="w-16 h-16 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
+                    <div className="w-14 h-14 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center relative">
                          {slot.user ? (
                             <div className="relative w-full h-full">
                                 <AnimatePresence>
@@ -156,7 +156,7 @@ export default function RoomMic({
                                 </Avatar>
                                  {(isMutedForMe) && (
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                                        <XCircle className="w-8 h-8 text-red-500"/>
+                                        <XCircle className="w-6 h-6 text-red-500"/>
                                     </div>
                                 )}
                                  {isOwner && slot.user.userId === currentUser.userId && (
@@ -166,9 +166,9 @@ export default function RoomMic({
                                 )}
                             </div>
                         ) : slot.isLocked ? (
-                            <Lock className="w-8 h-8 text-primary/50" />
+                            <Lock className="w-7 h-7 text-primary/50" />
                         ) : (
-                            <Mic className="w-8 h-8 text-primary" />
+                            <Mic className="w-7 h-7 text-primary" />
                         )}
                     </div>
                     <div className="flex items-center gap-1">

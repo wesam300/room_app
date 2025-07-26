@@ -275,7 +275,7 @@ function RoomScreen({
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
-        Array(10).fill(null).map((_, i) => i === 0 
+        Array(15).fill(null).map((_, i) => i === 0 
             ? { user: BOT_USER, isMuted: true, isLocked: false } 
             : { user: null, isMuted: false, isLocked: false })
      );
@@ -530,7 +530,7 @@ function RoomScreen({
                         </Popover>
                     </div>
                     
-                    <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
+                    <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
                         {micSlots.map((slot, index) => (
                             <RoomMic 
                                 key={index} 
