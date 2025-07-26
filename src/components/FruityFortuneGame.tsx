@@ -6,6 +6,9 @@ import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from 'framer-motion';
+import { Crown } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
 
 const BET_AMOUNTS = [100000, 500000, 1000000, 5000000, 10000000];
 const ROUND_DURATION = 20; // seconds
@@ -161,6 +164,41 @@ function formatNumber(num: number) {
     return num.toLocaleString('en-US');
 }
 
+// SIMULATED DATA FOR TOP WINNERS
+interface TopWinner {
+    name: string;
+    avatar: string;
+    payout: number;
+}
+const MOCK_NAMES = ["Ayan", "Azaam", "Soso", "Noor", "Ali", "Zara", "Omar"];
+
+// This function will generate deterministic fake winners for a given round
+function getTopWinnersForRound(roundId: number, winnerFruit: FruitKey): TopWinner[] {
+    const winners: TopWinner[] = [];
+    let seed = roundId * 10; // Use a different seed from the fruit winner
+    const pseudoRandom = () => {
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+    };
+
+    const numWinners = 3 + Math.floor(pseudoRandom() * 5); // 3 to 7 winners
+    const multiplier = FRUITS[winnerFruit].multiplier;
+
+    for (let i = 0; i < numWinners; i++) {
+        // More likely to have smaller bets win
+        const betMagnitude = Math.pow(pseudoRandom(), 2); 
+        const baseBet = betMagnitude * 5000000; // Bets up to 5M
+        const payout = baseBet * multiplier;
+
+        winners.push({
+            name: `${MOCK_NAMES[Math.floor(pseudoRandom() * MOCK_NAMES.length)]}...`,
+            avatar: `https://placehold.co/100x100.png`,
+            payout: payout
+        });
+    }
+
+    return winners.sort((a, b) => b.payout - a.payout).slice(0, 3);
+}
 
 // A fun component for the winner screen background
 const FallingCoins = () => {
@@ -194,6 +232,46 @@ const FallingCoins = () => {
     );
 };
   
+// New Winner Card Component
+const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
+    const rankStyles = {
+        1: {
+            container: 'scale-110 -translate-y-4 z-10',
+            border: 'border-yellow-400',
+            crownColor: 'text-yellow-400',
+            crownIcon: <Crown size={32} className="absolute -top-5 left-1/2 -translate-x-1/2" />,
+        },
+        2: {
+            container: 'scale-100',
+            border: 'border-gray-400',
+            crownColor: 'text-gray-400',
+            crownIcon: <Crown size={24} className="absolute -top-4 left-1/2 -translate-x-1/2" />,
+        },
+        3: {
+            container: 'scale-100',
+            border: 'border-amber-600',
+            crownColor: 'text-amber-600',
+            crownIcon: <Crown size={24} className="absolute -top-4 left-1/2 -translate-x-1/2" />,
+        }
+    };
+    const styles = rankStyles[rank as keyof typeof rankStyles];
+  
+    return (
+        <div className={cn("relative flex flex-col items-center gap-1 transition-all", styles.container)}>
+            <div className={cn("relative p-1 rounded-full", styles.border)} style={{ borderWidth: '3px' }}>
+                <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-background">
+                    <AvatarImage src={winner.avatar} alt={winner.name} />
+                    <AvatarFallback>{winner.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className={cn("absolute", styles.crownColor)}>
+                    {styles.crownIcon}
+                </div>
+            </div>
+            <p className="font-bold text-sm text-white truncate">{winner.name}</p>
+            <p className="font-bold text-base text-yellow-300">{formatNumber(winner.payout)}</p>
+        </div>
+    )
+  }
 
 export default function FruityFortuneGame({ balance, onBalanceChange }: { balance: number; onBalanceChange: (updater: (prev: number) => number) => void; }) {
   const [isClient, setIsClient] = useState(false);
@@ -203,7 +281,7 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
   const [roundId, setRoundId] = useState(0);
   const [timer, setTimer] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
-  const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number} | null>(null);
+  const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number, topWinners: TopWinner[]} | null>(null);
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({});
@@ -382,11 +460,20 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
                     // We get the winner again to be 100% sure, though it should be the same.
                     const { winner: finalWinner } = getWinnerForRound(currentRoundId);
                     const payout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
+                    const topWinners = getTopWinnersForRound(currentRoundId, finalWinner);
+                    
+                    // Add player's win to the list if they won, to ensure they are ranked
                     if (payout > 0) {
-                        onBalanceChange(prev => prev + payout);
-                        setWinnerScreenInfo({ fruit: finalWinner, payout: payout });
-                        setTimeout(() => setWinnerScreenInfo(null), 4000); // Show winner screen for 4s
+                         // This part is for demo. In a real app, you'd get this from server
+                        const playerEntry = { name: 'أنت', avatar: 'https://placehold.co/100x100.png', payout: payout };
+                        topWinners.push(playerEntry);
+                        topWinners.sort((a,b) => b.payout - a.payout);
                     }
+
+                    onBalanceChange(prev => prev + payout);
+                    setWinnerScreenInfo({ fruit: finalWinner, payout: payout, topWinners: topWinners.slice(0, 3) });
+                    setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
+                    
                 }, SPIN_DURATION * 1000); // Delay equals spin duration
             }
             
@@ -466,7 +553,7 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.3,
+        staggerChildren: 0.1,
       },
     },
     exit: { opacity: 0 },
@@ -499,24 +586,55 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
                 exit="exit"
                 className="bg-gradient-to-br from-yellow-400/10 via-purple-900 to-indigo-950 p-6 sm:p-8 rounded-3xl border-4 border-yellow-400 shadow-[0_0_30px_#facc15] text-center flex flex-col items-center gap-4"
               >
-                <motion.h2 variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-white mb-2 drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-                  مبروووك!
-                </motion.h2>
-                <motion.div
+                 <motion.div
                   variants={itemVariants}
                   initial={{ scale: 0.5, opacity: 0, rotate: -180 }}
                   animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ type: 'spring', damping: 10, stiffness: 100, delay: 0.3 }}
+                  transition={{ type: 'spring', damping: 10, stiffness: 100, delay: 0.2 }}
                   className="my-2"
                 >
                   <FruitDisplay fruitType={winnerScreenInfo.fruit} size="large" />
                 </motion.div>
-                <motion.p variants={itemVariants} className="text-2xl sm:text-3xl font-semibold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
-                  لقد ربحت
-                </motion.p>
-                <motion.p variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                  {formatNumber(winnerScreenInfo.payout)} كوينز
-                </motion.p>
+
+                {winnerScreenInfo.payout > 0 ? (
+                    <>
+                        <motion.p variants={itemVariants} className="text-2xl sm:text-3xl font-semibold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                          لقد ربحت
+                        </motion.p>
+                        <motion.p variants={itemVariants} className="text-4xl sm:text-5xl font-bold text-yellow-300 drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                          {formatNumber(winnerScreenInfo.payout)} كوينز
+                        </motion.p>
+                    </>
+                ) : (
+                    <motion.p variants={itemVariants} className="text-2xl sm:text-3xl font-semibold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
+                       حظ أوفر في المرة القادمة!
+                    </motion.p>
+                )}
+
+                {winnerScreenInfo.topWinners.length > 0 && (
+                    <motion.div variants={itemVariants} className="w-full mt-6">
+                        <div className="flex justify-center items-center mb-2">
+                             <div className="h-px flex-1 bg-yellow-400/50"></div>
+                             <h3 className="flex-shrink-0 mx-4 text-lg font-bold text-yellow-300">أكبر الفائزين</h3>
+                             <div className="h-px flex-1 bg-yellow-400/50"></div>
+                        </div>
+
+                        <div className="relative flex justify-center items-end gap-4 px-4 h-40">
+                             {/* Rank 2 */}
+                             {winnerScreenInfo.topWinners[1] && 
+                                <WinnerCard winner={winnerScreenInfo.topWinners[1]} rank={2}/>
+                            }
+                             {/* Rank 1 */}
+                             {winnerScreenInfo.topWinners[0] && 
+                                <WinnerCard winner={winnerScreenInfo.topWinners[0]} rank={1}/>
+                            }
+                            {/* Rank 3 */}
+                            {winnerScreenInfo.topWinners[2] && 
+                                <WinnerCard winner={winnerScreenInfo.topWinners[2]} rank={3}/>
+                            }
+                        </div>
+                    </motion.div>
+                )}
               </motion.div>
             </div>
           </motion.div>
