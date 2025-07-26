@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,10 @@ const BOT_USER: UserProfile = {
 const ADMIN_USER_ID = 'your-admin-user-id'; // Replace with a real admin ID
 
 const GIFTS: GiftItem[] = [
-    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' }
+    { id: 'lion', name: 'الأسد الذهبي', price: 1000000, image: 'https://media.giphy.com/media/3o6ozmkvTZFdbEwA9u/giphy.gif' },
+    { id: 'kanafeh', name: 'كنافة', price: 5000, image: 'https://placehold.co/150x150/ffab00/ffffff.png' },
+    { id: 'tea', name: 'شاي', price: 3000, image: 'https://placehold.co/150x150/d62828/ffffff.png' },
+    { id: 'dallah', name: 'دلة قهوة', price: 30000, image: 'https://placehold.co/150x150/f7b731/000000.png' },
 ];
 
 const DAILY_REWARD_AMOUNT = 10000000;
@@ -82,7 +86,7 @@ function formatNumber(num: number): string {
     }
     if (num >= 1000) {
         const thousands = num / 1000;
-        return thousands % 1 === 0 ? `${thousands}k` : `${thousands.toFixed(1)}k`;
+        return thousands % 1 === 0 ? `${thousands.toFixed(1)}k` : `${thousands.toFixed(1)}k`;
     }
     return num.toLocaleString('en-US');
 }
@@ -131,24 +135,25 @@ function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomU
     );
 }
 
-function GiftDialog({ 
-    isOpen, 
-    onOpenChange, 
-    usersOnMics, 
-    onSendGift, 
+// New Gift Sheet Component
+function GiftSheet({
+    isOpen,
+    onOpenChange,
+    usersOnMics,
+    onSendGift,
     balance,
     initialRecipient
-}: { 
-    isOpen: boolean, 
+}: {
+    isOpen: boolean,
     onOpenChange: (open: boolean) => void,
     usersOnMics: UserProfile[],
     onSendGift: (gift: GiftItem, recipient: UserProfile, quantity: number) => void,
     balance: number,
     initialRecipient: UserProfile | null,
 }) {
-    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(null);
+    const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(initialRecipient);
+    const [selectedGift, setSelectedGift] = useState<GiftItem | null>(null);
     const [quantity, setQuantity] = useState(1);
-    const QUANTITY_OPTIONS = [1, 5, 10, 100];
 
     useEffect(() => {
         if (isOpen && initialRecipient) {
@@ -158,76 +163,96 @@ function GiftDialog({
 
     useEffect(() => {
         if (!isOpen) {
+            // Reset state when sheet closes
             setSelectedRecipient(null);
+            setSelectedGift(null);
             setQuantity(1);
         }
     }, [isOpen]);
 
-    const handleSendClick = (gift: GiftItem) => {
-        if (selectedRecipient) {
-            onSendGift(gift, selectedRecipient, quantity);
+    const handleSendClick = () => {
+        if (selectedGift && selectedRecipient) {
+            onSendGift(selectedGift, selectedRecipient, quantity);
         }
     };
+
+    const totalCost = selectedGift ? selectedGift.price * quantity : 0;
     
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-background border-primary">
-                 <DialogHeader>
-                    <DialogTitle className="text-right text-primary">إرسال هدية</DialogTitle>
-                </DialogHeader>
-                
-                {!selectedRecipient ? (
-                    <div className="py-4">
-                        <h3 className="text-center text-lg mb-4">اختر مستلم الهدية</h3>
-                        <div className="grid grid-cols-3 gap-4">
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+            <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-3/4 flex flex-col p-0">
+                <SheetHeader className="p-4 text-right">
+                    <SheetTitle className="text-primary">إرسال هدية</SheetTitle>
+                    <SheetDescription>
+                        اختر مستلمًا وهدية لإرسالها.
+                    </SheetDescription>
+                </SheetHeader>
+
+                {/* Recipient Selection */}
+                <div className="px-4 py-2">
+                    <h3 className="text-sm font-semibold mb-2 text-right">إرسال إلى:</h3>
+                    {usersOnMics.length > 0 ? (
+                        <div className="flex gap-2 overflow-x-auto pb-2">
                             {usersOnMics.map(user => (
-                                <button key={user.userId} onClick={() => setSelectedRecipient(user)} className="flex flex-col items-center gap-2 text-center p-2 rounded-lg hover:bg-accent">
-                                    <Avatar>
+                                <button
+                                    key={user.userId}
+                                    onClick={() => setSelectedRecipient(user)}
+                                    className={cn(
+                                        "flex flex-col items-center gap-1.5 p-2 rounded-lg transition-colors flex-shrink-0",
+                                        selectedRecipient?.userId === user.userId ? "bg-primary/20" : "hover:bg-accent/50"
+                                    )}
+                                >
+                                    <Avatar className="w-12 h-12">
                                         <AvatarImage src={user.image} alt={user.name} />
                                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
-                                    <span className="text-xs truncate">{user.name}</span>
+                                    <span className="text-xs truncate max-w-16">{user.name}</span>
                                 </button>
                             ))}
                         </div>
-                    </div>
-                ) : (
-                    <div className="py-4 text-right">
-                         <p className="text-center mb-4">إرسال هدية إلى: <span className="font-bold text-primary">{selectedRecipient.name}</span></p>
+                    ) : (
+                        <p className="text-center text-muted-foreground text-sm py-4">لا يوجد مستخدمون على المايك حاليًا.</p>
+                    )}
+                </div>
+
+                {/* Gift Selection Grid */}
+                <div className="flex-1 overflow-y-auto p-4">
+                    <div className="grid grid-cols-4 gap-4">
                         {GIFTS.map(gift => (
-                             <div key={gift.id} className="flex flex-col items-center gap-3">
-                                <img src={gift.image} data-ai-hint="lion gold" alt={gift.name} className="w-32 h-32" />
-                                <div className="text-center">
-                                    <p className="font-bold text-lg">{gift.name}</p>
-                                    <p className="text-sm text-yellow-400">{gift.price.toLocaleString()} كوينز</p>
-                                </div>
-                                <div className="flex justify-center gap-2 my-2">
-                                    {QUANTITY_OPTIONS.map(q => (
-                                        <Button
-                                            key={q}
-                                            variant={quantity === q ? 'default' : 'outline'}
-                                            size="sm"
-                                            onClick={() => setQuantity(q)}
-                                        >
-                                            x{q}
-                                        </Button>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between items-center w-full mt-2 p-2 bg-black/30 rounded-lg">
-                                     <Button size="lg" onClick={() => handleSendClick(gift)}>
-                                         إرسال ({formatNumber(gift.price * quantity)})
-                                     </Button>
-                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold text-lg">{balance.toLocaleString()}</span>
-                                        <Trophy className="w-6 h-6 text-yellow-400"/>
-                                    </div>
+                            <div
+                                key={gift.id}
+                                onClick={() => setSelectedGift(gift)}
+                                className={cn(
+                                    "relative aspect-square flex flex-col items-center justify-end p-2 rounded-lg bg-black/30 cursor-pointer transition-all border-2",
+                                    selectedGift?.id === gift.id ? "border-primary" : "border-transparent hover:border-primary/50"
+                                )}
+                            >
+                                <img src={gift.image} data-ai-hint="gift present" alt={gift.name} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 object-contain" />
+                                <div className="flex items-center gap-1 bg-black/50 px-1.5 py-0.5 rounded-full">
+                                    <span className="text-xs font-bold text-white">{formatNumber(gift.price)}</span>
+                                    <Trophy className="w-3 h-3 text-yellow-400" />
                                 </div>
                             </div>
                         ))}
                     </div>
-                )}
-            </DialogContent>
-        </Dialog>
+                </div>
+
+                {/* Footer Action Bar */}
+                <div className="flex items-center justify-between p-4 border-t border-primary/20 mt-auto">
+                    <div className="flex items-center gap-2">
+                        <Trophy className="w-6 h-6 text-yellow-400" />
+                        <span className="font-bold text-lg">{formatNumber(balance)}</span>
+                    </div>
+                    <Button
+                        size="lg"
+                        onClick={handleSendClick}
+                        disabled={!selectedGift || !selectedRecipient}
+                    >
+                        إرسال ({formatNumber(totalCost)})
+                    </Button>
+                </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
@@ -263,7 +288,7 @@ function RoomScreen({
     const [chatInput, setChatInput] = useState("");
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
-    const [isGiftDialogOpen, setIsGiftDialogOpen] = useState(false);
+    const [isGiftSheetOpen, setIsGiftSheetOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
 
     const [roomSupporters, setRoomSupporters] = useState<Supporter[]>([]);
@@ -373,13 +398,13 @@ function RoomScreen({
         }
         
         toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
-        setIsGiftDialogOpen(false);
+        setIsGiftSheetOpen(false);
     };
 
 
-    const handleOpenGiftDialog = (recipient: UserProfile | null) => {
+    const handleOpenGiftSheet = (recipient: UserProfile | null) => {
         setInitialRecipientForGift(recipient);
-        setIsGiftDialogOpen(true);
+        setIsGiftSheetOpen(true);
     };
 
     const usersOnMics = micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
@@ -405,10 +430,21 @@ function RoomScreen({
   
       return (
            <header className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-2">
+                    {isOwner ? (
+                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
+                            <Button variant="ghost" size="icon" className="p-0 h-auto w-auto">
+                               {roomInfoDisplay}
+                            </Button>
+                        </EditRoomDialog>
+                    ) : (
+                        roomInfoDisplay
+                    )}
+                </div>
                  <AlertDialog>
                    <AlertDialogTrigger asChild>
                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                           <ChevronLeft className="w-6 h-6 text-primary" />
+                           <X className="w-6 h-6 text-primary" />
                        </Button>
                    </AlertDialogTrigger>
                    <AlertDialogContent>
@@ -424,18 +460,6 @@ function RoomScreen({
                        </AlertDialogFooter>
                    </AlertDialogContent>
                </AlertDialog>
-
-                <div className="flex items-center gap-2">
-                    {isOwner ? (
-                        <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                            <Button variant="ghost" size="icon" className="p-0 h-auto w-auto">
-                               {roomInfoDisplay}
-                            </Button>
-                        </EditRoomDialog>
-                    ) : (
-                        roomInfoDisplay
-                    )}
-                </div>
           </header>
       )
   }
@@ -453,9 +477,9 @@ function RoomScreen({
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              <div className="relative z-10 flex flex-col h-full">
-                <GiftDialog 
-                    isOpen={isGiftDialogOpen}
-                    onOpenChange={setIsGiftDialogOpen}
+                <GiftSheet 
+                    isOpen={isGiftSheetOpen}
+                    onOpenChange={setIsGiftSheetOpen}
                     usersOnMics={usersOnMics}
                     onSendGift={handleSendGift}
                     balance={balance}
@@ -466,15 +490,6 @@ function RoomScreen({
                     <RoomHeader />
 
                     <div className="flex items-center justify-between px-4 mt-2">
-                        <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                               <Avatar className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src="https://placehold.co/100x100.png" />
-                                   <AvatarFallback>A</AvatarFallback>
-                               </Avatar>
-                           </div>
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
-                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -509,6 +524,15 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                        <div className="flex items-center gap-2">
+                           <div className="flex -space-x-4 rtl:space-x-reverse">
+                               <Avatar className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src="https://placehold.co/100x100.png" />
+                                   <AvatarFallback>A</AvatarFallback>
+                               </Avatar>
+                           </div>
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">1</div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-4 gap-x-4 p-4">
@@ -524,7 +548,7 @@ function RoomScreen({
                                 onDescend={handleDescend}
                                 onToggleLock={handleToggleLock}
                                 onToggleMute={handleToggleMute}
-                                onOpenGiftDialog={handleOpenGiftDialog}
+                                onOpenGiftDialog={handleOpenGiftSheet}
                             />
                         ))}
                     </div>
@@ -601,7 +625,7 @@ function RoomScreen({
                                 variant="ghost" 
                                 size="icon" 
                                 className="bg-black/40 rounded-full h-12 w-12 flex-shrink-0"
-                                onClick={() => handleOpenGiftDialog(null)}
+                                onClick={() => handleOpenGiftSheet(null)}
                             >
                                  <Gift className="w-6 h-6 text-primary" />
                             </Button>
@@ -912,18 +936,6 @@ function ProfileScreen({
              </div>
 
             <div className="mt-8 flex justify-center gap-4">
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                    </div>
-                </button>
                  <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -934,6 +946,18 @@ function ProfileScreen({
                     <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
                         <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
                     </div>
                 </button>
             </div>
@@ -1253,7 +1277,7 @@ function MainApp({
 
 
     return (
-        <div className="flex flex-col h-screen">
+        <div className="h-screen flex flex-col">
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
             </main>
@@ -1416,3 +1440,5 @@ export default function HomePage() {
             setLastClaimTimestamp={setLastClaimTimestamp}
         />;
 }
+
+    
