@@ -907,6 +907,11 @@ function ProfileScreen({
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              {/* Profile Header */}
              <div className="w-full flex items-center justify-between">
+                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                    <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5" />
+                    </Button>
+                </EditProfileDialog>
                 <div className="flex items-center gap-3">
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
@@ -920,11 +925,6 @@ function ProfileScreen({
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                 </div>
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
              </div>
 
             {/* Balances & Level Section */}
