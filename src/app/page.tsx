@@ -1259,6 +1259,8 @@ function MainApp({
     
     // Admin functions passed down for simplicity
      const handleAddCoins = (userId: string, amount: number) => {
+        // In a real app, this would be a server call.
+        // For now, we just show a toast as confirmation.
         toast({ title: "تمت إضافة الكوينز!", description: `تم تحديث رصيد ${userId} بمقدار ${amount}.` });
     };
     
