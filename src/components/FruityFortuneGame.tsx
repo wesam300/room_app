@@ -170,35 +170,7 @@ interface TopWinner {
     avatar: string;
     payout: number;
 }
-const MOCK_NAMES = ["Ayan", "Azaam", "Soso", "Noor", "Ali", "Zara", "Omar"];
 
-// This function will generate deterministic fake winners for a given round
-function getTopWinnersForRound(roundId: number, winnerFruit: FruitKey): TopWinner[] {
-    const winners: TopWinner[] = [];
-    let seed = roundId * 10; // Use a different seed from the fruit winner
-    const pseudoRandom = () => {
-        const x = Math.sin(seed++) * 10000;
-        return x - Math.floor(x);
-    };
-
-    const numWinners = 3 + Math.floor(pseudoRandom() * 5); // 3 to 7 winners
-    const multiplier = FRUITS[winnerFruit].multiplier;
-
-    for (let i = 0; i < numWinners; i++) {
-        // More likely to have smaller bets win
-        const betMagnitude = Math.pow(pseudoRandom(), 2); 
-        const baseBet = betMagnitude * 5000000; // Bets up to 5M
-        const payout = baseBet * multiplier;
-
-        winners.push({
-            name: `${MOCK_NAMES[Math.floor(pseudoRandom() * MOCK_NAMES.length)]}...`,
-            avatar: `https://placehold.co/100x100.png`,
-            payout: payout
-        });
-    }
-
-    return winners.sort((a, b) => b.payout - a.payout).slice(0, 3);
-}
 
 // A fun component for the winner screen background
 const FallingCoins = () => {
@@ -460,18 +432,18 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
                     // We get the winner again to be 100% sure, though it should be the same.
                     const { winner: finalWinner } = getWinnerForRound(currentRoundId);
                     const payout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
-                    const topWinners = getTopWinnersForRound(currentRoundId, finalWinner);
                     
+                    let topWinners: TopWinner[] = [];
+
                     // Add player's win to the list if they won, to ensure they are ranked
                     if (payout > 0) {
                          // This part is for demo. In a real app, you'd get this from server
                         const playerEntry = { name: 'أنت', avatar: 'https://placehold.co/100x100.png', payout: payout };
-                        topWinners.push(playerEntry);
-                        topWinners.sort((a,b) => b.payout - a.payout);
+                        topWinners = [playerEntry];
                     }
 
                     onBalanceChange(prev => prev + payout);
-                    setWinnerScreenInfo({ fruit: finalWinner, payout: payout, topWinners: topWinners.slice(0, 3) });
+                    setWinnerScreenInfo({ fruit: finalWinner, payout: payout, topWinners: topWinners });
                     setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
                     
                 }, SPIN_DURATION * 1000); // Delay equals spin duration
