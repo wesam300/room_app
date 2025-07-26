@@ -1,19 +1,31 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { useToast } from '@/hooks/use-toast';
+import { useGameHistory } from '@/hooks/useFirebase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Timer, Coins, Trophy, RefreshCw, Crown } from 'lucide-react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
-import { useToast } from "@/hooks/use-toast";
-import { motion, AnimatePresence } from 'framer-motion';
-import { Crown } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
 
 // --- Types ---
 interface UserProfile {
     name: string;
     image: string;
     userId: string;
+}
+
+interface TopWinner {
+  user: UserProfile;
+  betAmount: number;
+  payout: number;
 }
 
 const BET_AMOUNTS = [100000, 500000, 1000000, 5000000, 10000000];
@@ -65,7 +77,6 @@ for (const key in FRUITS) {
         FRUITS_BY_MULTIPLIER[fruit.multiplier].push(fruitKey);
     }
 }
-
 
 // --- Cached Calculations for Deterministic Results ---
 // This avoids re-calculating the entire history on every render.
@@ -160,7 +171,6 @@ function getWinnerForRound(roundId: number): { winner: FruitKey, isBigWin: boole
     return result;
 }
 
-
 function formatNumber(num: number) {
     if (num === null || num === undefined) return '0';
     if (num >= 10000000) return `${(num / 1000000).toFixed(0)}m`;
@@ -169,14 +179,6 @@ function formatNumber(num: number) {
     if (num >= 1000) return `${(num / 1000).toFixed(1).replace('.0', '')}k`;
     return num.toLocaleString('en-US');
 }
-
-// SIMULATED DATA FOR TOP WINNERS
-interface TopWinner {
-    name: string;
-    avatar: string;
-    payout: number;
-}
-
 
 // A fun component for the winner screen background
 const FallingCoins = () => {
@@ -238,14 +240,14 @@ const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
         <div className={cn("relative flex flex-col items-center gap-1 transition-all", styles.container)}>
             <div className={cn("relative p-1 rounded-full", styles.border)} style={{ borderWidth: '3px' }}>
                 <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-background">
-                    <AvatarImage src={winner.avatar} alt={winner.name} />
-                    <AvatarFallback>{winner.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={winner.user.image} alt={winner.user.name} />
+                    <AvatarFallback>{winner.user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className={cn("absolute", styles.crownColor)}>
                     {styles.crownIcon}
                 </div>
             </div>
-            <p className="font-bold text-sm text-white truncate">{winner.name}</p>
+            <p className="font-bold text-sm text-white truncate">{winner.user.name}</p>
             <p className="font-bold text-base text-yellow-300">{formatNumber(winner.payout)}</p>
         </div>
     )
@@ -262,16 +264,17 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   const [winnerScreenInfo, setWinnerScreenInfo] = useState<{fruit: FruitKey, payout: number, topWinners: TopWinner[]} | null>(null);
 
   const [history, setHistory] = useState<FruitKey[]>([]);
-  const [bets, setBets] = useState<Record<FruitKey, number>>({});
+  const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
   
   const { toast } = useToast();
+  const { saveGameHistory, saveUserBets, getUserBets } = useGameHistory();
 
   const animationSequenceRef = useRef<FruitKey[]>([]);
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
 
-  // Load state from localStorage on initial mount
+  // Load state from Firebase on initial mount
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -283,100 +286,33 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     const currentRoundId = Math.floor(now / (TOTAL_DURATION * 1000));
     setRoundId(currentRoundId);
     
-    // --- Load History & Sync Missed Rounds ---
-    const savedHistory = localStorage.getItem('fruityFortuneHistory');
-    let loadedHistory : FruitKey[] = [];
-    if (savedHistory) {
-        try {
-            const parsedHistory = JSON.parse(savedHistory);
-            if(Array.isArray(parsedHistory)) {
-                loadedHistory = parsedHistory;
-            }
-        } catch {
-            // ignore parsing errors
+    // Load game history from Firebase
+    const loadGameHistory = async () => {
+      try {
+        // Load user bets for current round
+        const userBets = await getUserBets(user.userId, currentRoundId);
+        if (userBets) {
+          setBets(userBets.bets);
         }
-    } 
+      } catch (error) {
+        console.error('Error loading game history:', error);
+      }
+    };
 
-    const lastSyncedRound = parseInt(localStorage.getItem('fruityFortuneLastSyncedRound') || '0');
+    loadGameHistory();
     
-    // Sync history if the user has been away for one or more full rounds
-    if (currentRoundId > lastSyncedRound && lastSyncedRound > 0) {
-        const roundsToSync = [];
-        // Sync up to the 5 most recent rounds missed
-        for (let i = Math.max(lastSyncedRound + 1, currentRoundId - 4); i < currentRoundId; i++) {
-            const { winner } = getWinnerForRound(i);
-            roundsToSync.push(winner);
-        }
-        // Combine newly synced history with the most recent saved history
-        const finalHistory = [...roundsToSync, ...loadedHistory].slice(0, 5);
-        setHistory(finalHistory);
-    } else if (loadedHistory.length === 0) {
-        // If no history, create it from the last 5 rounds
-        const initialHistory = [];
-        for (let i = currentRoundId - 5; i < currentRoundId; i++) {
-            if (i >= 0) {
-                const { winner } = getWinnerForRound(i);
-                initialHistory.push(winner);
-            }
-        }
-        setHistory(initialHistory);
-    } else {
-        // Player is up to date, just load the history
-        setHistory(loadedHistory.slice(0, 5));
-    }
-    
-    localStorage.setItem('fruityFortuneLastSyncedRound', currentRoundId.toString());
+  }, [isClient, user.userId, getUserBets]);
 
-    
-    // --- Bets & Offline Payout Logic ---
-    const savedBetsData = localStorage.getItem('fruityFortuneBets');
-    if (savedBetsData) {
-        try {
-            const { bets: savedBets, roundId: savedRoundId } = JSON.parse(savedBetsData);
-            if (savedBets && typeof savedRoundId === 'number' && savedRoundId < currentRoundId) {
-                // Round is over, calculate offline winnings
-                const { winner } = getWinnerForRound(savedRoundId);
-                const payout = (savedBets[winner] || 0) * FRUITS[winner].multiplier;
-                if (payout > 0) {
-                    onBalanceChange(prev => prev + payout);
-                    toast({
-                        title: "ربح أثناء غيابك!",
-                        description: `لقد ربحت ${formatNumber(payout)}. الفائز كان ${FRUITS[winner].name}`,
-                        variant: "default"
-                    });
-                }
-                localStorage.removeItem('fruityFortuneBets');
-            } else if (savedRoundId === currentRoundId) {
-                // Round is still ongoing, restore bets
-                setBets(savedBets);
-            } else {
-                 // Bets from a future or invalid round, remove them
-                 localStorage.removeItem('fruityFortuneBets');
-            }
-        } catch(e) {
-            console.error("Failed to parse saved bets:", e);
-            localStorage.removeItem('fruityFortuneBets');
-        }
-    }
-    
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]);
-
-  // Save state to localStorage whenever it changes
+  // Save state to Firebase whenever it changes
   useEffect(() => {
-    if (isClient) {
-      if (history.length > 0) {
-          localStorage.setItem('fruityFortuneHistory', JSON.stringify(history.slice(0, 50))); // Save more history
-          localStorage.setItem('fruityFortuneLastSyncedRound', roundId.toString());
-      }
-      // Save bets along with the current round ID
-      if (Object.keys(bets).length > 0) {
-          localStorage.setItem('fruityFortuneBets', JSON.stringify({ bets, roundId }));
-      } else {
-          localStorage.removeItem('fruityFortuneBets');
-      }
+    if (isClient && Object.keys(bets).length > 0) {
+      saveUserBets({
+        userId: user.userId,
+        roundId: roundId,
+        bets: bets
+      });
     }
-  }, [bets, roundId, isClient, history]);
+  }, [bets, roundId, isClient, user.userId, saveUserBets]);
   
   // The main game loop, driven by a simple interval
   useEffect(() => {
@@ -402,8 +338,14 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
             // Update history
             setHistory(prev => [previousWinner, ...prev.slice(0, 4)]);
             
+            // Save game history to Firebase
+            saveGameHistory({
+              roundId: currentRoundId - 1,
+              winner: previousWinner
+            });
+            
             // Reset bets for the new round
-            setBets({});
+             setBets({} as Record<FruitKey, number>);
         }
         
         if (timeInCycle < ROUND_DURATION) {
@@ -443,7 +385,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
 
                     // Add player's win to the list if they won, to ensure they are ranked
                     if (payout > 0) {
-                        const playerEntry = { name: user.name, avatar: user.image, payout: payout };
+                        const playerEntry = { user, betAmount: bets[finalWinner] || 0, payout: payout };
                         topWinners = [playerEntry];
                     }
 
@@ -486,7 +428,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, onBalanceChange, user]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, onBalanceChange, user, saveGameHistory]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -658,7 +600,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
                   "relative flex items-center justify-center bg-gradient-to-br from-purple-800 to-indigo-900 rounded-2xl border-2 border-yellow-400 shadow-[inset_0_0_15px_rgba(255,215,0,0.5)] aspect-square"
                 )}>
                     <div className="flex flex-col items-center justify-center">
-                        <div className="text-5xl font-bold text-white z-10">{isSpinning ? '...' : (timer > 0 ? timer : 0)}</div>
+                        <div className="text-5xl font-bold text-white z-10">{isSpinning ? '...' : (timer > 0 ? Math.ceil(timer) : 0)}</div>
                         <div className="text-sm text-yellow-300 mt-1">{isSpinning ? 'حظ موفق' : 'وقت الرهان'}</div>
                     </div>
                 </div>

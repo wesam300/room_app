@@ -1,5 +1,9 @@
 {
   "projects": {
+<<<<<<< HEAD
     "default": "fruity-fortune-nyqi4"
+=======
+    "default": "fruity-fortune-x5pb6"
+>>>>>>> 965f1bb35ea17f4d586fe2dbc299abe0673f23c8
   }
 }

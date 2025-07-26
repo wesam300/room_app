@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
-=======
 # Fruity Fortune - تطبيق الغرف التفاعلية
 
 تطبيق ويب تفاعلي للغرف الصوتية مع لعبة الفواكه، مبني بـ Next.js و Firebase.
@@ -179,4 +172,3 @@ npm run deploy           # بناء ونشر
 ---
 
 **تم التطوير بـ ❤️ باستخدام Next.js و Firebase**
->>>>>>> 965f1bb35ea17f4d586fe2dbc299abe0673f23c8

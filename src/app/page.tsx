@@ -15,6 +15,7 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useRooms, useChatMessages, useGameHistory, useRoomSupporters } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
@@ -265,14 +266,6 @@ function RoomScreen({
     balance, 
     setBalance, // Use direct setter for simplicity now
     setSilverBalance, // Use direct setter
-}: { 
-    room: Room, 
-    user: UserProfile, 
-    onExit: () => void, 
-    onRoomUpdated: (updatedRoom: Room) => void, 
-    balance: number, 
-    setBalance: React.Dispatch<React.SetStateAction<number>>,
-    setSilverBalance: React.Dispatch<React.SetStateAction<number>>,
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
@@ -906,13 +899,15 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              {/* Profile Header */}
-            <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
-                    <Button variant="ghost" size="icon">
-                        <Edit className="w-5 h-5" />
-                    </Button>
-                </EditProfileDialog>
-                <div className="flex items-center gap-3">
+             <div className="w-full flex items-center justify-between">
+                <div className="order-1">
+                    <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                        <Button variant="ghost" size="icon">
+                            <Edit className="w-5 h-5" />
+                        </Button>
+                    </EditProfileDialog>
+                </div>
+                <div className="flex items-center gap-3 order-2">
                     <div className="text-right">
                         <h2 className="text-lg font-bold">{user.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
@@ -928,7 +923,7 @@ function ProfileScreen({
              </div>
 
             {/* Balances & Level Section */}
-            <div className="mt-8 flex justify-around items-center gap-4">
+             <div className="mt-8 flex justify-around items-center">
                  <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -941,7 +936,7 @@ function ProfileScreen({
                         <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
                     </div>
                 </button>
-                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1006,7 +1001,7 @@ function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Ro
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
 
-    const handleCreateRoom = (name: string, description: string) => {
+    const handleCreateRoom = async (name: string, description: string) => {
         const newRoom: Room = {
             id: String(Math.floor(100000 + Math.random() * 900000)), // 6-digit random ID
             name,
@@ -1015,8 +1010,16 @@ function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Ro
             image: `https://placehold.co/150x150.png`,
             userCount: 1
         };
-        onCreateRoom(newRoom);
-        toast({ title: "تم إنشاء الغرفة بنجاح!" });
+        try {
+            await onCreateRoom(newRoom);
+            toast({ title: "تم إنشاء الغرفة بنجاح!" });
+        } catch (error) {
+            toast({ 
+                variant: "destructive",
+                title: "خطأ في إنشاء الغرفة", 
+                description: "يرجى المحاولة مرة أخرى."
+            });
+        }
     };
 
     return (
@@ -1107,7 +1110,8 @@ function MainApp({
     silverBalance,
     lastClaimTimestamp,
     setUserData,
-    onLogout
+    onLogout,
+    createRoom
 }: { 
     user: UserProfile, 
     balance: number, 
@@ -1115,6 +1119,7 @@ function MainApp({
     lastClaimTimestamp: number | null,
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
+    createRoom: (roomData: Omit<Room, 'id'>) => Promise<void>
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
@@ -1183,8 +1188,12 @@ function MainApp({
         setAllRooms(prevRooms => prevRooms.map(r => r.id === updatedRoom.id ? updatedRoom : r));
     };
 
-    const handleCreateRoom = (newRoom: Room) => {
-        setAllRooms(prevRooms => [newRoom, ...prevRooms]);
+    const handleCreateRoom = async (newRoom: Room) => {
+        try {
+            await createRoom(newRoom);
+        } catch (error) {
+            console.error('Error creating room:', error);
+        }
     };
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
@@ -1323,38 +1332,52 @@ interface UserData {
 
 // --- Root Component & Profile Gate ---
 export default function HomePage() {
-  const [userData, setUserData] = useState<UserData | null>(null);
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(true);
   
-  useEffect(() => {
-    try {
+  // Get user ID from localStorage (fallback)
+  const [userId, setUserId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
       const savedUserData = localStorage.getItem("userData");
       if (savedUserData) {
-        setUserData(JSON.parse(savedUserData));
-      }
-    } catch (error) {
-      console.error("Failed to parse user data from localStorage", error);
-      setUserData(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
-    if (userData) {
-      try {
-        localStorage.setItem("userData", JSON.stringify(userData));
-      } catch (error) {
-        console.error("Failed to save user data to localStorage", error);
+        try {
+          const userData = JSON.parse(savedUserData);
+          return userData.profile.userId;
+        } catch (error) {
+          console.error("Failed to parse user data from localStorage", error);
+        }
       }
     }
-  }, [userData]);
+    return null;
+  });
+
+  // Use Firebase hooks
+  const { userData, loading: userLoading, error: userError, updateUser, updateBalance } = useUser(userId);
+  const { rooms, loading: roomsLoading, error: roomsError, createRoom, updateRoom } = useRooms();
+
+  // Wrapper function for compatibility with existing code
+  const setUserData = (updater: React.SetStateAction<UserData | null>) => {
+    if (typeof updater === 'function' && userData) {
+      const newData = updater(userData);
+      if (newData) {
+        updateUser(newData);
+      }
+    } else if (typeof updater === 'object' && updater) {
+      updateUser(updater);
+    }
+  };
+
+  // Wrapper function for room creation compatibility
+  const createRoomWrapper = async (roomData: Omit<Room, 'id'>) => {
+    const newRoom: Room = {
+      ...roomData,
+      id: String(Math.floor(100000 + Math.random() * 900000))
+    };
+    await createRoom(newRoom);
+  };
 
 
-  const handleCreateProfile = (name: string) => {
+  const handleCreateProfile = async (name: string) => {
     if (!name.trim()) {
        toast({
           variant: "destructive",
@@ -1381,21 +1404,30 @@ export default function HomePage() {
         lastClaimTimestamp: null
     };
 
-    setUserData(newUserRecord);
-    toast({
-        title: "تم حفظ الملف الشخصي",
-        description: "مرحبًا بك في التطبيق!",
-    });
+    try {
+      await updateUser(newUserRecord);
+      setUserId(userId);
+      toast({
+          title: "تم حفظ الملف الشخصي",
+          description: "مرحبًا بك في التطبيق!",
+      });
+    } catch (error) {
+      toast({
+          variant: "destructive",
+          title: "خطأ في حفظ الملف الشخصي",
+          description: "يرجى المحاولة مرة أخرى.",
+      });
+    }
   };
   
   const handleLogout = () => {
     localStorage.removeItem('userData');
-    setUserData(null); 
+    setUserId(null); 
     setNameInput("");
     toast({ title: "تم تسجيل الخروج" });
   }
 
-  if (isLoading) {
+  if (userLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
@@ -1447,7 +1479,6 @@ export default function HomePage() {
             lastClaimTimestamp={userData.lastClaimTimestamp}
             setUserData={setUserData}
             onLogout={handleLogout}
+            createRoom={createRoomWrapper}
         />;
 }
-
-    
