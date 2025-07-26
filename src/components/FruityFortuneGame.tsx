@@ -9,6 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Crown } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
+// --- Types ---
+interface UserProfile {
+    name: string;
+    image: string;
+    userId: string;
+}
 
 const BET_AMOUNTS = [100000, 500000, 1000000, 5000000, 10000000];
 const ROUND_DURATION = 20; // seconds
@@ -245,7 +251,7 @@ const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
     )
   }
 
-export default function FruityFortuneGame({ balance, onBalanceChange }: { balance: number; onBalanceChange: (updater: (prev: number) => number) => void; }) {
+export default function FruityFortuneGame({ user, balance, onBalanceChange }: { user: UserProfile, balance: number; onBalanceChange: (updater: (prev: number) => number) => void; }) {
   const [isClient, setIsClient] = useState(false);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
@@ -437,8 +443,7 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
 
                     // Add player's win to the list if they won, to ensure they are ranked
                     if (payout > 0) {
-                         // This part is for demo. In a real app, you'd get this from server
-                        const playerEntry = { name: 'أنت', avatar: 'https://placehold.co/100x100.png', payout: payout };
+                        const playerEntry = { name: user.name, avatar: user.image, payout: payout };
                         topWinners = [playerEntry];
                     }
 
@@ -481,7 +486,7 @@ export default function FruityFortuneGame({ balance, onBalanceChange }: { balanc
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, onBalanceChange]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, onBalanceChange, user]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {

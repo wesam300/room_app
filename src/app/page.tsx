@@ -561,7 +561,7 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame balance={balance} onBalanceChange={setBalance} />
+                               <FruityFortuneGame user={user} balance={balance} onBalanceChange={setBalance} />
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
