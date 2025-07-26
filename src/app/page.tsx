@@ -82,8 +82,6 @@ const GIFTS: GiftItem[] = [
 
 const DAILY_REWARD_AMOUNT = 10000000;
 
-const XP_PER_LEVEL = 10000000; // 10 million XP for each level
-const MAX_LEVEL = 100;
 
 function formatNumber(num: number): string {
     if (num >= 1000000) {
@@ -267,7 +265,6 @@ function RoomScreen({
     balance, 
     setBalance, // Use direct setter for simplicity now
     setSilverBalance, // Use direct setter
-    addXp,
 }: { 
     room: Room, 
     user: UserProfile, 
@@ -276,7 +273,6 @@ function RoomScreen({
     balance: number, 
     setBalance: React.Dispatch<React.SetStateAction<number>>,
     setSilverBalance: React.Dispatch<React.SetStateAction<number>>,
-    addXp: (amount: number) => void,
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
@@ -386,7 +382,6 @@ function RoomScreen({
         }
 
         setBalance(prev => prev - totalCost);
-        addXp(totalCost); // Add XP for sending a gift
         
         let newSupporters = [...roomSupporters];
         const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
@@ -818,59 +813,6 @@ function SilverScreen({
     );
 }
 
-// --- NEW LEVEL SCREEN ---
-function LevelScreen({ 
-    onBack, 
-    level, 
-    xp 
-}: { 
-    onBack: () => void, 
-    level: number, 
-    xp: number 
-}) {
-    const currentLevelXp = xp;
-    const progressPercentage = level >= MAX_LEVEL ? 100 : Math.min((currentLevelXp / XP_PER_LEVEL) * 100, 100);
-    const xpRemaining = level >= MAX_LEVEL ? 0 : XP_PER_LEVEL - currentLevelXp;
-
-    return (
-        <div className="p-4 flex flex-col h-full text-foreground bg-background">
-            <header className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon" onClick={onBack}>
-                    <ChevronLeft className="w-6 h-6" />
-                </Button>
-                <h2 className="text-xl font-bold">المستوى</h2>
-                <div></div>
-            </header>
-
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <div className="relative mb-8">
-                    <Star className="w-48 h-48 text-yellow-400/30" />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <p className="text-sm text-yellow-200">المستوى</p>
-                        <p className="text-7xl font-bold text-white">{level}</p>
-                    </div>
-                </div>
-
-                {level >= MAX_LEVEL ? (
-                    <p className="font-bold text-2xl text-primary">لقد وصلت إلى المستوى الأقصى!</p>
-                ) : (
-                    <>
-                        <div className="w-full max-w-sm">
-                            <div className="flex justify-between text-sm font-semibold mb-1">
-                                <span>LVL {level}</span>
-                                <span>LVL {level + 1}</span>
-                            </div>
-                            <Progress value={progressPercentage} className="h-4 bg-primary/20" />
-                            <p className="text-muted-foreground mt-4">
-                                ادعم بـ <span className="font-bold text-primary">{formatNumber(xpRemaining)}</span> كوينز للوصول للمستوى التالي
-                            </p>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
 
 function AdminPanel({
     onAddCoins,
@@ -934,8 +876,6 @@ function ProfileScreen({
     balance,
     setBalance,
     silverBalance,
-    level,
-    xp,
     onNavigate,
     onLogout,
 }: { 
@@ -944,9 +884,7 @@ function ProfileScreen({
     balance: number,
     setBalance: React.Dispatch<React.SetStateAction<number>>,
     silverBalance: number,
-    level: number,
-    xp: number,
-    onNavigate: (view: 'coins' | 'silver' | 'level') => void,
+    onNavigate: (view: 'coins' | 'silver') => void,
     onLogout: () => void,
 }) {
     const { toast } = useToast();
@@ -994,44 +932,31 @@ function ProfileScreen({
              </div>
 
             {/* Balances & Level Section */}
-             <div className="mt-8 flex justify-around items-start">
-                 {/* Left Column (Silver) */}
-                 <div className="flex flex-col">
-                    <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                         <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                                <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-white font-bold">الفضية</p>
-                            <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
-                        </div>
-                    </button>
-                </div>
-                {/* Right Column (Coins & Level) */}
-                <div className="flex flex-col items-center gap-4">
-                    <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
-                        <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
-                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
-                                <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-white font-bold">الكوينزة</p>
-                            <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
-                        </div>
-                    </button>
-                     <button onClick={() => onNavigate('level')} className="bg-gradient-to-tr from-purple-600 to-indigo-700 rounded-xl px-4 py-2 flex items-center justify-center gap-3 w-44 shadow-md text-white h-16">
-                        <Star className="w-5 h-5 text-yellow-300"/>
-                        <div className="text-right">
-                            <p className="font-bold">المستوى</p>
-                            <p className="text-sm">{level}</p>
-                        </div>
-                    </button>
-                </div>
+             <div className="mt-8 flex justify-around items-center">
+                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                     <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M5 20h14" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الفضية</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                    </div>
+                </button>
+                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                    <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
+                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
+                            <path d="M14.25 7.6198C13.8823 7.2243 13.3855 7.00004 12.8687 7H10.5C9.75416 7 9.14165 7.42633 8.87831 8.04873M14.25 7.6198C14.811 8.13012 15.1119 8.84152 15.0833 9.58333C15.0223 11.1969 13.8471 12.4417 12.4167 12.4167H11.5833C10.1529 12.4417 8.97771 11.1969 8.91667 9.58333C8.88814 8.84152 9.18898 8.13012 9.75 7.6198M14.25 7.6198C14.75 8.13012 15 9 15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 9 9.25 8.13012 9.75 7.6198M12 12.5V17M12 7V6M10 17H14" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-white font-bold">الكوينزة</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                    </div>
+                </button>
             </div>
             
             {isAdmin && <AdminPanel onAddCoins={handleAddCoins} onDeductCoins={handleDeductCoins} />}
@@ -1184,8 +1109,6 @@ function MainApp({
     user, 
     balance, 
     silverBalance,
-    level,
-    xp,
     lastClaimTimestamp,
     setUserData,
     onLogout
@@ -1193,14 +1116,12 @@ function MainApp({
     user: UserProfile, 
     balance: number, 
     silverBalance: number,
-    level: number,
-    xp: number,
     lastClaimTimestamp: number | null,
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
-    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level'>('profile');
+    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [allRooms, setAllRooms] = useState<Room[]>([]);
     
@@ -1295,27 +1216,6 @@ function MainApp({
         });
     };
 
-    const handleAddXp = useCallback((amount: number) => {
-        setUserData(prev => {
-            if (!prev || prev.level >= MAX_LEVEL) return prev;
-
-            let currentXp = prev.xp + amount;
-            let currentLevel = prev.level;
-            
-            while (currentXp >= XP_PER_LEVEL && currentLevel < MAX_LEVEL) {
-                currentLevel++;
-                currentXp -= XP_PER_LEVEL;
-            }
-            
-            if (currentLevel >= MAX_LEVEL) {
-                 currentXp = 0; // Cap XP at max level
-                 currentLevel = MAX_LEVEL;
-            }
-
-            return { ...prev, xp: currentXp, level: currentLevel };
-        });
-    }, [setUserData]);
-
     const handleConvertSilver = () => {
         setUserData(prev => {
             if (!prev) return null;
@@ -1345,7 +1245,6 @@ function MainApp({
                     balance={balance}
                     setBalance={(updater) => handleBalanceChange(updater)}
                     setSilverBalance={(updater) => handleSilverBalanceChange(updater)}
-                    addXp={handleAddXp}
                 />
             );
         }
@@ -1363,9 +1262,6 @@ function MainApp({
             if (profileView === 'silver') {
                 return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
             }
-            if (profileView === 'level') {
-                return <LevelScreen onBack={() => setProfileView('profile')} level={level} xp={xp} />;
-            }
             return (
                 <ProfileScreen 
                     user={user} 
@@ -1373,8 +1269,6 @@ function MainApp({
                     balance={balance}
                     setBalance={handleBalanceChange}
                     silverBalance={silverBalance}
-                    level={level}
-                    xp={xp}
                     onNavigate={setProfileView}
                     onLogout={onLogout}
                 />
@@ -1428,8 +1322,6 @@ interface UserData {
     profile: UserProfile;
     balance: number;
     silverBalance: number;
-    level: number;
-    xp: number;
     lastClaimTimestamp: number | null;
 }
 
@@ -1487,8 +1379,6 @@ export default function HomePage() {
         profile: newUserProfile,
         balance: 10000000,
         silverBalance: 50000,
-        level: 1,
-        xp: 0,
         lastClaimTimestamp: null
     };
 
@@ -1555,8 +1445,6 @@ export default function HomePage() {
             user={userData.profile} 
             balance={userData.balance}
             silverBalance={userData.silverBalance}
-            level={userData.level}
-            xp={userData.xp}
             lastClaimTimestamp={userData.lastClaimTimestamp}
             setUserData={setUserData}
             onLogout={handleLogout}
