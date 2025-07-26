@@ -452,7 +452,7 @@ function RoomScreen({
             </AlertDialog>
             {isOwner ? (
                 <EditRoomDialog room={room} onRoomUpdated={onRoomUpdated}>
-                    <div className="cursor-pointer">{roomInfoDisplay}</div>
+                     {roomInfoDisplay}
                 </EditRoomDialog>
             ) : (
                 roomInfoDisplay
@@ -689,11 +689,12 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
 
 function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number }) {
     const coinPackages = [
-        { usd: "0.49", coins: 4250 },
-        { usd: "0.99", coins: 8500 },
-        { usd: "4.99", coins: 42500 },
-        { usd: "9.99", coins: 85000 },
-        { usd: "14.99", coins: 127500 },
+        { usd: "0.99", coins: 4500000, display: "4.5m" },
+        { usd: "4.99", coins: 22500000, display: "22.5m" },
+        { usd: "9.99", coins: 45000000, display: "45m" },
+        { usd: "14.99", coins: 67500000, display: "67.5m" },
+        { usd: "49.99", coins: 225000000, display: "225m" },
+        { usd: "99.99", coins: 450000000, display: "450m" },
     ];
 
     return (
@@ -745,7 +746,7 @@ function CoinsScreen({ onBack, balance }: { onBack: () => void, balance: number 
                                     USD {pkg.usd}
                                 </Button>
                                 <div className="flex items-center gap-2">
-                                     <span className="font-bold text-lg">{pkg.coins.toLocaleString('en-US')}</span>
+                                     <span className="font-bold text-lg">{pkg.display}</span>
                                      <div className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1443,3 +1444,5 @@ export default function HomePage() {
             setLastClaimTimestamp={setLastClaimTimestamp}
         />;
 }
+
+    
