@@ -5,7 +5,7 @@ import { getDatabase } from "firebase/database";
 // Your web app's Firebase configuration
 // This is a public configuration and is safe to expose.
 const firebaseConfig = {
-  apiKey: "SECRET_API_KEY",
+  apiKey: "AIzaSyDPtA_1Z8-aT0W2s9cLo3mqFj_a_Z2dYf0",
   authDomain: "fruity-fortune-431500.firebaseapp.com",
   databaseURL: "https://fruity-fortune-431500-default-rtdb.firebaseio.com",
   projectId: "fruity-fortune-431500",
