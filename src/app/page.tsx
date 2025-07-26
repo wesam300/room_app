@@ -11,7 +11,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -81,6 +82,8 @@ const GIFTS: GiftItem[] = [
 
 const DAILY_REWARD_AMOUNT = 10000000;
 
+const XP_PER_LEVEL = 10000000; // 10 million XP for each level
+const MAX_LEVEL = 100;
 
 function formatNumber(num: number): string {
     if (num >= 1000000) {
@@ -263,7 +266,8 @@ function RoomScreen({
     onRoomUpdated, 
     balance, 
     setBalance, // Use direct setter for simplicity now
-    setSilverBalance // Use direct setter
+    setSilverBalance, // Use direct setter
+    addXp,
 }: { 
     room: Room, 
     user: UserProfile, 
@@ -271,7 +275,8 @@ function RoomScreen({
     onRoomUpdated: (updatedRoom: Room) => void, 
     balance: number, 
     setBalance: React.Dispatch<React.SetStateAction<number>>,
-    setSilverBalance: React.Dispatch<React.SetStateAction<number>>
+    setSilverBalance: React.Dispatch<React.SetStateAction<number>>,
+    addXp: (amount: number) => void,
 }) {
      const { toast } = useToast();
      const [micSlots, setMicSlots] = useState<MicSlot[]>(
@@ -381,6 +386,7 @@ function RoomScreen({
         }
 
         setBalance(prev => prev - totalCost);
+        addXp(totalCost); // Add XP for sending a gift
         
         let newSupporters = [...roomSupporters];
         const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
@@ -812,6 +818,62 @@ function SilverScreen({
     );
 }
 
+// --- NEW LEVEL SCREEN ---
+function LevelScreen({ 
+    onBack, 
+    level, 
+    xp 
+}: { 
+    onBack: () => void, 
+    level: number, 
+    xp: number 
+}) {
+    const xpForCurrentLevel = level > 0 ? XP_PER_LEVEL : 0;
+    const xpForNextLevel = XP_PER_LEVEL;
+    const currentLevelXp = xp - xpForCurrentLevel;
+    const progressPercentage = level >= MAX_LEVEL ? 100 : Math.min((xp / xpForNextLevel) * 100, 100);
+    const xpRemaining = level >= MAX_LEVEL ? 0 : xpForNextLevel - xp;
+
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ChevronLeft className="w-6 h-6" />
+                </Button>
+                <h2 className="text-xl font-bold">المستوى</h2>
+                <div></div>
+            </header>
+
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <div className="relative mb-8">
+                    <Star className="w-48 h-48 text-yellow-400/30" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <p className="text-sm text-yellow-200">المستوى</p>
+                        <p className="text-7xl font-bold text-white">{level}</p>
+                    </div>
+                </div>
+
+                {level >= MAX_LEVEL ? (
+                    <p className="font-bold text-2xl text-primary">لقد وصلت إلى المستوى الأقصى!</p>
+                ) : (
+                    <>
+                        <div className="w-full max-w-sm">
+                            <div className="flex justify-between text-sm font-semibold mb-1">
+                                <span>LVL {level}</span>
+                                <span>LVL {level + 1}</span>
+                            </div>
+                            <Progress value={progressPercentage} className="h-4 bg-primary/20" />
+                            <p className="text-muted-foreground mt-4">
+                                ادعم بـ <span className="font-bold text-primary">{formatNumber(xpRemaining)}</span> كوينز للوصول للمستوى التالي
+                            </p>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function AdminPanel({
     onAddCoins,
     onDeductCoins,
@@ -874,6 +936,7 @@ function ProfileScreen({
     balance,
     setBalance,
     silverBalance,
+    level,
     onNavigate,
     onLogout,
 }: { 
@@ -882,7 +945,8 @@ function ProfileScreen({
     balance: number,
     setBalance: React.Dispatch<React.SetStateAction<number>>,
     silverBalance: number,
-    onNavigate: (view: 'coins' | 'silver') => void,
+    level: number,
+    onNavigate: (view: 'coins' | 'silver' | 'level') => void,
     onLogout: () => void,
 }) {
     const { toast } = useToast();
@@ -958,6 +1022,18 @@ function ProfileScreen({
                     </div>
                 </button>
             </div>
+            
+             {/* Level Button */}
+             <div className="mt-6 flex justify-center">
+                 <button onClick={() => onNavigate('level')} className="bg-gradient-to-tr from-purple-600 to-indigo-700 rounded-xl px-4 py-2 flex items-center justify-center gap-3 w-44 shadow-md text-white">
+                    <Star className="w-5 h-5 text-yellow-300"/>
+                    <div className="text-right">
+                        <p className="font-bold">المستوى</p>
+                        <p className="text-sm">{level}</p>
+                    </div>
+                </button>
+            </div>
+
             {isAdmin && <AdminPanel onAddCoins={handleAddCoins} onDeductCoins={handleDeductCoins} />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
@@ -1108,6 +1184,8 @@ function MainApp({
     user, 
     balance, 
     silverBalance,
+    level,
+    xp,
     lastClaimTimestamp,
     setUserData,
     onLogout
@@ -1115,12 +1193,14 @@ function MainApp({
     user: UserProfile, 
     balance: number, 
     silverBalance: number,
+    level: number,
+    xp: number,
     lastClaimTimestamp: number | null,
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
-    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
+    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [allRooms, setAllRooms] = useState<Room[]>([]);
     
@@ -1207,6 +1287,26 @@ function MainApp({
         setUserData(prev => prev ? ({ ...prev, silverBalance: updater(prev.silverBalance) }) : null);
     };
 
+    const handleAddXp = useCallback((amount: number) => {
+        setUserData(prev => {
+            if (!prev || prev.level >= MAX_LEVEL) return prev;
+
+            let newXp = prev.xp + amount;
+            let newLevel = prev.level;
+            
+            while (newXp >= XP_PER_LEVEL && newLevel < MAX_LEVEL) {
+                newXp -= XP_PER_LEVEL;
+                newLevel++;
+            }
+            
+            if (newLevel >= MAX_LEVEL) {
+                 newXp = 0; // Cap XP at max level
+            }
+
+            return { ...prev, xp: newXp, level: newLevel };
+        });
+    }, [setUserData]);
+
     const handleConvertSilver = () => {
         setUserData(prev => {
             if (!prev) return null;
@@ -1236,6 +1336,7 @@ function MainApp({
                     balance={balance}
                     setBalance={(updater) => handleBalanceChange(updater)}
                     setSilverBalance={(updater) => handleSilverBalanceChange(updater)}
+                    addXp={handleAddXp}
                 />
             );
         }
@@ -1253,6 +1354,9 @@ function MainApp({
             if (profileView === 'silver') {
                 return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
             }
+            if (profileView === 'level') {
+                return <LevelScreen onBack={() => setProfileView('profile')} level={level} xp={xp} />;
+            }
             return (
                 <ProfileScreen 
                     user={user} 
@@ -1260,6 +1364,7 @@ function MainApp({
                     balance={balance}
                     setBalance={(updater) => handleBalanceChange(updater)}
                     silverBalance={silverBalance}
+                    level={level}
                     onNavigate={setProfileView}
                     onLogout={onLogout}
                 />
@@ -1313,6 +1418,8 @@ interface UserData {
     profile: UserProfile;
     balance: number;
     silverBalance: number;
+    level: number;
+    xp: number;
     lastClaimTimestamp: number | null;
 }
 
@@ -1370,6 +1477,8 @@ export default function HomePage() {
         profile: newUserProfile,
         balance: 10000000,
         silverBalance: 50000,
+        level: 0,
+        xp: 0,
         lastClaimTimestamp: null
     };
 
@@ -1436,6 +1545,8 @@ export default function HomePage() {
             user={userData.profile} 
             balance={userData.balance}
             silverBalance={userData.silverBalance}
+            level={userData.level}
+            xp={userData.xp}
             lastClaimTimestamp={userData.lastClaimTimestamp}
             setUserData={setUserData}
             onLogout={handleLogout}
