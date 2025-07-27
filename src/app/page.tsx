@@ -360,6 +360,21 @@ function RoomScreen({
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
+            <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={room.image} alt={room.name} />
+                <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="text-left">
+                <p className="font-bold text-sm">{room.name}</p>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                    <Copy className="h-3 w-3" />
+                  </button>
+                  <span className="text-xs text-muted-foreground">{room.id}</span>
+                </div>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -380,21 +395,6 @@ function RoomScreen({
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            </div>
-            <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
-              <div className="text-right">
-                <p className="font-bold text-sm">{room.name}</p>
-                <div className="flex items-center justify-end gap-1.5">
-                  <span className="text-xs text-muted-foreground">{room.id}</span>
-                  <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                    <Copy className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={room.image} alt={room.name} />
-                <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
             </div>
         </header>
       )
@@ -425,11 +425,6 @@ function RoomScreen({
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between px-4 mt-2">
-                         <div className="flex items-center gap-2">
-                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
-                                {room.userCount}
-                            </div>
-                        </div>
                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
@@ -464,6 +459,11 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
+                         <div className="flex items-center gap-2">
+                           <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
+                                {room.userCount}
+                            </div>
+                        </div>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
@@ -1588,3 +1588,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
