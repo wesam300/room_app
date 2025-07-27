@@ -773,6 +773,7 @@ function AdminPanel() {
     const { toast } = useToast();
     const [targetUserId, setTargetUserId] = useState("");
     const [amount, setAmount] = useState("");
+    const [checkedUserBalance, setCheckedUserBalance] = useState<number | null>(null);
 
     const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
         const numAmount = parseInt(amount, 10);
@@ -793,6 +794,26 @@ function AdminPanel() {
         }
     };
 
+    const handleCheckBalance = async () => {
+        if (!targetUserId.trim()) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم." });
+            return;
+        }
+        try {
+            const user = await userServices.getUser(targetUserId.trim());
+            if (user) {
+                setCheckedUserBalance(user.balance);
+                toast({ title: "تم العثور على المستخدم", description: `رصيد المستخدم ${targetUserId} هو ${user.balance.toLocaleString()}` });
+            } else {
+                setCheckedUserBalance(null);
+                toast({ variant: "destructive", title: "لم يتم العثور على المستخدم", description: `لا يوجد مستخدم بالمعرف ${targetUserId}` });
+            }
+        } catch (error) {
+            console.error("Admin check balance failed:", error);
+            setCheckedUserBalance(null);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء البحث عن المستخدم." });
+        }
+    };
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
@@ -803,12 +824,15 @@ function AdminPanel() {
                      <Input
                         placeholder="معرف المستخدم (ID)"
                         value={targetUserId}
-                        onChange={(e) => setTargetUserId(e.target.value)}
+                        onChange={(e) => {
+                            setTargetUserId(e.target.value);
+                            setCheckedUserBalance(null); // Reset on ID change
+                        }}
                         className="text-left"
                     />
                     <Input
                         type="number"
-                        placeholder="المبلغ"
+                        placeholder="المبلغ (للإضافة/الخصم)"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         className="text-left"
@@ -817,6 +841,12 @@ function AdminPanel() {
                         <Button onClick={() => handleUpdateBalance('add')} className="w-full">إضافة رصيد</Button>
                         <Button onClick={() => handleUpdateBalance('deduct')} variant="destructive" className="w-full">خصم رصيد</Button>
                     </div>
+                     <Button onClick={handleCheckBalance} variant="outline" className="w-full mt-2">معرفة الرصيد</Button>
+                     {checkedUserBalance !== null && (
+                        <div className="mt-2 text-center bg-background/50 p-2 rounded-md">
+                            <p>رصيد المستخدم المحدد: <span className="font-bold text-primary">{checkedUserBalance.toLocaleString()}</span></p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
