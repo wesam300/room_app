@@ -330,10 +330,6 @@ function RoomScreen({
         setIsGiftSheetOpen(false);
     };
 
-    const handleToggleRoomMute = () => {
-        handleUpdateRoomData({ isRoomMuted: !room.isRoomMuted });
-    };
-
     const handleOpenGiftSheet = (recipient: UserProfile | null) => {
         setInitialRecipientForGift(recipient);
         setIsGiftSheetOpen(true);
@@ -464,7 +460,6 @@ function RoomScreen({
                                 slot={slot} 
                                 index={index}
                                 isOwner={isOwner}
-                                isRoomMuted={room.isRoomMuted || false}
                                 currentUser={user}
                                 onAscend={handleAscend}
                                 onDescend={handleDescend}
@@ -523,7 +518,7 @@ function RoomScreen({
                     </div>
                      <div className="relative">
                         <div className="flex items-center gap-2">
-                           <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3 max-w-[calc(100%-14rem)]">
+                           <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3 max-w-[calc(100%-8rem)]">
                                 <Input
                                     placeholder="اكتب رسالتك..."
                                     value={chatInput}
@@ -535,14 +530,6 @@ function RoomScreen({
                                     <Send className="w-5 h-5" />
                                 </Button>
                             </div>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="bg-black/40 rounded-full h-12 w-12 flex-shrink-0"
-                                onClick={handleToggleRoomMute}
-                            >
-                                {room.isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
-                            </Button>
                              <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -1164,7 +1151,7 @@ function MainApp({
     balance: number, 
     silverBalance: number,
     lastClaimTimestamp: number | null,
-    setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
+    setUserData: (data: UserData) => void
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
@@ -1266,7 +1253,7 @@ function MainApp({
     }
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
-        setUserData(prev => prev ? ({ ...prev, profile: { ...prev.profile, ...updatedProfile }}) : null);
+        setUserData({ ...userData, profile: { ...user, ...updatedProfile } });
     };
 
     const handleUserUpdateAndReset = (updatedUser: Pick<UserProfile, 'name' | 'image'>) => {
@@ -1275,30 +1262,21 @@ function MainApp({
     };
 
     const handleBalanceChange = (updater: ((prev: number) => number) | number) => {
-        setUserData(prev => {
-            if (!prev) return null;
-            const newBalance = typeof updater === 'function' ? updater(prev.balance) : updater;
-            return { ...prev, balance: newBalance };
-        });
+        const newBalance = typeof updater === 'function' ? updater(balance) : updater;
+        setUserData({ ...userData, balance: newBalance });
     };
 
     const handleSilverBalanceChange = (updater: ((prev: number) => number) | number) => {
-        setUserData(prev => {
-            if (!prev) return null;
-            const newSilverBalance = typeof updater === 'function' ? updater(prev.silverBalance) : updater;
-            return { ...prev, silverBalance: newSilverBalance };
-        });
+        const newSilverBalance = typeof updater === 'function' ? updater(silverBalance) : updater;
+        setUserData({ ...userData, silverBalance: newSilverBalance });
     };
 
     const handleConvertSilver = () => {
-        setUserData(prev => {
-            if (!prev) return null;
-            return { ...prev, balance: prev.balance + prev.silverBalance, silverBalance: 0 };
-        });
+        setUserData({ ...userData, balance: balance + silverBalance, silverBalance: 0 });
     };
     
     const handleLastClaimTimestampChange = (timestamp: number | null) => {
-         setUserData(prev => prev ? ({ ...prev, lastClaimTimestamp: timestamp }) : null);
+        setUserData({ ...userData, lastClaimTimestamp: timestamp });
     };
 
     const handleClaimEventReward = () => {
@@ -1432,21 +1410,11 @@ export default function HomePage() {
 
   const { userData, loading: userLoading, error: userError, updateUser } = useUser(userId);
 
-  const setUserData = (updater: React.SetStateAction<UserData | null>) => {
-    if (typeof updater === 'function' && userData) {
-      const newData = updater(userData);
-      if (newData) {
-        localStorage.setItem("userData", JSON.stringify(newData));
-        try {
-          updateUser(newData);
-        } catch (error) {
-          console.error('Error updating user data:', error);
-        }
-      }
-    } else if (typeof updater === 'object' && updater) {
-      localStorage.setItem("userData", JSON.stringify(updater));
+  const setUserData = (data: UserData | null) => {
+    if (data) {
+      localStorage.setItem("userData", JSON.stringify(data));
       try {
-        updateUser(updater);
+        updateUser(data);
       } catch (error) {
         console.error('Error updating user data:', error);
       }
@@ -1463,14 +1431,14 @@ export default function HomePage() {
       return;
     }
 
-    const userId = String(Math.floor(100000 + Math.random() * 900000));
+    const newUserId = String(Math.floor(100000 + Math.random() * 900000));
     const newUserProfile: UserProfile = { 
       name: name.trim(), 
       image: `https://placehold.co/128x128.png`,
-      userId: userId
+      userId: newUserId
     };
     
-    const initialBalance = userId === ADMIN_USER_ID ? 1000000000 : 10000000;
+    const initialBalance = newUserId === ADMIN_USER_ID ? 1000000000 : 10000000;
 
     const newUserRecord: UserData = {
         profile: newUserProfile,
@@ -1483,7 +1451,7 @@ export default function HomePage() {
     try {
       localStorage.setItem("userData", JSON.stringify(newUserRecord));
       await updateUser(newUserRecord);
-      setUserId(userId);
+      setUserId(newUserId);
       toast({
           title: "تم حفظ الملف الشخصي",
           description: "مرحبًا بك في التطبيق!",
@@ -1492,7 +1460,7 @@ export default function HomePage() {
     } catch (error) {
       console.error('Error creating profile:', error);
       // Fallback to local-only if Firebase fails
-      setUserId(userId);
+      setUserId(newUserId);
       toast({
           title: "تم حفظ الملف الشخصي (وضع عدم الاتصال)",
           description: "مرحبًا بك في التطبيق!",
@@ -1587,16 +1555,19 @@ export default function HomePage() {
     );
   }
 
+  const setUserDataWrapper = (updater: React.SetStateAction<UserData | null>) => {
+    const newData = typeof updater === 'function' && userData ? updater(userData) : (typeof updater !== 'function' ? updater : null);
+    if(newData) {
+      setUserData(newData);
+    }
+  }
+
   return <MainApp 
             user={userData.profile} 
             balance={userData.balance}
             silverBalance={userData.silverBalance}
             lastClaimTimestamp={userData.lastClaimTimestamp}
-            setUserData={setUserData}
+            setUserData={setUserDataWrapper}
             onLogout={handleLogout}
         />;
 }
-
-    
-
-    

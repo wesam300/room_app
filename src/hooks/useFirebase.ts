@@ -55,16 +55,15 @@ export const useUser = (userId: string | null) => {
     return () => unsubscribe();
   }, [userId]);
 
-  const updateUser = useCallback(async (updates: Partial<UserData>) => {
-    if (!userId) return;
+  const updateUser = useCallback(async (dataToUpdate: UserData) => {
+    if (!dataToUpdate?.profile?.userId) return;
     try {
-        const userToUpdate = { ...(userData || {}), ...updates, profile: { ...userData?.profile, ...updates.profile, userId } };
-        await userServices.saveUser(userToUpdate as any);
+        await userServices.saveUser(dataToUpdate);
     } catch (err) {
         console.error('Error updating user:', err);
         setError('Failed to update user data');
     }
-  }, [userId, userData]);
+  }, []);
 
 
   return { userData, loading, error, updateUser };

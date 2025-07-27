@@ -21,7 +21,6 @@ interface RoomMicProps {
     slot: MicSlotData;
     index: number;
     isOwner: boolean;
-    isRoomMuted: boolean;
     currentUser: UserProfile;
     onAscend: (index: number) => void;
     onDescend: (index: number) => void;
@@ -34,7 +33,6 @@ export default function RoomMic({
     slot,
     index,
     isOwner,
-    isRoomMuted,
     currentUser,
     onAscend,
     onDescend,
@@ -68,8 +66,7 @@ export default function RoomMic({
     }, [slot.user, slot.isMuted]);
 
     const isCurrentUserOnThisMic = slot.user?.userId === currentUser.userId;
-    const isMutedForMe = isCurrentUserOnThisMic ? slot.isMuted : isRoomMuted;
-    const showSpeakingAnimation = !isMutedForMe && isSpeaking;
+    const showSpeakingAnimation = !slot.isMuted && isSpeaking;
 
     const handleCopyUserId = (id: string) => {
         navigator.clipboard.writeText(id);
@@ -153,7 +150,7 @@ export default function RoomMic({
                                     <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                     <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                 {(isMutedForMe) && (
+                                 {slot.isMuted && (
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                                         <XCircle className="w-6 h-6 text-red-500"/>
                                     </div>
