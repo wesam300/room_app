@@ -359,7 +359,7 @@ function RoomScreen({
 
     const RoomHeader = () => {
       return (
-        <header className="flex items-center justify-between p-3 shrink-0">
+        <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
              <div className="flex items-center gap-2">
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -412,7 +412,8 @@ function RoomScreen({
              <div className="absolute inset-0 bg-cover bg-center z-0">
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
-             <div className="relative z-10 flex flex-col h-full">
+             <RoomHeader />
+             <div className="relative z-10 flex flex-col flex-1 min-h-0">
                 <GiftSheet 
                     isOpen={isGiftSheetOpen}
                     onOpenChange={setIsGiftSheetOpen}
@@ -421,8 +422,6 @@ function RoomScreen({
                     balance={user.balance}
                     initialRecipient={initialRecipientForGift}
                 />
-                
-                <RoomHeader />
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between px-4 mt-2">
