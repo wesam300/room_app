@@ -11,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,7 @@ import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -814,13 +814,27 @@ function AdminPanel() {
             toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء البحث عن المستخدم." });
         }
     };
+    
+    const handleSetBanStatus = async (isBanned: boolean) => {
+        if (!targetUserId.trim()) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم." });
+            return;
+        }
+        try {
+            await userServices.setUserBanStatus(targetUserId.trim(), isBanned);
+            toast({ title: "تم تحديث حالة المستخدم", description: `تم ${isBanned ? 'حظر' : 'رفع الحظر عن'} المستخدم ${targetUserId}.` });
+        } catch (error) {
+            console.error("Admin set ban status failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث حالة المستخدم." });
+        }
+    };
+
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
             <h3 className="text-lg font-bold text-center text-primary mb-4">لوحة تحكم المشرف</h3>
             <div className="space-y-4 text-right">
                 <div className="space-y-2">
-                    <h4 className="font-semibold">تعديل رصيد مستخدم</h4>
                      <Input
                         placeholder="معرف المستخدم (ID)"
                         value={targetUserId}
@@ -830,23 +844,35 @@ function AdminPanel() {
                         }}
                         className="text-left"
                     />
-                    <Input
+                     {checkedUserBalance !== null && (
+                        <div className="text-center bg-background/50 p-2 rounded-md">
+                            <p>رصيد المستخدم المحدد: <span className="font-bold text-primary">{checkedUserBalance.toLocaleString()}</span></p>
+                        </div>
+                    )}
+                    <Button onClick={handleCheckBalance} variant="outline" className="w-full">معرفة الرصيد</Button>
+                </div>
+                 <hr className="border-primary/20"/>
+                 <div className="space-y-2">
+                     <h4 className="font-semibold">تعديل الرصيد</h4>
+                     <Input
                         type="number"
                         placeholder="المبلغ (للإضافة/الخصم)"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         className="text-left"
                     />
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex gap-2">
                         <Button onClick={() => handleUpdateBalance('add')} className="w-full">إضافة رصيد</Button>
                         <Button onClick={() => handleUpdateBalance('deduct')} variant="destructive" className="w-full">خصم رصيد</Button>
                     </div>
-                     <Button onClick={handleCheckBalance} variant="outline" className="w-full mt-2">معرفة الرصيد</Button>
-                     {checkedUserBalance !== null && (
-                        <div className="mt-2 text-center bg-background/50 p-2 rounded-md">
-                            <p>رصيد المستخدم المحدد: <span className="font-bold text-primary">{checkedUserBalance.toLocaleString()}</span></p>
-                        </div>
-                    )}
+                </div>
+                <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">إدارة المستخدم</h4>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleSetBanStatus(true)} variant="destructive" className="w-full">حظر المستخدم</Button>
+                        <Button onClick={() => handleSetBanStatus(false)} className="w-full bg-green-600 hover:bg-green-700">رفع الحظر</Button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1385,13 +1411,6 @@ function MainApp({
     );
 }
 
-interface UserData {
-    profile: UserProfile;
-    balance: number;
-    silverBalance: number;
-    lastClaimTimestamp: number | null;
-}
-
 export default function HomePage() {
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
@@ -1457,7 +1476,8 @@ export default function HomePage() {
         profile: newUserProfile,
         balance: initialBalance,
         silverBalance: 50000,
-        lastClaimTimestamp: null
+        lastClaimTimestamp: null,
+        isBanned: false,
     };
 
     try {
@@ -1510,6 +1530,16 @@ export default function HomePage() {
     );
   }
 
+  if (userData?.isBanned) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white p-4 text-center">
+            <Ban className="w-16 h-16 text-red-500 mb-4" />
+            <h1 className="text-2xl font-bold mb-4">تم حظر حسابك</h1>
+            <p className="text-gray-300 mb-8">تم حظر هذا الحساب من استخدام التطبيق.</p>
+            <Button onClick={handleLogout} variant="destructive">تسجيل الخروج</Button>
+        </div>
+    );
+  }
 
   if (!userData) {
     return (
@@ -1570,5 +1600,7 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
 
     

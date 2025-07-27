@@ -31,6 +31,7 @@ export interface UserData {
   balance: number;
   silverBalance: number;
   lastClaimTimestamp: number | null;
+  isBanned?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -147,6 +148,23 @@ export const userServices = {
     } catch (error) {
       console.error('Error updating user balance in Firestore:', error);
       throw error;
+    }
+  },
+
+  async setUserBanStatus(userId: string, isBanned: boolean): Promise<void> {
+    try {
+      const userRef = doc(db, COLLECTIONS.USERS, userId);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+          throw new Error("User not found");
+      }
+      await updateDoc(userRef, {
+          isBanned: isBanned,
+          updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+        console.error('Error updating user ban status in Firestore:', error);
+        throw error;
     }
   },
 
@@ -372,3 +390,5 @@ export const supporterServices = {
     });
   }
 };
+
+    
