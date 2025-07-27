@@ -218,6 +218,13 @@ export const roomServices = {
         updatedAt: serverTimestamp(),
     });
   },
+
+  async loadRooms(): Promise<RoomData[]> {
+      const roomsRef = collection(db, COLLECTIONS.ROOMS);
+      const q = query(roomsRef, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data() as RoomData);
+  },
   
   onRoomsChange(callback: (rooms: RoomData[], error?: Error) => void) {
     try {

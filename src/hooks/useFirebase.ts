@@ -79,18 +79,33 @@ export const useRooms = () => {
   useEffect(() => {
     setLoading(true);
     setError(null);
+    let unsubscribe: () => void = () => {};
 
-    const unsubscribe = roomServices.onRoomsChange((roomsData, err) => {
-      if (err) {
-        console.error('Error from room listener:', err);
-        setError('Failed to load rooms in real-time');
-        setRooms([]);
-      } else {
-        setRooms(roomsData);
-        setError(null);
-      }
-      setLoading(false);
-    });
+    const loadInitialAndListen = async () => {
+        try {
+            const initialRooms = await roomServices.loadRooms();
+            setRooms(initialRooms);
+        } catch(err) {
+            console.error('Error loading initial rooms:', err);
+            setError('Failed to load initial rooms');
+        } finally {
+            setLoading(false);
+        }
+
+        unsubscribe = roomServices.onRoomsChange((roomsData, err) => {
+          if (err) {
+            console.error('Error from room listener:', err);
+            setError('Failed to load rooms in real-time');
+            setRooms([]);
+          } else {
+            setRooms(roomsData);
+            setError(null);
+          }
+          if (loading) setLoading(false);
+        });
+    }
+
+    loadInitialAndListen();
 
     return () => unsubscribe();
   }, []);

@@ -245,7 +245,6 @@ function RoomScreen({
     room, 
     user, 
     onExit, 
-    onRoomUpdated, 
     balance, 
     setBalance,
     setSilverBalance,
@@ -514,7 +513,7 @@ function RoomScreen({
                                 slot={slot} 
                                 index={index}
                                 isOwner={isOwner}
-                                isRoomMuted={room.isRoomMuted}
+                                isRoomMuted={room.isRoomMuted || false}
                                 currentUser={user}
                                 onAscend={handleAscend}
                                 onDescend={handleDescend}
@@ -1086,7 +1085,6 @@ function MainApp({
     setUserData,
     onLogout,
     createRoom,
-    rooms: initialRooms
 }: { 
     user: UserProfile, 
     balance: number, 
@@ -1095,11 +1093,11 @@ function MainApp({
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
     createRoom: (roomData: Omit<RoomData, 'id'| 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => Promise<void>,
-    rooms: Room[]
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+    const [isJoiningRoom, setIsJoiningRoom] = useState(false);
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
     const { rooms } = useRooms();
@@ -1109,6 +1107,10 @@ function MainApp({
             const updatedRoom = rooms.find(r => r.id === currentRoom.id);
             if (updatedRoom) {
                 setCurrentRoom(updatedRoom);
+            } else {
+                // This can happen if the user is in a room that gets deleted.
+                setView('roomsList');
+                setCurrentRoom(null);
             }
         }
     }, [rooms, currentRoom?.id]);
@@ -1149,17 +1151,22 @@ function MainApp({
     }, [lastClaimTimestamp]);
 
     const handleEnterRoom = async (room: Room) => {
+        setIsJoiningRoom(true);
         try {
             await roomServices.joinRoom(room.id, user);
-            const freshRoomData = await roomServices.getRoom(room.id); // Fetch the latest data
+            const freshRoomData = await roomServices.getRoom(room.id); 
             if (freshRoomData) {
                 setCurrentRoom(freshRoomData);
                 setView('inRoom');
             } else {
                  console.error("Failed to fetch fresh room data for room:", room.id);
+                 toast({ variant: "destructive", title: "خطأ", description: "لم يتم العثور على الغرفة."});
             }
         } catch (error) {
             console.error("Error joining room:", error);
+            toast({ variant: "destructive", title: "خطأ", description: "فشل الانضمام للغرفة."});
+        } finally {
+            setIsJoiningRoom(false);
         }
     }
 
@@ -1174,10 +1181,6 @@ function MainApp({
         setCurrentRoom(null);
         setView('roomsList');
     }
-
-    const handleRoomUpdated = (updatedRoom: Room) => {
-        setCurrentRoom(updatedRoom);
-    };
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
         setUserData(prev => prev ? ({ ...prev, profile: { ...prev.profile, ...updatedProfile }}) : null);
@@ -1223,13 +1226,20 @@ function MainApp({
     };
 
     const renderContent = () => {
+        if (isJoiningRoom) {
+             return (
+                <div className="flex items-center justify-center h-full bg-background text-foreground">
+                    <p className="text-xl font-bold">...جاري تحميل الغرفة</p>
+                </div>
+            );
+        }
+
         if (view === 'inRoom' && currentRoom) {
             return (
                 <RoomScreen 
                     room={currentRoom}
                     user={user} 
                     onExit={handleExitRoom} 
-                    onRoomUpdated={handleRoomUpdated} 
                     balance={balance}
                     setBalance={(updater) => handleBalanceChange(updater)}
                     setSilverBalance={(updater) => handleSilverBalanceChange(updater)}
@@ -1333,7 +1343,7 @@ export default function HomePage() {
   });
 
   const { userData, loading: userLoading, error: userError, updateUser } = useUser(userId);
-  const { rooms, loading: roomsLoading, error: roomsError, createRoom } = useRooms();
+  const { createRoom, loading: roomsLoading, error: roomsError } = useRooms();
 
   const setUserData = (updater: React.SetStateAction<UserData | null>) => {
     if (typeof updater === 'function' && userData) {
@@ -1508,10 +1518,5 @@ export default function HomePage() {
             setUserData={setUserData}
             onLogout={handleLogout}
             createRoom={createRoomWrapper}
-            rooms={rooms}
         />;
 }
-
-    
-
-    
