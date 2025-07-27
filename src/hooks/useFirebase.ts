@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { userServices, roomServices, chatServices, gameServices, supporterServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData } from '@/lib/firebaseServices';
 
@@ -7,27 +8,20 @@ export const useUser = (userId: string | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const updateUserInFirebase = useCallback(async (dataToUpdate: Partial<UserData>) => {
-    if (!dataToUpdate?.profile?.userId) return;
-    try {
-      await userServices.saveUser(dataToUpdate);
-    } catch (err) {
-      console.error('Error updating user in Firebase:', err);
-      setError('Failed to update user data');
-      throw err; // Re-throw to be caught by the caller
-    }
-  }, []);
-
-  const updateLocalState = useCallback((data: UserData | Partial<UserData> | null) => {
-    if (data) {
-      const fullData = data as UserData;
-      setUserData(fullData);
-      localStorage.setItem("userData", JSON.stringify(fullData));
-      if (fullData.profile?.userId) {
-        updateUserInFirebase(fullData);
+  const updateUserData = useCallback(async (data: UserData | null) => {
+      setUserData(data);
+      if (data) {
+          localStorage.setItem("userData", JSON.stringify(data));
+          try {
+              await userServices.saveUser(data);
+          } catch (err) {
+              console.error('Error saving user data to Firebase:', err);
+              setError('Failed to sync user data with the server.');
+          }
+      } else {
+          localStorage.removeItem("userData");
       }
-    }
-  }, [updateUserInFirebase]);
+  }, []);
 
   useEffect(() => {
     if (!userId) {
@@ -39,45 +33,39 @@ export const useUser = (userId: string | null) => {
     setLoading(true);
     setError(null);
 
-    const loadUser = async () => {
-      try {
-        // Try to load from Firebase first
-        const firebaseUser = await userServices.getUser(userId);
-        if (firebaseUser) {
-          setUserData(firebaseUser);
-          localStorage.setItem("userData", JSON.stringify(firebaseUser));
-        } else {
-          // Fallback to local storage if not found in Firebase (e.g., offline)
-          const localData = localStorage.getItem("userData");
-          if (localData) {
-            const localUser = JSON.parse(localData);
-            if (localUser.profile.userId === userId) {
-              setUserData(localUser);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error loading user:', err);
-        setError('Failed to load user data. Check connection.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUser();
-
     // Setup listener for real-time updates
     const unsubscribe = userServices.onUserChange(userId, (user) => {
       if (user) {
         setUserData(user);
         localStorage.setItem("userData", JSON.stringify(user));
       }
+      if (loading) setLoading(false);
     });
+
+    // Initial load as a fallback
+    const loadInitialUser = async () => {
+        try {
+            const firebaseUser = await userServices.getUser(userId);
+            if (firebaseUser) {
+                if (!userData) { // Only set if not already set by listener
+                    setUserData(firebaseUser);
+                    localStorage.setItem("userData", JSON.stringify(firebaseUser));
+                }
+            }
+        } catch(err) {
+            console.error('Failed to fetch initial user', err);
+            setError('Could not fetch user data.');
+        } finally {
+            if (loading) setLoading(false);
+        }
+    };
+    
+    loadInitialUser();
 
     return () => unsubscribe();
   }, [userId]);
 
-  return { userData, loading, error, setUserData: updateLocalState };
+  return { userData, loading, error, setUserData: updateUserData };
 };
 
 // Hook for rooms

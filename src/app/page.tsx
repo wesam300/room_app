@@ -206,9 +206,7 @@ function RoomScreen({
     room, 
     user, 
     onExit, 
-    balance, 
-    setBalance,
-    setSilverBalance,
+    onUserDataUpdate
 }) {
     const { toast } = useToast();
     const [isGameVisible, setIsGameVisible] = useState(false);
@@ -312,29 +310,36 @@ function RoomScreen({
     const handleSendGift = (gift: GiftItem, recipient: UserProfile, quantity: number) => {
         const totalCost = gift.price * quantity;
 
-        if (balance < totalCost) {
-            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
-            return;
-        }
+        onUserDataUpdate((currentData) => {
+            if (currentData.balance < totalCost) {
+                toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
+                return currentData; // Return original data if not enough balance
+            }
 
-        setBalance(prev => prev - totalCost);
-        
-        let newSupporters = [...roomSupporters];
-        const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
-        if (existingSupporterIndex !== -1) {
-            const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
-            updatedSupporter.totalGiftValue += totalCost;
-            newSupporters[existingSupporterIndex] = updatedSupporter;
-        } else {
-            newSupporters.push({ user, totalGiftValue: totalCost });
-        }
-        setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
+            // Update local supporters state
+            let newSupporters = [...roomSupporters];
+            const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
+            if (existingSupporterIndex !== -1) {
+                const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
+                updatedSupporter.totalGiftValue += totalCost;
+                newSupporters[existingSupporterIndex] = updatedSupporter;
+            } else {
+                newSupporters.push({ user, totalGiftValue: totalCost });
+            }
+            setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
+            
+            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
+            setIsGiftSheetOpen(false);
 
-        setSilverBalance(prevSilver => prevSilver + (totalCost * 0.20));
-        
-        toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
-        setIsGiftSheetOpen(false);
+            // Return the updated user data to be saved to Firebase
+            return {
+                ...currentData,
+                balance: currentData.balance - totalCost,
+                silverBalance: currentData.silverBalance + (totalCost * 0.20),
+            };
+        });
     };
+
 
     const handleOpenGiftSheet = (recipient: UserProfile | null) => {
         setInitialRecipientForGift(recipient);
@@ -409,7 +414,7 @@ function RoomScreen({
                     onOpenChange={setIsGiftSheetOpen}
                     usersOnMics={usersOnMics}
                     onSendGift={handleSendGift}
-                    balance={balance}
+                    balance={user.balance}
                     initialRecipient={initialRecipientForGift}
                 />
 
@@ -474,7 +479,7 @@ function RoomScreen({
                                 slot={{...slot, isMuted: slot.isMuted || room.isRoomMuted}} 
                                 index={index}
                                 isOwner={isOwner}
-                                currentUser={user}
+                                currentUser={user.profile}
                                 onAscend={handleAscend}
                                 onDescend={handleDescend}
                                 onToggleLock={handleToggleLock}
@@ -495,7 +500,7 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame user={user} balance={balance} onBalanceChange={(updater) => setBalance(updater)} />
+                               <FruityFortuneGame user={user.profile} balance={user.balance} onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} />
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -912,45 +917,41 @@ function AdminPanel() {
 function ProfileScreen({ 
     user, 
     onUserUpdate, 
-    balance,
-    silverBalance,
     onNavigate,
     onLogout,
 }: { 
-    user: UserProfile, 
+    user: UserData, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    balance: number,
-    silverBalance: number,
     onNavigate: (view: 'coins' | 'silver') => void,
     onLogout: () => void,
 }) {
     const { toast } = useToast();
-    const isAdmin = user.userId === ADMIN_USER_ID;
+    const isAdmin = user.profile.userId === ADMIN_USER_ID;
 
     const handleCopyId = () => {
-        navigator.clipboard.writeText(user.userId);
+        navigator.clipboard.writeText(user.profile.userId);
         toast({ title: "تم نسخ ID المستخدم" });
     };
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <EditProfileDialog user={user} onUserUpdate={onUserUpdate}>
+                <EditProfileDialog user={user.profile} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
                 <div className="flex items-center gap-3">
                     <div className="text-right">
-                        <h2 className="text-lg font-bold">{user.name}</h2>
+                        <h2 className="text-lg font-bold">{user.profile.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
                             <Copy className="w-3 h-3" />
-                            <span>ID: {user.userId}</span>
+                            <span>ID: {user.profile.userId}</span>
                         </button>
                     </div>
                      <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.image} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={user.profile.image} alt={user.profile.name} />
+                        <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                 </div>
              </div>
@@ -965,7 +966,7 @@ function ProfileScreen({
                     </div>
                     <div className="text-right">
                         <p className="text-white font-bold">الكوينزة</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(balance)}</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(user.balance)}</p>
                     </div>
                 </button>
                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
@@ -977,7 +978,7 @@ function ProfileScreen({
                     </div>
                     <div className="text-right">
                         <p className="text-white font-bold">الفضية</p>
-                        <p className="text-gray-400 text-sm">{formatNumber(silverBalance)}</p>
+                        <p className="text-gray-400 text-sm">{formatNumber(user.silverBalance)}</p>
                     </div>
                 </button>
             </div>
@@ -1183,17 +1184,11 @@ function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaim
 
 function MainApp({ 
     user, 
-    balance, 
-    silverBalance,
-    lastClaimTimestamp,
-    setUserData,
+    onUserDataUpdate,
     onLogout,
 }: { 
-    user: UserProfile, 
-    balance: number, 
-    silverBalance: number,
-    lastClaimTimestamp: number | null,
-    setUserData: (data: Partial<UserData>) => void
+    user: UserData, 
+    onUserDataUpdate: (updater: (data: UserData) => UserData) => void
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
@@ -1231,8 +1226,8 @@ function MainApp({
             const nextClaimDate = new Date(nowIraq);
             nextClaimDate.setHours(24, 0, 0, 0);
 
-            if (lastClaimTimestamp) {
-                const lastClaimDate = new Date(lastClaimTimestamp);
+            if (user.lastClaimTimestamp) {
+                const lastClaimDate = new Date(user.lastClaimTimestamp);
                 const lastClaimUtc = lastClaimDate.getTime() + (lastClaimDate.getTimezoneOffset() * 60 * 1000);
                 const lastClaimIraq = new Date(lastClaimUtc + (iraqTimezoneOffset * 60 * 1000));
 
@@ -1254,12 +1249,12 @@ function MainApp({
         updateClaimTimer();
         const interval = setInterval(updateClaimTimer, 1000);
         return () => clearInterval(interval);
-    }, [lastClaimTimestamp]);
+    }, [user.lastClaimTimestamp]);
 
     const handleEnterRoom = async (room: Room) => {
         setIsJoiningRoom(true);
         try {
-            await roomServices.joinRoom(room.id, user);
+            await roomServices.joinRoom(room.id, user.profile);
             const freshRoomData = await roomServices.getRoom(room.id); 
             if (freshRoomData) {
                 setCurrentRoom(freshRoomData);
@@ -1279,13 +1274,13 @@ function MainApp({
     const handleExitRoom = async () => {
         if (currentRoom) {
             try {
-                const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
+                const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
                 if(myCurrentMicIndex !== -1) {
                     const newSlots = [...(currentRoom.micSlots || [])];
                     newSlots[myCurrentMicIndex] = { user: null, isMuted: false, isLocked: newSlots[myCurrentMicIndex].isLocked };
                     await roomServices.updateRoomData(currentRoom.id, { micSlots: newSlots });
                 }
-                await roomServices.leaveRoom(currentRoom.id, user);
+                await roomServices.leaveRoom(currentRoom.id, user.profile);
             } catch (error) {
                 console.error("Error leaving room:", error);
             }
@@ -1295,31 +1290,24 @@ function MainApp({
     }
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
-        setUserData({ profile: { ...user, ...updatedProfile } });
-    };
-
-    const handleBalanceChange = (updater: ((prev: number) => number) | number) => {
-        const newBalance = typeof updater === 'function' ? updater(balance) : updater;
-        setUserData({ balance: newBalance });
-    };
-
-    const handleSilverBalanceChange = (updater: ((prev: number) => number) | number) => {
-        const newSilverBalance = typeof updater === 'function' ? updater(silverBalance) : updater;
-        setUserData({ silverBalance: newSilverBalance });
+        onUserDataUpdate(prev => ({ ...prev, profile: { ...prev.profile, ...updatedProfile } }));
     };
 
     const handleConvertSilver = () => {
-        setUserData({ balance: balance + silverBalance, silverBalance: 0 });
+        onUserDataUpdate(prev => ({
+            ...prev,
+            balance: prev.balance + prev.silverBalance,
+            silverBalance: 0
+        }));
     };
     
-    const handleLastClaimTimestampChange = (timestamp: number | null) => {
-        setUserData({ lastClaimTimestamp: timestamp });
-    };
-
     const handleClaimEventReward = () => {
-        if(canClaim){
-            handleBalanceChange(prev => prev + DAILY_REWARD_AMOUNT);
-            handleLastClaimTimestampChange(Date.now());
+        if (canClaim) {
+            onUserDataUpdate(prev => ({
+                ...prev,
+                balance: prev.balance + DAILY_REWARD_AMOUNT,
+                lastClaimTimestamp: Date.now()
+            }));
         }
     };
     
@@ -1351,9 +1339,7 @@ function MainApp({
                     room={currentRoom}
                     user={user} 
                     onExit={handleExitRoom} 
-                    balance={balance}
-                    setBalance={(updater) => handleBalanceChange(updater)}
-                    setSilverBalance={(updater) => handleSilverBalanceChange(updater)}
+                    onUserDataUpdate={onUserDataUpdate}
                 />
             );
         }
@@ -1366,23 +1352,21 @@ function MainApp({
         }
         if (view === 'profile') {
             if (profileView === 'coins') {
-                return <CoinsScreen onBack={() => setProfileView('profile')} balance={balance} />;
+                return <CoinsScreen onBack={() => setProfileView('profile')} balance={user.balance} />;
             }
             if (profileView === 'silver') {
-                return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={silverBalance} onConvert={handleConvertSilver} />;
+                return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={user.silverBalance} onConvert={handleConvertSilver} />;
             }
             return (
                 <ProfileScreen 
                     user={user} 
-                    onUserUpdate={handleUserUpdate} 
-                    balance={balance}
-                    silverBalance={silverBalance}
+                    onUserUpdate={handleUserUpdate}
                     onNavigate={setProfileView}
                     onLogout={onLogout}
                 />
             );
         }
-        return <RoomsListScreen onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user}/>;
+        return <RoomsListScreen onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user.profile}/>;
     };
 
 
@@ -1479,8 +1463,8 @@ export default function HomePage() {
       await userServices.saveUser(newUserRecord);
       
       // Then update local state and storage
-      localStorage.setItem("userData", JSON.stringify(newUserRecord));
       setUserId(newUserId);
+      setUserData(newUserRecord); // This will also update localStorage via the hook's effect
 
       toast({
           title: "تم حفظ الملف الشخصي",
@@ -1501,19 +1485,21 @@ export default function HomePage() {
     try {
       localStorage.removeItem('userData');
       setUserId(null); 
+      setUserData(null);
       setNameInput("");
       toast({ title: "تم تسجيل الخروج" });
     } catch (error) {
       console.error('Error during logout:', error);
       setUserId(null);
+      setUserData(null);
       setNameInput("");
       toast({ title: "تم تسجيل الخروج" });
     }
   }
 
-  const handleSetUserData = (data: Partial<UserData>) => {
+  const handleSetUserData = (updater: (data: UserData) => UserData) => {
     if (userData) {
-      const updatedData = { ...userData, ...data };
+      const updatedData = updater(userData);
       setUserData(updatedData);
     }
   };
@@ -1593,11 +1579,8 @@ export default function HomePage() {
   }
 
   return <MainApp 
-            user={userData.profile} 
-            balance={userData.balance}
-            silverBalance={userData.silverBalance}
-            lastClaimTimestamp={userData.lastClaimTimestamp}
-            setUserData={handleSetUserData}
+            user={userData}
+            onUserDataUpdate={handleSetUserData}
             onLogout={handleLogout}
         />;
 }
