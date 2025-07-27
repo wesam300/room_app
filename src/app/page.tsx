@@ -52,13 +52,6 @@ interface Supporter {
 
 
 // --- Constants ---
-const BOT_USER_ID = "bot-rocky-001";
-const BOT_USER: UserProfile = {
-    name: "روكي",
-    image: "https://placehold.co/100x100/A755F7/FFFFFF.png", // A distinct color for the bot
-    userId: BOT_USER_ID
-};
-
 const ADMIN_USER_ID = '368473';
 
 const GIFTS: GiftItem[] = [
@@ -212,7 +205,7 @@ function RoomScreen({
     const { toast } = useToast();
     const [isGameVisible, setIsGameVisible] = useState(false);
      
-    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId && slot.user?.userId !== BOT_USER_ID);
+    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
     const isOwner = user.userId === room.ownerId;
      
     const { messages: chatMessages, sendMessage: sendChatMessage } = useChatMessages(room.id);
@@ -246,14 +239,15 @@ function RoomScreen({
     };
 
     const handleAscend = (index: number) => {
-        const newSlots = [...(room.micSlots || [])];
-        const targetSlot = newSlots[index];
-
         if (myMicIndex !== -1) {
             toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر." });
             return;
         }
-        if (targetSlot.user && targetSlot.user.userId !== BOT_USER_ID) {
+
+        const newSlots = [...(room.micSlots || [])];
+        const targetSlot = newSlots[index];
+
+        if (targetSlot.user) {
             toast({ variant: "destructive", description: "هذا المايك مشغول." });
             return;
         }
@@ -330,10 +324,6 @@ function RoomScreen({
                 balance: currentData.balance - totalCost,
                 silverBalance: currentData.silverBalance + (totalCost * 0.20),
             }));
-
-            // Update recipient's balance (example: they get 80% of the value)
-            // This is an example, adjust the logic as needed
-            // await userServices.updateUserBalance(recipient.userId, totalCost * 0.8);
     
             // Update room supporter data
             await supporterServices.updateRoomSupporter({
