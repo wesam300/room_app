@@ -1,26 +1,23 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { useGameHistory } from '@/hooks/useFirebase';
+import { useGameHistory, useUser } from '@/hooks/useFirebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Timer, Coins, Trophy, RefreshCw, Crown } from 'lucide-react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserData, UserProfile as IUserProfile, gameServices, userServices } from '@/lib/firebaseServices';
 
 
 // --- Types ---
-interface UserProfile {
-    name: string;
-    image: string;
-    userId: string;
-}
+interface UserProfile extends IUserProfile {}
 
 interface TopWinner {
   user: UserProfile;
@@ -315,6 +312,41 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   }, [bets, roundId, isClient, user.userId, saveUserBets]);
   
   // The main game loop, driven by a simple interval
+  const calculateAndShowResults = useCallback(async (currentRoundId: number) => {
+      const { winner: finalWinner } = getWinnerForRound(currentRoundId);
+      const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
+      const allUsers = await userServices.getAllUsers();
+      const userMap = new Map<string, UserData>(allUsers.map(u => [u.profile.userId, u]));
+
+      let allWinners: TopWinner[] = [];
+      for (const betData of allRoundBets) {
+          const betAmountOnWinner = betData.bets[finalWinner] || 0;
+          if (betAmountOnWinner > 0) {
+              const payout = betAmountOnWinner * FRUITS[finalWinner].multiplier;
+              const playerInfo = userMap.get(betData.userId);
+              if (playerInfo) {
+                  allWinners.push({
+                      user: playerInfo.profile,
+                      betAmount: betAmountOnWinner,
+                      payout: payout,
+                  });
+              }
+          }
+      }
+
+      allWinners.sort((a, b) => b.payout - a.payout);
+
+      const myPayout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
+
+      if (myPayout > 0) {
+          onBalanceChange(prev => prev + myPayout);
+      }
+      
+      setWinnerScreenInfo({ fruit: finalWinner, payout: myPayout, topWinners: allWinners.slice(0, 3) });
+      setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
+
+  }, [bets, onBalanceChange]);
+
   useEffect(() => {
     if (!isClient) return;
 
@@ -377,22 +409,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
                 
                 // 2. Schedule results to appear *after* the spin
                 setTimeout(() => {
-                    // We get the winner again to be 100% sure, though it should be the same.
-                    const { winner: finalWinner } = getWinnerForRound(currentRoundId);
-                    const payout = (bets[finalWinner] || 0) * FRUITS[finalWinner].multiplier;
-                    
-                    let topWinners: TopWinner[] = [];
-
-                    // Add player's win to the list if they won, to ensure they are ranked
-                    if (payout > 0) {
-                        const playerEntry = { user, betAmount: bets[finalWinner] || 0, payout: payout };
-                        topWinners = [playerEntry];
-                    }
-
-                    onBalanceChange(prev => prev + payout);
-                    setWinnerScreenInfo({ fruit: finalWinner, payout: payout, topWinners: topWinners });
-                    setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
-                    
+                    calculateAndShowResults(currentRoundId);
                 }, SPIN_DURATION * 1000); // Delay equals spin duration
             }
             
@@ -428,7 +445,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, onBalanceChange, user, saveGameHistory]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {

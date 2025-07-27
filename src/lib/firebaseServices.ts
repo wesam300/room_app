@@ -121,6 +121,17 @@ export const userServices = {
       throw error;
     }
   },
+  
+  async getAllUsers(): Promise<UserData[]> {
+    try {
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const querySnapshot = await getDocs(usersRef);
+        return querySnapshot.docs.map(doc => doc.data() as UserData);
+    } catch (error) {
+        console.error('Error getting all users from Firestore:', error);
+        throw error;
+    }
+  },
 
   async updateUserBalance(userId: string, balance: number, silverBalance: number): Promise<void> {
     try {
@@ -300,6 +311,13 @@ export const gameServices = {
     const betRef = doc(db, COLLECTIONS.USER_BETS, `${userId}_${roundId}`);
     const betSnap = await getDoc(betRef);
     return betSnap.exists() ? betSnap.data() as UserBetData : null;
+  },
+
+  async getAllBetsForRound(roundId: number): Promise<UserBetData[]> {
+      const betsRef = collection(db, COLLECTIONS.USER_BETS);
+      const q = query(betsRef, where('roundId', '==', roundId));
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => doc.data() as UserBetData);
   }
 };
 
