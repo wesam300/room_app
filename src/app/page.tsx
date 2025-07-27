@@ -282,6 +282,12 @@ function RoomScreen({
             }
         }
     };
+    
+    const handleToggleRoomMute = () => {
+        if (isOwner) {
+            handleUpdateRoomData({ isRoomMuted: !room.isRoomMuted });
+        }
+    };
 
     const handleToggleLock = (index: number) => {
         if (isOwner) {
@@ -340,25 +346,32 @@ function RoomScreen({
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3">
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                        <X className="w-6 h-6 text-primary" />
+             <div className="flex items-center gap-2">
+                 {isOwner && (
+                    <Button variant="ghost" size="icon" onClick={handleToggleRoomMute} className="bg-black/20 rounded-full">
+                        {room.isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
                     </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            هل تريد حقًا مغادرة الغرفة؟
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                        <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+                )}
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                            <X className="w-6 h-6 text-primary" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                هل تريد حقًا مغادرة الغرفة؟
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </div>
             <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
               <Avatar className="w-10 h-10">
                 <AvatarImage src={room.image} alt={room.name} />
@@ -457,7 +470,7 @@ function RoomScreen({
                         {(room.micSlots || []).map((slot, index) => (
                             <RoomMic 
                                 key={index} 
-                                slot={slot} 
+                                slot={{...slot, isMuted: slot.isMuted || room.isRoomMuted}} 
                                 index={index}
                                 isOwner={isOwner}
                                 currentUser={user}
@@ -1284,11 +1297,6 @@ function MainApp({
         setUserData({ profile: { ...user, ...updatedProfile } });
     };
 
-    const handleUserUpdateAndReset = (updatedUser: Pick<UserProfile, 'name' | 'image'>) => {
-        handleUserUpdate(updatedUser);
-        setProfileView('profile');
-    };
-
     const handleBalanceChange = (updater: ((prev: number) => number) | number) => {
         const newBalance = typeof updater === 'function' ? updater(balance) : updater;
         setUserData({ balance: newBalance });
@@ -1365,7 +1373,7 @@ function MainApp({
             return (
                 <ProfileScreen 
                     user={user} 
-                    onUserUpdate={handleUserUpdateAndReset} 
+                    onUserUpdate={handleUserUpdate} 
                     balance={balance}
                     silverBalance={silverBalance}
                     onNavigate={setProfileView}
@@ -1592,3 +1600,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    

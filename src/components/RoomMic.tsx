@@ -155,7 +155,7 @@ export default function RoomMic({
                                         <XCircle className="w-6 h-6 text-red-500"/>
                                     </div>
                                 )}
-                                 {isOwner && slot.user.userId === currentUser.userId && (
+                                 {slot.user.userId === room.ownerId && (
                                     <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
                                         OWNER
                                     </div>
@@ -180,3 +180,5 @@ export default function RoomMic({
         </Popover>
     )
 }
+
+    
