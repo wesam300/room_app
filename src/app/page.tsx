@@ -975,9 +975,10 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Room[], onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => void, user: UserProfile }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
+    const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
 
     const handleCreateRoom = async (name: string, description: string) => {
         const newRoomData = {
@@ -998,6 +999,14 @@ function RoomsListScreen({ rooms, onEnterRoom, onCreateRoom, user }: { rooms: Ro
             });
         }
     };
+
+    if (roomsLoading) {
+        return (
+           <div className="text-center text-muted-foreground mt-20">
+               <p>...جاري تحميل الغرف</p>
+           </div>
+       );
+    }
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
@@ -1102,20 +1111,24 @@ function MainApp({
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
-    const { rooms, createRoom, loading: roomsLoading, error: roomsError } = useRooms();
+    const { createRoom } = useRooms();
     const { toast } = useToast();
 
     useEffect(() => {
         if (currentRoom) {
-            const updatedRoom = rooms.find(r => r.id === currentRoom.id);
-            if (updatedRoom) {
-                setCurrentRoom(updatedRoom);
-            } else {
-                setView('roomsList');
-                setCurrentRoom(null);
-            }
+            const unsubscribe = roomServices.onRoomsChange((rooms) => {
+                const updatedRoom = rooms.find(r => r.id === currentRoom.id);
+                if (updatedRoom) {
+                    setCurrentRoom(updatedRoom);
+                } else {
+                    // Room might have been deleted
+                    setView('roomsList');
+                    setCurrentRoom(null);
+                }
+            });
+            return () => unsubscribe();
         }
-    }, [rooms, currentRoom?.id]);
+    }, [currentRoom?.id]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
@@ -1247,7 +1260,7 @@ function MainApp({
     }
 
     const renderContent = () => {
-        if (isJoiningRoom || roomsLoading) {
+        if (isJoiningRoom) {
              return (
                 <div className="flex items-center justify-center h-full bg-background text-foreground">
                     <p className="text-xl font-bold">...جاري تحميل الغرفة</p>
@@ -1293,7 +1306,7 @@ function MainApp({
                 />
             );
         }
-        return <RoomsListScreen rooms={rooms} onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user}/>;
+        return <RoomsListScreen onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user}/>;
     };
 
 
