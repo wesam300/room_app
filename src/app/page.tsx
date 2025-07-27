@@ -280,6 +280,18 @@ function RoomScreen({
             }
         }
     };
+    
+    const handleAdminMute = (index: number) => {
+        if(isOwner) {
+            const newSlots = [...(room.micSlots || [])];
+            const currentSlot = newSlots[index];
+            if (currentSlot.user) {
+                newSlots[index] = { ...currentSlot, isMuted: !currentSlot.isMuted };
+                handleUpdateRoomData({ micSlots: newSlots });
+            }
+        }
+    }
+
 
     const handleToggleLock = (index: number) => {
         if (isOwner) {
@@ -484,6 +496,7 @@ function RoomScreen({
                                 onDescend={handleDescend}
                                 onToggleLock={handleToggleLock}
                                 onToggleMute={handleToggleMute}
+                                onAdminMute={handleAdminMute}
                                 onOpenGiftDialog={handleOpenGiftSheet}
                             />
                         ))}
@@ -520,7 +533,7 @@ function RoomScreen({
                         className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
                     >
-                        {chatMessages.map(msg => msg && msg.user && (
+                        {chatMessages.map(msg => msg && msg.user && msg.user.name && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
                                     <AvatarImage src={msg.user.image} />

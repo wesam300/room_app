@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Mic, XCircle, Lock, Unlock, Copy } from "lucide-react";
+import { Mic, MicOff, XCircle, Lock, Unlock, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { MicSlotData, RoomData } from '@/lib/firebaseServices';
@@ -27,6 +27,7 @@ interface RoomMicProps {
     onDescend: (index: number) => void;
     onToggleLock: (index: number) => void;
     onToggleMute: () => void;
+    onAdminMute: (index: number) => void;
     onOpenGiftDialog: (recipient: UserProfile | null) => void;
 }
 
@@ -40,6 +41,7 @@ export default function RoomMic({
     onDescend,
     onToggleLock,
     onToggleMute,
+    onAdminMute,
     onOpenGiftDialog
 }: RoomMicProps) {
     const { toast } = useToast();
@@ -88,7 +90,6 @@ export default function RoomMic({
                         {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
                     </Button>
                     <Button variant="destructive" onClick={() => handleInteraction(() => onDescend(index))}>النزول من المايك</Button>
-                    <Button onClick={() => handleInteraction(() => onOpenGiftDialog(currentUser))}>إرسال هدية</Button>
                 </>
             ) : !slot.user ? (
                 isOwner ? (
@@ -118,7 +119,17 @@ export default function RoomMic({
                    </div>
                    <Button onClick={() => handleInteraction(() => onOpenGiftDialog(slot.user!))}>إرسال هدية</Button>
                    {isOwner && (
-                       <Button variant="destructive" size="sm" onClick={() => handleInteraction(() => onDescend(index))}>طرد من المايك</Button>
+                       <div className="grid grid-cols-2 gap-2 w-full mt-2">
+                           <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onAdminMute(index))}>
+                               {slot.isMuted ? <Mic className="ml-1"/> : <MicOff className="ml-1"/>}
+                               {slot.isMuted ? "إلغاء الكتم" : "كتم"}
+                            </Button>
+                           <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onToggleLock(index))}>
+                               {slot.isLocked ? <Unlock className="ml-1"/> : <Lock className="ml-1"/>}
+                               {slot.isLocked ? "فتح" : "قفل"}
+                           </Button>
+                           <Button variant="destructive" size="sm" className="col-span-2" onClick={() => handleInteraction(() => onDescend(index))}>طرد من المايك</Button>
+                       </div>
                    )}
                </div>
             )}
