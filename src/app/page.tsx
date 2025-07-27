@@ -280,12 +280,6 @@ function RoomScreen({
             }
         }
     };
-    
-    const handleToggleRoomMute = () => {
-        if (isOwner) {
-            handleUpdateRoomData({ isRoomMuted: !room.isRoomMuted });
-        }
-    };
 
     const handleToggleLock = (index: number) => {
         if (isOwner) {
@@ -360,11 +354,6 @@ function RoomScreen({
       return (
         <header className="flex items-center justify-between p-3">
              <div className="flex items-center gap-2">
-                 {isOwner && (
-                    <Button variant="ghost" size="icon" onClick={handleToggleRoomMute} className="bg-black/20 rounded-full">
-                        {room.isRoomMuted ? <VolumeX className="w-6 h-6 text-primary" /> : <Volume2 className="w-6 h-6 text-primary" />}
-                    </Button>
-                )}
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
@@ -487,7 +476,7 @@ function RoomScreen({
                             <RoomMic 
                                 key={index}
                                 room={room}
-                                slot={{...slot, isMuted: slot.isMuted || room.isRoomMuted}} 
+                                slot={slot} 
                                 index={index}
                                 isOwner={isOwner}
                                 currentUser={user.profile}

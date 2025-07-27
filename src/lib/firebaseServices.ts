@@ -200,7 +200,7 @@ export const userServices = {
 
 const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map((_, i) => ({
     user: i === 0 ? { name: "روكي", image: "https://placehold.co/100x100/A755F7/FFFFFF.png", userId: "bot-001" } : null,
-    isMuted: i === 0,
+    isMuted: false,
     isLocked: false
 }));
 
