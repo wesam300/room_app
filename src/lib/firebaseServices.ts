@@ -243,6 +243,16 @@ export const roomServices = {
     }
   },
   
+  async deleteRoom(roomId: string): Promise<void> {
+    try {
+      const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+      await deleteDoc(roomRef);
+    } catch (error) {
+      console.error('Error deleting room from Firestore:', error);
+      throw error;
+    }
+  },
+  
   async getRoom(roomId: string): Promise<RoomData | null> {
     try {
         const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);

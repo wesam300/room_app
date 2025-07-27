@@ -761,6 +761,8 @@ function AdminPanel() {
     const [targetUserId, setTargetUserId] = useState("");
     const [amount, setAmount] = useState("");
     const [checkedUserBalance, setCheckedUserBalance] = useState<number | null>(null);
+    const [targetRoomId, setTargetRoomId] = useState("");
+
 
     const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
         const numAmount = parseInt(amount, 10);
@@ -816,6 +818,21 @@ function AdminPanel() {
         }
     };
 
+    const handleBanRoom = async () => {
+        if (!targetRoomId.trim()) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف غرفة صحيح." });
+            return;
+        }
+        try {
+            await roomServices.deleteRoom(targetRoomId.trim());
+            toast({ title: "تم حذف الغرفة بنجاح!", description: `تم حذف الغرفة بالمعرف ${targetRoomId}.`});
+            setTargetRoomId("");
+        } catch (error) {
+            console.error("Admin ban room failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على الغرفة أو حدث خطأ آخر." });
+        }
+    };
+
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
@@ -860,6 +877,17 @@ function AdminPanel() {
                         <Button onClick={() => handleSetBanStatus(true)} variant="destructive" className="w-full">حظر المستخدم</Button>
                         <Button onClick={() => handleSetBanStatus(false)} className="w-full bg-green-600 hover:bg-green-700">رفع الحظر</Button>
                     </div>
+                </div>
+                 <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">إدارة الغرف</h4>
+                    <Input
+                        placeholder="معرف الغرفة (ID)"
+                        value={targetRoomId}
+                        onChange={(e) => setTargetRoomId(e.target.value)}
+                        className="text-left"
+                    />
+                    <Button onClick={handleBanRoom} variant="destructive" className="w-full">حظر الغرفة</Button>
                 </div>
             </div>
         </div>
