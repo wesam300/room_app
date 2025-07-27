@@ -19,7 +19,7 @@ import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -305,31 +305,47 @@ function RoomScreen({
         setChatInput("");
     };
 
-    const handleSendGift = (gift: GiftItem, recipient: UserProfile, quantity: number) => {
+    const handleSendGift = async (gift: GiftItem, recipient: UserProfile, quantity: number) => {
         const totalCost = gift.price * quantity;
-        
-        onUserDataUpdate((currentData) => {
-            if (currentData.balance < totalCost) {
-                toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
-                return currentData; 
-            }
-            
-            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
-            setIsGiftSheetOpen(false);
-
-            supporterServices.updateRoomSupporter({
-                roomId: room.id,
-                userId: user.profile.userId,
-                user: user.profile,
-                totalGiftValue: (roomSupporters.find(s => s.userId === user.profile.userId)?.totalGiftValue || 0) + totalCost
-            });
-            
-            return {
+    
+        if (user.balance < totalCost) {
+            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
+            return;
+        }
+    
+        try {
+            // Deduct balance from the sender
+            onUserDataUpdate((currentData) => ({
                 ...currentData,
                 balance: currentData.balance - totalCost,
                 silverBalance: currentData.silverBalance + (totalCost * 0.20),
-            };
-        });
+            }));
+
+            // Update recipient's balance (example: they get 80% of the value)
+            // This is an example, adjust the logic as needed
+            // await userServices.updateUserBalance(recipient.userId, totalCost * 0.8);
+    
+            // Update room supporter data
+            await supporterServices.updateRoomSupporter({
+                roomId: room.id,
+                userId: user.profile.userId,
+                user: user.profile,
+                totalGiftValue: totalCost,
+            });
+    
+            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
+            setIsGiftSheetOpen(false);
+    
+        } catch (error) {
+            console.error("Error sending gift:", error);
+            toast({ variant: "destructive", title: "فشل إرسال الهدية", description: "حدث خطأ ما. يرجى المحاولة مرة أخرى."});
+            // Revert balance if something failed
+            onUserDataUpdate((currentData) => ({
+                ...currentData,
+                balance: currentData.balance + totalCost,
+                silverBalance: currentData.silverBalance - (totalCost * 0.20),
+            }));
+        }
     };
 
 
@@ -418,10 +434,10 @@ function RoomScreen({
                            <div className="flex -space-x-4 rtl:space-x-reverse">
                              {(room.attendees || []).filter(Boolean).slice(0, 3).map(attendee => {
                                const validAttendee = attendee as UserProfile;
-                               return validAttendee ? (
+                               return validAttendee && validAttendee.name ? (
                                  <Avatar key={validAttendee.userId} className="w-8 h-8 border-2 border-background">
                                    <AvatarImage src={validAttendee.image} />
-                                   <AvatarFallback>{validAttendee.name ? validAttendee.name.charAt(0) : '?'}</AvatarFallback>
+                                   <AvatarFallback>{validAttendee.name.charAt(0)}</AvatarFallback>
                                  </Avatar>
                                ) : null;
                              })}
@@ -1580,3 +1596,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    

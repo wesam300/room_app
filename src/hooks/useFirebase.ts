@@ -14,13 +14,16 @@ export const useUser = (userId: string | null) => {
           localStorage.removeItem("userData");
           return;
       }
+      // Optimistic update
       setUserData(data);
       localStorage.setItem("userData", JSON.stringify(data));
       try {
+          // Persist to Firebase
           await userServices.saveUser(data);
       } catch (err) {
           console.error('Error saving user data to Firebase:', err);
           setError('Failed to sync user data with the server.');
+          // Optional: implement logic to revert optimistic update on failure
       }
   }, []);
 
@@ -34,38 +37,18 @@ export const useUser = (userId: string | null) => {
     setLoading(true);
     setError(null);
 
-    // Setup listener for real-time updates
-    const unsubscribe = userServices.onUserChange(userId, (user) => {
-      if (user) {
-        setUserData(user);
-        localStorage.setItem("userData", JSON.stringify(user));
+    // Listener for real-time updates from Firestore
+    const unsubscribe = userServices.onUserChange(userId, (userFromFirebase) => {
+      if (userFromFirebase) {
+        setUserData(userFromFirebase);
+        localStorage.setItem("userData", JSON.stringify(userFromFirebase));
       } else {
-        // If the user is deleted from the backend, remove local data.
+        // User document was deleted from Firestore
         setUserData(null);
         localStorage.removeItem("userData");
       }
       if (loading) setLoading(false);
     });
-
-    // Initial load as a fallback
-    const loadInitialUser = async () => {
-        try {
-            const firebaseUser = await userServices.getUser(userId);
-            if (firebaseUser) {
-                 if (JSON.stringify(firebaseUser) !== JSON.stringify(userData)) {
-                    setUserData(firebaseUser);
-                    localStorage.setItem("userData", JSON.stringify(firebaseUser));
-                }
-            }
-        } catch(err) {
-            console.error('Failed to fetch initial user', err);
-            setError('Could not fetch user data.');
-        } finally {
-            if (loading) setLoading(false);
-        }
-    };
-    
-    loadInitialUser();
 
     return () => unsubscribe();
   }, [userId]);
@@ -245,3 +228,5 @@ export const useRoomSupporters = (roomId: string | null) => {
 
   return { supporters, loading, error };
 };
+
+    
