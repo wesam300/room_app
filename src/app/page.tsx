@@ -938,22 +938,30 @@ function ProfileScreen({
 function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean, onOpenChange: (open: boolean) => void, onCreateRoom: (name: string, description: string, image: string) => void }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const roomImages = [
-        "https://placehold.co/150x150/f44336/ffffff.png",
-        "https://placehold.co/150x150/e91e63/ffffff.png",
-        "https://placehold.co/150x150/9c27b0/ffffff.png",
-        "https://placehold.co/150x150/673ab7/ffffff.png",
-        "https://placehold.co/150x150/3f51b5/ffffff.png",
-        "https://placehold.co/150x150/2196f3/ffffff.png",
-    ];
-    const [selectedImage, setSelectedImage] = useState(roomImages[0]);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSubmit = () => {
-        if (name.trim() && description.trim() && selectedImage) {
-            onCreateRoom(name.trim(), description.trim(), selectedImage);
+        // NOTE: For now, we'll use a placeholder image.
+        // The actual image upload to a service like Firebase Storage is a next step.
+        const finalImage = 'https://placehold.co/150x150/673ab7/ffffff.png';
+        if (name.trim() && description.trim()) {
+            onCreateRoom(name.trim(), description.trim(), finalImage);
+            // Reset state
             setName('');
             setDescription('');
-            setSelectedImage(roomImages[0]);
+            setImagePreview(null);
             onOpenChange(false);
         }
     };
@@ -965,20 +973,24 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                     <DialogTitle className="text-right">إنشاء غرفة جديدة</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
-                    <div className="flex justify-center gap-2 flex-wrap">
-                        {roomImages.map(img => (
-                            <img
-                                key={img}
-                                src={img}
-                                alt="room image option"
-                                data-ai-hint="room image"
-                                className={cn(
-                                    "w-16 h-16 rounded-lg cursor-pointer border-2",
-                                    selectedImage === img ? "border-primary" : "border-transparent"
-                                )}
-                                onClick={() => setSelectedImage(img)}
-                            />
-                        ))}
+                    <div className="flex flex-col items-center gap-4">
+                        <Avatar className="w-24 h-24">
+                            <AvatarImage src={imagePreview ?? undefined} />
+                            <AvatarFallback>
+                                <Camera className="w-8 h-8" />
+                            </AvatarFallback>
+                        </Avatar>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            تغيير الصورة
+                        </Button>
+                         <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية مؤقتًا.</p>
                     </div>
                     <Input 
                         placeholder="اسم الغرفة" 
