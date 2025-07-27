@@ -138,9 +138,12 @@ export const userServices = {
   async updateUserBalance(userId: string, amount: number): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
-       const userSnap = await getDoc(userRef);
+      const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-        throw new Error("User not found");
+        // If user doesn't exist, do nothing to prevent errors.
+        // The admin might be trying to update a user that hasn't been fully created.
+        console.warn(`Attempted to update balance for non-existent user: ${userId}`);
+        return;
       }
       await updateDoc(userRef, {
         balance: increment(amount),
