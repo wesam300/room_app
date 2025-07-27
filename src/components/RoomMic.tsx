@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Mic, XCircle, Lock, Unlock, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { MicSlotData } from '@/lib/firebaseServices';
+import type { MicSlotData, RoomData } from '@/lib/firebaseServices';
 
 interface UserProfile {
     name: string;
@@ -22,6 +22,7 @@ interface RoomMicProps {
     index: number;
     isOwner: boolean;
     currentUser: UserProfile;
+    room: RoomData;
     onAscend: (index: number) => void;
     onDescend: (index: number) => void;
     onToggleLock: (index: number) => void;
@@ -34,6 +35,7 @@ export default function RoomMic({
     index,
     isOwner,
     currentUser,
+    room,
     onAscend,
     onDescend,
     onToggleLock,
@@ -180,5 +182,3 @@ export default function RoomMic({
         </Popover>
     )
 }
-
-    

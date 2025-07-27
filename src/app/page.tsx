@@ -469,7 +469,8 @@ function RoomScreen({
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
                         {(room.micSlots || []).map((slot, index) => (
                             <RoomMic 
-                                key={index} 
+                                key={index}
+                                room={room}
                                 slot={{...slot, isMuted: slot.isMuted || room.isRoomMuted}} 
                                 index={index}
                                 isOwner={isOwner}
@@ -1600,5 +1601,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
-    
