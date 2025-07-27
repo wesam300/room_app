@@ -214,20 +214,34 @@ export const roomServices = {
 
   async joinRoom(roomId: string, user: UserProfile): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-    await updateDoc(roomRef, {
-        attendees: arrayUnion(user),
-        userCount: increment(1),
-        updatedAt: serverTimestamp(),
-    });
+    const roomSnap = await getDoc(roomRef);
+    if(roomSnap.exists()){
+      const roomData = roomSnap.data() as RoomData;
+      const isAlreadyInRoom = roomData.attendees.some(attendee => attendee.userId === user.userId);
+      if(!isAlreadyInRoom) {
+        await updateDoc(roomRef, {
+            attendees: arrayUnion(user),
+            userCount: increment(1),
+            updatedAt: serverTimestamp(),
+        });
+      }
+    }
   },
 
   async leaveRoom(roomId: string, user: UserProfile): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-    await updateDoc(roomRef, {
-        attendees: arrayRemove(user),
-        userCount: increment(-1),
-        updatedAt: serverTimestamp(),
-    });
+    const roomSnap = await getDoc(roomRef);
+    if(roomSnap.exists()){
+       const roomData = roomSnap.data() as RoomData;
+       const isAlreadyInRoom = roomData.attendees.some(attendee => attendee.userId === user.userId);
+       if(isAlreadyInRoom) {
+         await updateDoc(roomRef, {
+             attendees: arrayRemove(user),
+             userCount: increment(-1),
+             updatedAt: serverTimestamp(),
+         });
+       }
+    }
   },
 
   async loadRooms(): Promise<RoomData[]> {
@@ -240,7 +254,7 @@ export const roomServices = {
   onRoomsChange(callback: (rooms: RoomData[], error?: Error) => void) {
     try {
       const roomsRef = collection(db, COLLECTIONS.ROOMS);
-      const q = query(roomsRef, orderBy('createdAt', 'desc'));
+      const q = query(roomsRef, orderBy('userCount', 'desc'));
       return onSnapshot(q, (querySnapshot) => {
         const rooms = querySnapshot.docs.map(doc => doc.data() as RoomData);
         callback(rooms);
