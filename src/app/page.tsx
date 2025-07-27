@@ -318,14 +318,16 @@ function RoomScreen({
         }
     
         try {
-            // Deduct balance from the sender and update silver balance
+            // Deduct balance from the sender
             onUserDataUpdate((currentData) => ({
                 ...currentData,
                 balance: currentData.balance - totalCost,
-                silverBalance: currentData.silverBalance + (totalCost * 0.20),
             }));
+
+            // Add silver balance to the recipient
+            await userServices.updateUserSilverBalance(recipient.userId, totalCost * 0.20);
     
-            // Update room supporter data
+            // Update room supporter data for the sender
             await supporterServices.updateRoomSupporter({
                 roomId: room.id,
                 userId: user.profile.userId,
@@ -339,11 +341,10 @@ function RoomScreen({
         } catch (error) {
             console.error("Error sending gift:", error);
             toast({ variant: "destructive", title: "فشل إرسال الهدية", description: "حدث خطأ ما. يرجى المحاولة مرة أخرى."});
-            // Revert balance if something failed
+            // Revert sender's balance if something failed
             onUserDataUpdate((currentData) => ({
                 ...currentData,
                 balance: currentData.balance + totalCost,
-                silverBalance: currentData.silverBalance - (totalCost * 0.20),
             }));
         }
     };

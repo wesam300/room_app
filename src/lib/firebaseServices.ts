@@ -151,6 +151,24 @@ export const userServices = {
     }
   },
 
+  async updateUserSilverBalance(userId: string, amount: number): Promise<void> {
+    try {
+      const userRef = doc(db, COLLECTIONS.USERS, userId);
+      await updateDoc(userRef, {
+        silverBalance: increment(amount),
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+       if ((error as any).code === 'not-found') {
+         // If the user doesn't exist, we can't add silver balance. This might happen in rare cases.
+         console.warn(`User ${userId} not found for silver balance update. Ignoring.`);
+         return;
+       }
+      console.error('Error updating user silver balance in Firestore:', error);
+      throw error;
+    }
+  },
+
   async setUserBanStatus(userId: string, isBanned: boolean): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
