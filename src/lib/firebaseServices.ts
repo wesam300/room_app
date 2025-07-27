@@ -173,10 +173,21 @@ const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map((_, i) => ({
 export const roomServices = {
   async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees'>): Promise<void> {
     try {
-      const roomRef = doc(collection(db, COLLECTIONS.ROOMS));
+      let newRoomId: string;
+      let roomRef;
+      let roomExists = true;
+
+      // Generate a unique 6-digit ID
+      do {
+        newRoomId = String(Math.floor(100000 + Math.random() * 900000));
+        roomRef = doc(db, COLLECTIONS.ROOMS, newRoomId);
+        const docSnap = await getDoc(roomRef);
+        roomExists = docSnap.exists();
+      } while (roomExists);
+      
       const newRoom: Omit<RoomData, 'createdAt' | 'updatedAt'> = {
           ...roomData,
-          id: roomRef.id,
+          id: newRoomId,
           userCount: 0,
           micSlots: INITIAL_MIC_SLOTS,
           isRoomMuted: false,
