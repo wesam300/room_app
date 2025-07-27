@@ -226,7 +226,7 @@ function RoomScreen({
 
      const handleCopyId = () => {
         navigator.clipboard.writeText(room.id);
-        toast({ title: "تم نسخ ID الغرفة" });
+        toast({ title: "تم نسخ ID الغرفة", duration: 2000 });
     };
 
     const handleUpdateRoomData = async (updates: Partial<RoomData>) => {
@@ -234,13 +234,13 @@ function RoomScreen({
             await roomServices.updateRoomData(room.id, updates);
         } catch (error) {
             console.error("Error updating room data:", error);
-            toast({ variant: "destructive", title: "خطأ", description: "لم يتم تحديث الغرفة. حاول مرة أخرى."});
+            toast({ variant: "destructive", title: "خطأ", description: "لم يتم تحديث الغرفة. حاول مرة أخرى.", duration: 2000});
         }
     };
 
     const handleAscend = (index: number) => {
         if ((room.micSlots || []).some(slot => slot.user?.userId === user.profile.userId)) {
-            toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر." });
+            toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر.", duration: 2000 });
             return;
         }
 
@@ -248,11 +248,11 @@ function RoomScreen({
         const targetSlot = newSlots[index];
 
         if (targetSlot.user) {
-            toast({ variant: "destructive", description: "هذا المايك مشغول." });
+            toast({ variant: "destructive", description: "هذا المايك مشغول.", duration: 2000 });
             return;
         }
         if (targetSlot.isLocked) {
-            toast({ variant: "destructive", description: "هذا المايك مقفل." });
+            toast({ variant: "destructive", description: "هذا المايك مقفل.", duration: 2000 });
             return;
         }
 
@@ -313,7 +313,7 @@ function RoomScreen({
         const totalCost = gift.price * quantity;
     
         if (user.balance < totalCost) {
-            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
+            toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.`, duration: 2000 });
             return;
         }
     
@@ -335,12 +335,12 @@ function RoomScreen({
                 totalGiftValue: totalCost,
             });
     
-            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
+            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.`, duration: 2000 });
             setIsGiftSheetOpen(false);
     
         } catch (error) {
             console.error("Error sending gift:", error);
-            toast({ variant: "destructive", title: "فشل إرسال الهدية", description: "حدث خطأ ما. يرجى المحاولة مرة أخرى."});
+            toast({ variant: "destructive", title: "فشل إرسال الهدية", description: "حدث خطأ ما. يرجى المحاولة مرة أخرى.", duration: 2000});
             // Revert sender's balance if something failed
             onUserDataUpdate((currentData) => ({
                 ...currentData,
@@ -598,7 +598,7 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
     const handleSave = () => {
         const updatedUser = { name, image: image || user.image };
         onUserUpdate(updatedUser);
-        toast({ title: "تم تحديث الملف الشخصي!" });
+        toast({ title: "تم تحديث الملف الشخصي!", duration: 2000 });
         setIsOpen(false);
     };
 
@@ -733,11 +733,11 @@ function SilverScreen({
 
     const handleConvert = () => {
         if (silverBalance <= 0) {
-            toast({ variant: "destructive", title: "ليس لديك فضة", description: "رصيد الفضة لديك هو صفر."});
+            toast({ variant: "destructive", title: "ليس لديك فضة", description: "رصيد الفضة لديك هو صفر.", duration: 2000});
             return;
         }
         onConvert();
-        toast({ title: "تم الاستبدال بنجاح!", description: `تم تحويل ${silverBalance.toLocaleString()} فضة إلى كوينز.` });
+        toast({ title: "تم الاستبدال بنجاح!", description: `تم تحويل ${silverBalance.toLocaleString()} فضة إلى كوينز.`, duration: 2000 });
     };
 
     return (
@@ -783,69 +783,69 @@ function AdminPanel() {
     const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
         const numAmount = parseInt(amount, 10);
         if (!targetUserId.trim() || isNaN(numAmount) || numAmount <= 0) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم ومبلغ صحيحين." });
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم ومبلغ صحيحين.", duration: 2000 });
             return;
         }
 
         try {
             const amountToUpdate = operation === 'add' ? numAmount : -numAmount;
             await userServices.updateUserBalance(targetUserId, amountToUpdate);
-            toast({ title: "تم تحديث الرصيد بنجاح!", description: `تم ${operation === 'add' ? 'إضافة' : 'خصم'} ${numAmount} إلى/من المستخدم ${targetUserId}.`});
+            toast({ title: "تم تحديث الرصيد بنجاح!", description: `تم ${operation === 'add' ? 'إضافة' : 'خصم'} ${numAmount} إلى/من المستخدم ${targetUserId}.`, duration: 2000});
             setTargetUserId("");
             setAmount("");
         } catch (error) {
             console.error("Admin operation failed:", error);
-            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على المستخدم أو حدث خطأ آخر." });
+            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على المستخدم أو حدث خطأ آخر.", duration: 2000 });
         }
     };
 
     const handleCheckBalance = async () => {
         if (!targetUserId.trim()) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم." });
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم.", duration: 2000 });
             return;
         }
         try {
             const user = await userServices.getUser(targetUserId.trim());
             if (user) {
                 setCheckedUserBalance(user.balance);
-                toast({ title: "تم العثور على المستخدم", description: `رصيد المستخدم ${targetUserId} هو ${user.balance.toLocaleString()}` });
+                toast({ title: "تم العثور على المستخدم", description: `رصيد المستخدم ${targetUserId} هو ${user.balance.toLocaleString()}`, duration: 2000 });
             } else {
                 setCheckedUserBalance(null);
-                toast({ variant: "destructive", title: "لم يتم العثور على المستخدم", description: `لا يوجد مستخدم بالمعرف ${targetUserId}` });
+                toast({ variant: "destructive", title: "لم يتم العثور على المستخدم", description: `لا يوجد مستخدم بالمعرف ${targetUserId}`, duration: 2000 });
             }
         } catch (error) {
             console.error("Admin check balance failed:", error);
             setCheckedUserBalance(null);
-            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء البحث عن المستخدم." });
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء البحث عن المستخدم.", duration: 2000 });
         }
     };
     
     const handleSetBanStatus = async (isBanned: boolean) => {
         if (!targetUserId.trim()) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم." });
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم.", duration: 2000 });
             return;
         }
         try {
             await userServices.setUserBanStatus(targetUserId.trim(), isBanned);
-            toast({ title: "تم تحديث حالة المستخدم", description: `تم ${isBanned ? 'حظر' : 'رفع الحظر عن'} المستخدم ${targetUserId}.` });
+            toast({ title: "تم تحديث حالة المستخدم", description: `تم ${isBanned ? 'حظر' : 'رفع الحظر عن'} المستخدم ${targetUserId}.`, duration: 2000 });
         } catch (error) {
             console.error("Admin set ban status failed:", error);
-            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث حالة المستخدم." });
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث حالة المستخدم.", duration: 2000 });
         }
     };
 
     const handleBanRoom = async () => {
         if (!targetRoomId.trim()) {
-            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف غرفة صحيح." });
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف غرفة صحيح.", duration: 2000 });
             return;
         }
         try {
             await roomServices.deleteRoom(targetRoomId.trim());
-            toast({ title: "تم حذف الغرفة بنجاح!", description: `تم حذف الغرفة بالمعرف ${targetRoomId}.`});
+            toast({ title: "تم حذف الغرفة بنجاح!", description: `تم حذف الغرفة بالمعرف ${targetRoomId}.`, duration: 2000});
             setTargetRoomId("");
         } catch (error) {
             console.error("Admin ban room failed:", error);
-            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على الغرفة أو حدث خطأ آخر." });
+            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على الغرفة أو حدث خطأ آخر.", duration: 2000 });
         }
     };
 
@@ -927,7 +927,7 @@ function ProfileScreen({
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.profile.userId);
-        toast({ title: "تم نسخ ID المستخدم" });
+        toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
     };
 
     return (
@@ -1078,13 +1078,14 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (ro
         };
         try {
             await onCreateRoom(newRoomData);
-            toast({ title: "تم إنشاء الغرفة بنجاح!" });
+            toast({ title: "تم إنشاء الغرفة بنجاح!", duration: 2000 });
         } catch (error) {
             console.error('Error creating room in RoomsListScreen:', error);
             toast({ 
                 variant: "destructive",
                 title: "خطأ في إنشاء الغرفة", 
-                description: "يرجى المحاولة مرة أخرى."
+                description: "يرجى المحاولة مرة أخرى.",
+                duration: 2000
             });
         }
     };
@@ -1150,12 +1151,14 @@ function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaim
             toast({
                 title: "🎉 مبروك! 🎉",
                 description: `لقد استلمت ${formatNumber(DAILY_REWARD_AMOUNT)} كوينز!`,
+                duration: 2000
             });
         } else {
             toast({
                 variant: "destructive",
                 title: "لا يمكنك الاستلام الآن",
                 description: "لقد استلمت جائزتك اليومية بالفعل.",
+                duration: 2000
             });
         }
     };
@@ -1207,7 +1210,7 @@ function MainApp({
                     // Room might have been deleted
                     setView('roomsList');
                     setCurrentRoom(null);
-                    toast({ variant: "destructive", title: "تم حذف الغرفة", description: "تم حذف الغرفة من قبل المشرف."})
+                    toast({ variant: "destructive", title: "تم حذف الغرفة", description: "تم حذف الغرفة من قبل المشرف.", duration: 2000})
                 }
             });
             return () => unsubscribe();
@@ -1259,11 +1262,11 @@ function MainApp({
                 setView('inRoom');
             } else {
                  console.error("Failed to fetch fresh room data for room:", room.id);
-                 toast({ variant: "destructive", title: "خطأ", description: "لم يتم العثور على الغرفة."});
+                 toast({ variant: "destructive", title: "خطأ", description: "لم يتم العثور على الغرفة.", duration: 2000});
             }
         } catch (error) {
             console.error("Error joining room:", error);
-            toast({ variant: "destructive", title: "خطأ", description: "فشل الانضمام للغرفة."});
+            toast({ variant: "destructive", title: "خطأ", description: "فشل الانضمام للغرفة.", duration: 2000});
         } finally {
             setIsJoiningRoom(false);
         }
@@ -1317,7 +1320,8 @@ function MainApp({
             toast({
                 variant: "destructive",
                 title: "Error creating room",
-                description: "Please try again later."
+                description: "Please try again later.",
+                duration: 2000,
             })
         }
     }
@@ -1435,6 +1439,7 @@ export default function HomePage() {
           variant: "destructive",
           title: "بيانات غير مكتملة",
           description: "يرجى إدخال الاسم.",
+          duration: 2000
       });
       return;
     }
@@ -1467,6 +1472,7 @@ export default function HomePage() {
       toast({
           title: "تم حفظ الملف الشخصي",
           description: "مرحبًا بك في التطبيق!",
+          duration: 2000
       });
       
     } catch (error) {
@@ -1475,6 +1481,7 @@ export default function HomePage() {
           variant: "destructive",
           title: "خطأ في إنشاء الملف الشخصي",
           description: "فشل الاتصال بالخادم. يرجى المحاولة مرة أخرى.",
+          duration: 2000
       });
     }
   };
@@ -1485,13 +1492,13 @@ export default function HomePage() {
       setUserId(null); 
       setUserData(null);
       setNameInput("");
-      toast({ title: "تم تسجيل الخروج" });
+      toast({ title: "تم تسجيل الخروج", duration: 2000 });
     } catch (error) {
       console.error('Error during logout:', error);
       setUserId(null);
       setUserData(null);
       setNameInput("");
-      toast({ title: "تم تسجيل الخروج" });
+      toast({ title: "تم تسجيل الخروج", duration: 2000 });
     }
   }
 

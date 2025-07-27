@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Mic, MicOff, XCircle, Lock, Unlock, Copy } from "lucide-react";
+import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { MicSlotData, RoomData } from '@/lib/firebaseServices';
@@ -74,7 +74,7 @@ export default function RoomMic({
 
     const handleCopyUserId = (id: string) => {
         navigator.clipboard.writeText(id);
-        toast({ title: "تم نسخ ID المستخدم" });
+        toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
     };
 
     const handleInteraction = (action: () => void) => {
@@ -116,7 +116,10 @@ export default function RoomMic({
                            <Copy className="w-3 h-3" />
                        </button>
                    </div>
-                   <Button onClick={() => handleInteraction(() => onOpenGiftDialog(slot.user!))}>إرسال هدية</Button>
+                   <Button onClick={() => handleInteraction(() => onOpenGiftDialog(slot.user!))}>
+                        <Gift className="w-4 h-4 ml-2" />
+                        إرسال هدية
+                   </Button>
                    {isOwner && (
                        <div className="grid grid-cols-2 gap-2 w-full mt-2">
                            <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onAdminMute(index))}>
