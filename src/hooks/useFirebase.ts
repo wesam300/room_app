@@ -7,6 +7,28 @@ export const useUser = (userId: string | null) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const updateUserInFirebase = useCallback(async (dataToUpdate: Partial<UserData>) => {
+    if (!dataToUpdate?.profile?.userId) return;
+    try {
+      await userServices.saveUser(dataToUpdate);
+    } catch (err) {
+      console.error('Error updating user in Firebase:', err);
+      setError('Failed to update user data');
+      throw err; // Re-throw to be caught by the caller
+    }
+  }, []);
+
+  const updateLocalState = useCallback((data: UserData | Partial<UserData> | null) => {
+    if (data) {
+      const fullData = data as UserData;
+      setUserData(fullData);
+      localStorage.setItem("userData", JSON.stringify(fullData));
+      if (fullData.profile?.userId) {
+        updateUserInFirebase(fullData);
+      }
+    }
+  }, [updateUserInFirebase]);
+
   useEffect(() => {
     if (!userId) {
       setUserData(null);
@@ -16,35 +38,27 @@ export const useUser = (userId: string | null) => {
 
     setLoading(true);
     setError(null);
-    let unsubscribe: () => void = () => {};
 
     const loadUser = async () => {
       try {
-        const localData = localStorage.getItem("userData");
-        if (localData) {
-            const localUser = JSON.parse(localData);
-            if(localUser.profile.userId === userId) {
-                setUserData(localUser);
-                setLoading(false);
-            }
-        }
-
+        // Try to load from Firebase first
         const firebaseUser = await userServices.getUser(userId);
         if (firebaseUser) {
-            setUserData(firebaseUser);
-            localStorage.setItem("userData", JSON.stringify(firebaseUser));
-        }
-        
-        unsubscribe = userServices.onUserChange(userId, (user) => {
-            if (user) {
-                setUserData(user);
-                localStorage.setItem("userData", JSON.stringify(user));
+          setUserData(firebaseUser);
+          localStorage.setItem("userData", JSON.stringify(firebaseUser));
+        } else {
+          // Fallback to local storage if not found in Firebase (e.g., offline)
+          const localData = localStorage.getItem("userData");
+          if (localData) {
+            const localUser = JSON.parse(localData);
+            if (localUser.profile.userId === userId) {
+              setUserData(localUser);
             }
-        });
-
+          }
+        }
       } catch (err) {
         console.error('Error loading user:', err);
-        setError('Failed to load user data');
+        setError('Failed to load user data. Check connection.');
       } finally {
         setLoading(false);
       }
@@ -52,21 +66,18 @@ export const useUser = (userId: string | null) => {
 
     loadUser();
 
+    // Setup listener for real-time updates
+    const unsubscribe = userServices.onUserChange(userId, (user) => {
+      if (user) {
+        setUserData(user);
+        localStorage.setItem("userData", JSON.stringify(user));
+      }
+    });
+
     return () => unsubscribe();
   }, [userId]);
 
-  const updateUser = useCallback(async (dataToUpdate: UserData) => {
-    if (!dataToUpdate?.profile?.userId) return;
-    try {
-        await userServices.saveUser(dataToUpdate);
-    } catch (err) {
-        console.error('Error updating user:', err);
-        setError('Failed to update user data');
-    }
-  }, []);
-
-
-  return { userData, loading, error, updateUser };
+  return { userData, loading, error, setUserData: updateLocalState };
 };
 
 // Hook for rooms

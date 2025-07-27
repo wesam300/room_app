@@ -1151,7 +1151,7 @@ function MainApp({
     balance: number, 
     silverBalance: number,
     lastClaimTimestamp: number | null,
-    setUserData: (data: UserData) => void
+    setUserData: (data: Partial<UserData>) => void
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
@@ -1253,7 +1253,7 @@ function MainApp({
     }
     
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
-        setUserData({ ...userData, profile: { ...user, ...updatedProfile } });
+        setUserData({ profile: { ...user, ...updatedProfile } });
     };
 
     const handleUserUpdateAndReset = (updatedUser: Pick<UserProfile, 'name' | 'image'>) => {
@@ -1263,20 +1263,20 @@ function MainApp({
 
     const handleBalanceChange = (updater: ((prev: number) => number) | number) => {
         const newBalance = typeof updater === 'function' ? updater(balance) : updater;
-        setUserData({ ...userData, balance: newBalance });
+        setUserData({ balance: newBalance });
     };
 
     const handleSilverBalanceChange = (updater: ((prev: number) => number) | number) => {
         const newSilverBalance = typeof updater === 'function' ? updater(silverBalance) : updater;
-        setUserData({ ...userData, silverBalance: newSilverBalance });
+        setUserData({ silverBalance: newSilverBalance });
     };
 
     const handleConvertSilver = () => {
-        setUserData({ ...userData, balance: balance + silverBalance, silverBalance: 0 });
+        setUserData({ balance: balance + silverBalance, silverBalance: 0 });
     };
     
     const handleLastClaimTimestampChange = (timestamp: number | null) => {
-        setUserData({ ...userData, lastClaimTimestamp: timestamp });
+        setUserData({ lastClaimTimestamp: timestamp });
     };
 
     const handleClaimEventReward = () => {
@@ -1408,18 +1408,7 @@ export default function HomePage() {
     return null;
   });
 
-  const { userData, loading: userLoading, error: userError, updateUser } = useUser(userId);
-
-  const setUserData = (data: UserData | null) => {
-    if (data) {
-      localStorage.setItem("userData", JSON.stringify(data));
-      try {
-        updateUser(data);
-      } catch (error) {
-        console.error('Error updating user data:', error);
-      }
-    }
-  };
+  const { userData, loading, error, setUserData } = useUser(userId);
 
   const handleCreateProfile = async (name: string) => {
     if (!name.trim()) {
@@ -1449,9 +1438,13 @@ export default function HomePage() {
     };
 
     try {
+      // Save to Firebase first to ensure existence
+      await userServices.saveUser(newUserRecord);
+      
+      // Then update local state and storage
       localStorage.setItem("userData", JSON.stringify(newUserRecord));
-      await updateUser(newUserRecord);
       setUserId(newUserId);
+
       toast({
           title: "تم حفظ الملف الشخصي",
           description: "مرحبًا بك في التطبيق!",
@@ -1459,11 +1452,10 @@ export default function HomePage() {
       
     } catch (error) {
       console.error('Error creating profile:', error);
-      // Fallback to local-only if Firebase fails
-      setUserId(newUserId);
       toast({
-          title: "تم حفظ الملف الشخصي (وضع عدم الاتصال)",
-          description: "مرحبًا بك في التطبيق!",
+          variant: "destructive",
+          title: "خطأ في إنشاء الملف الشخصي",
+          description: "فشل الاتصال بالخادم. يرجى المحاولة مرة أخرى.",
       });
     }
   };
@@ -1482,12 +1474,20 @@ export default function HomePage() {
     }
   }
 
-  if (userLoading) {
+  const handleSetUserData = (data: Partial<UserData>) => {
+    if (userData) {
+      const updatedData = { ...userData, ...data };
+      setUserData(updatedData);
+    }
+  };
+
+
+  if (loading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
-            {userError && (
-                <p className="text-red-400 mt-2">تحذير: {userError}</p>
+            {error && (
+                <p className="text-red-400 mt-2">تحذير: {error}</p>
             )}
             <p className="text-gray-400 mt-4 text-sm">إذا استمر التحميل، جرب تحديث الصفحة</p>
         </div>
@@ -1537,7 +1537,7 @@ export default function HomePage() {
                     حفظ ومتابعة
                 </Button>
                 
-                {userError && (
+                {error && (
                     <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
                 )}
                 
@@ -1555,19 +1555,12 @@ export default function HomePage() {
     );
   }
 
-  const setUserDataWrapper = (updater: React.SetStateAction<UserData | null>) => {
-    const newData = typeof updater === 'function' && userData ? updater(userData) : (typeof updater !== 'function' ? updater : null);
-    if(newData) {
-      setUserData(newData);
-    }
-  }
-
   return <MainApp 
             user={userData.profile} 
             balance={userData.balance}
             silverBalance={userData.silverBalance}
             lastClaimTimestamp={userData.lastClaimTimestamp}
-            setUserData={setUserDataWrapper}
+            setUserData={handleSetUserData}
             onLogout={handleLogout}
         />;
 }
