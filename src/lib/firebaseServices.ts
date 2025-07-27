@@ -90,17 +90,18 @@ export const userServices = {
   async saveUser(userData: Omit<UserData, 'createdAt' | 'updatedAt' | 'profile'> & { profile: UserProfile }): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userData.profile.userId);
+      // Use setDoc with merge to create or update the user document.
+      // This ensures that new users are always created correctly.
+      await setDoc(userRef, {
+        ...userData,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      // Ensure createdAt is only set once
       const docSnap = await getDoc(userRef);
-      if (!docSnap.exists()) {
-        await setDoc(userRef, {
-          ...userData,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-      } else {
+      if (docSnap.exists() && !docSnap.data().createdAt) {
         await updateDoc(userRef, {
-          ...userData,
-          updatedAt: serverTimestamp()
+          createdAt: serverTimestamp(),
         });
       }
     } catch (error) {
@@ -390,5 +391,3 @@ export const supporterServices = {
     });
   }
 };
-
-    
