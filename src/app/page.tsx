@@ -360,7 +360,7 @@ function RoomScreen({
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
-             <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
@@ -382,10 +382,6 @@ function RoomScreen({
                 </AlertDialog>
             </div>
             <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={room.image} alt={room.name} />
-                <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
               <div className="text-right">
                 <p className="font-bold text-sm">{room.name}</p>
                 <div className="flex items-center justify-end gap-1.5">
@@ -395,6 +391,10 @@ function RoomScreen({
                   </button>
                 </div>
               </div>
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={room.image} alt={room.name} />
+                <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
             </div>
         </header>
       )
@@ -425,7 +425,7 @@ function RoomScreen({
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between px-4 mt-2">
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                            <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
                                 {room.userCount}
                             </div>
