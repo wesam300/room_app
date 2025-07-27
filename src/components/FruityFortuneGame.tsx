@@ -503,7 +503,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   const displayRoundId = (roundId % 1000) + 1;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans overflow-hidden" dir="rtl">
+    <div className="flex flex-col items-center justify-start h-full bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-2 sm:p-4 font-sans overflow-hidden" dir="rtl">
        <AnimatePresence>
        {winnerScreenInfo && (
           <motion.div
@@ -583,7 +583,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
         )}
       </AnimatePresence>
       <div className="w-full max-w-sm flex flex-col items-center">
-        <header className="w-full flex justify-between items-center mb-4 gap-2">
+        <header className="w-full flex justify-between items-center mb-2 gap-2">
             <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 text-center border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
                 <div className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</div>
                 <div className="text-lg font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</div>
@@ -597,7 +597,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
 
 
       <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30">
-        <div className="relative grid grid-cols-3 gap-3" ref={gridRef}>
+        <div className="relative grid grid-cols-3 gap-2 sm:gap-3" ref={gridRef}>
             <AnimatePresence>
               {highlightPosition && isSpinning && (
                 <motion.div
@@ -653,7 +653,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
         </div>
       </main>
 
-      <footer className="w-full max-w-sm mt-4 flex flex-col items-center">
+      <footer className="w-full max-w-sm mt-2 flex flex-col items-center">
         <div className="flex justify-center gap-1 mb-2 w-full">
           {BET_AMOUNTS.map((amount) => (
             <button 
@@ -671,7 +671,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
           ))}
         </div>
         
-        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-2">
+        <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
           <span className="text-sm font-bold text-yellow-300 ml-2">الجولات:</span>
           <div className="flex flex-1 justify-evenly items-center h-10">
             {history.length > 0 ? history.map((fruitKey, index) => (
@@ -695,3 +695,5 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     </div>
   );
 }
+
+    
