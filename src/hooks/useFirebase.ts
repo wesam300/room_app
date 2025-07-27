@@ -9,17 +9,18 @@ export const useUser = (userId: string | null) => {
   const [error, setError] = useState<string | null>(null);
 
   const updateUserData = useCallback(async (data: UserData | null) => {
-      setUserData(data);
-      if (data) {
-          localStorage.setItem("userData", JSON.stringify(data));
-          try {
-              await userServices.saveUser(data);
-          } catch (err) {
-              console.error('Error saving user data to Firebase:', err);
-              setError('Failed to sync user data with the server.');
-          }
-      } else {
+      if (!data?.profile?.userId) {
+          setUserData(null);
           localStorage.removeItem("userData");
+          return;
+      }
+      setUserData(data);
+      localStorage.setItem("userData", JSON.stringify(data));
+      try {
+          await userServices.saveUser(data);
+      } catch (err) {
+          console.error('Error saving user data to Firebase:', err);
+          setError('Failed to sync user data with the server.');
       }
   }, []);
 
@@ -38,6 +39,10 @@ export const useUser = (userId: string | null) => {
       if (user) {
         setUserData(user);
         localStorage.setItem("userData", JSON.stringify(user));
+      } else {
+        // If the user is deleted from the backend, remove local data.
+        setUserData(null);
+        localStorage.removeItem("userData");
       }
       if (loading) setLoading(false);
     });
@@ -47,7 +52,7 @@ export const useUser = (userId: string | null) => {
         try {
             const firebaseUser = await userServices.getUser(userId);
             if (firebaseUser) {
-                if (!userData) { // Only set if not already set by listener
+                 if (JSON.stringify(firebaseUser) !== JSON.stringify(userData)) {
                     setUserData(firebaseUser);
                     localStorage.setItem("userData", JSON.stringify(firebaseUser));
                 }
@@ -240,3 +245,5 @@ export const useRoomSupporters = (roomId: string | null) => {
 
   return { supporters, loading, error, updateSupporter };
 };
+
+    

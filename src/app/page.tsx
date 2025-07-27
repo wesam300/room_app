@@ -318,13 +318,13 @@ function RoomScreen({
 
             // Update local supporters state
             let newSupporters = [...roomSupporters];
-            const existingSupporterIndex = newSupporters.findIndex(s => s.user.userId === user.userId);
+            const existingSupporterIndex = newSupporters.findIndex(s => s.user?.userId === user.profile.userId);
             if (existingSupporterIndex !== -1) {
                 const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
                 updatedSupporter.totalGiftValue += totalCost;
                 newSupporters[existingSupporterIndex] = updatedSupporter;
             } else {
-                newSupporters.push({ user, totalGiftValue: totalCost });
+                newSupporters.push({ user: user.profile, totalGiftValue: totalCost });
             }
             setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
             
@@ -429,7 +429,7 @@ function RoomScreen({
                                return validAttendee ? (
                                  <Avatar key={validAttendee.userId} className="w-8 h-8 border-2 border-background">
                                    <AvatarImage src={validAttendee.image} />
-                                   <AvatarFallback>{validAttendee.name.charAt(0)}</AvatarFallback>
+                                   <AvatarFallback>{validAttendee.name ? validAttendee.name.charAt(0) : '?'}</AvatarFallback>
                                  </Avatar>
                                ) : null;
                              })}
@@ -452,13 +452,13 @@ function RoomScreen({
                                     {roomSupporters.length === 0 ? (
                                         <p className="text-sm text-center text-muted-foreground py-2">لا يوجد داعمين بعد</p>
                                     ) : (
-                                        roomSupporters.slice(0, 10).map((supporter, index) => (
+                                        roomSupporters.map((supporter, index) => supporter && supporter.user && (
                                             <div key={supporter.user.userId} className="flex items-center justify-between gap-3 p-1 rounded-md hover:bg-accent/50">
                                                 <div className="flex items-center gap-2">
                                                     <LeaderboardMedal rank={index + 1} />
                                                     <Avatar className="w-8 h-8">
                                                         <AvatarImage src={supporter.user.image} alt={supporter.user.name} />
-                                                        <AvatarFallback>{supporter.user.name.charAt(0)}</AvatarFallback>
+                                                        <AvatarFallback>{supporter.user.name ? supporter.user.name.charAt(0) : '?'}</AvatarFallback>
                                                     </Avatar>
                                                     <span className="text-sm font-semibold truncate">{supporter.user.name}</span>
                                                 </div>
@@ -1587,5 +1587,7 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
 
     
