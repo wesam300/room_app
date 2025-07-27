@@ -51,7 +51,6 @@ export interface RoomData {
   userCount: number;
   micSlots: MicSlotData[];
   isRoomMuted: boolean;
-  attendees: UserProfile[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -206,7 +205,7 @@ const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map(() => ({
 
 // Room Services
 export const roomServices = {
-  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees'>): Promise<void> {
+  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>): Promise<void> {
     try {
       let newRoomId: string;
       let roomRef;
@@ -225,7 +224,6 @@ export const roomServices = {
           userCount: 0,
           micSlots: INITIAL_MIC_SLOTS,
           isRoomMuted: false,
-          attendees: [],
       }
       await setDoc(roomRef, {
         ...newRoom,
@@ -267,31 +265,21 @@ export const roomServices = {
     });
   },
 
-  async joinRoom(roomId: string, user: UserProfile): Promise<void> {
+  async joinRoom(roomId: string, userId: string): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-    const roomSnap = await getDoc(roomRef);
-    if(roomSnap.exists()){
-      const roomData = roomSnap.data() as RoomData;
-      const isAlreadyInRoom = roomData.attendees.some(attendee => attendee.userId === user.userId);
-      if(!isAlreadyInRoom) {
-        await updateDoc(roomRef, {
-            attendees: arrayUnion(user),
-            userCount: increment(1),
-            updatedAt: serverTimestamp(),
-        });
-      }
-    }
+    await updateDoc(roomRef, {
+        userCount: increment(1),
+        updatedAt: serverTimestamp(),
+    });
   },
 
-  async leaveRoom(roomId: string, user: UserProfile): Promise<void> {
+  async leaveRoom(roomId: string, userId: string): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
     const roomSnap = await getDoc(roomRef);
     if(roomSnap.exists()){
-       const roomData = roomSnap.data() as RoomData;
-       const isAlreadyInRoom = roomData.attendees.some(attendee => attendee.userId === user.userId);
-       if(isAlreadyInRoom) {
+       const currentCount = roomSnap.data().userCount || 0;
+       if (currentCount > 0) {
          await updateDoc(roomRef, {
-             attendees: arrayRemove(user),
              userCount: increment(-1),
              updatedAt: serverTimestamp(),
          });

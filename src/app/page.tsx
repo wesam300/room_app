@@ -205,8 +205,8 @@ function RoomScreen({
     const { toast } = useToast();
     const [isGameVisible, setIsGameVisible] = useState(false);
      
-    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
-    const isOwner = user.userId === room.ownerId;
+    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
+    const isOwner = user.profile.userId === room.ownerId;
      
     const { messages: chatMessages, sendMessage: sendChatMessage } = useChatMessages(room.id);
     const [chatInput, setChatInput] = useState("");
@@ -239,7 +239,7 @@ function RoomScreen({
     };
 
     const handleAscend = (index: number) => {
-        if (myMicIndex !== -1) {
+        if ((room.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId) !== -1) {
             toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر." });
             return;
         }
@@ -318,7 +318,7 @@ function RoomScreen({
         }
     
         try {
-            // Deduct balance from the sender
+            // Deduct balance from the sender and update silver balance
             onUserDataUpdate((currentData) => ({
                 ...currentData,
                 balance: currentData.balance - totalCost,
@@ -426,17 +426,6 @@ function RoomScreen({
 
                     <div className="flex items-center justify-between px-4 mt-2">
                         <div className="flex items-center gap-2">
-                           <div className="flex -space-x-4 rtl:space-x-reverse">
-                             {(room.attendees || []).filter(Boolean).slice(0, 3).map(attendee => {
-                               const validAttendee = attendee as UserProfile;
-                               return validAttendee && validAttendee.name ? (
-                                 <Avatar key={validAttendee.userId} className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src={validAttendee.image} />
-                                   <AvatarFallback>{validAttendee.name.charAt(0)}</AvatarFallback>
-                                 </Avatar>
-                               ) : null;
-                             })}
-                           </div>
                            <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
                                 {room.userCount}
                             </div>
@@ -1074,7 +1063,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => void, user: UserProfile }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'createdAt' | 'updatedAt'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
     const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
@@ -1262,7 +1251,7 @@ function MainApp({
     const handleEnterRoom = async (room: Room) => {
         setIsJoiningRoom(true);
         try {
-            await roomServices.joinRoom(room.id, user.profile);
+            await roomServices.joinRoom(room.id, user.profile.userId);
             const freshRoomData = await roomServices.getRoom(room.id); 
             if (freshRoomData) {
                 setCurrentRoom(freshRoomData);
@@ -1289,7 +1278,7 @@ function MainApp({
                     newSlots[myCurrentMicIndex] = { ...newSlots[myCurrentMicIndex], user: null, isMuted: false };
                     await roomServices.updateRoomData(currentRoom.id, { micSlots: newSlots });
                 }
-                await roomServices.leaveRoom(currentRoom.id, user.profile);
+                await roomServices.leaveRoom(currentRoom.id, user.profile.userId);
             } catch (error) {
                 console.error("Error leaving room:", error);
             }
@@ -1320,7 +1309,7 @@ function MainApp({
         }
     };
     
-    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'userCount'| 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => {
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'userCount'| 'micSlots' | 'isRoomMuted' | 'createdAt' | 'updatedAt'>) => {
         try {
             await createRoom(roomData);
         } catch(e) {
