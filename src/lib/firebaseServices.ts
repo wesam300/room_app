@@ -87,7 +87,7 @@ export interface RoomSupporterData {
 
 // User Services
 export const userServices = {
-  async saveUser(userData: Omit<UserData, 'createdAt' | 'updatedAt' | 'profile'> & { profile: UserProfile }): Promise<void> {
+  async saveUser(userData: UserData): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userData.profile.userId);
       // Use setDoc with merge to create or update the user document.
@@ -157,12 +157,26 @@ export const userServices = {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-          throw new Error("User not found");
-      }
-      await updateDoc(userRef, {
+        // If user doesn't exist, create a shell user and ban them.
+        await setDoc(userRef, {
+          profile: {
+            userId: userId,
+            name: `Banned User ${userId}`,
+            image: "https://placehold.co/128x128.png",
+          },
+          balance: 0,
+          silverBalance: 0,
+          lastClaimTimestamp: null,
+          isBanned: isBanned,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+         await updateDoc(userRef, {
           isBanned: isBanned,
           updatedAt: serverTimestamp()
-      });
+        });
+      }
     } catch (error) {
         console.error('Error updating user ban status in Firestore:', error);
         throw error;
