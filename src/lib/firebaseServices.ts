@@ -85,6 +85,8 @@ export interface RoomSupporterData {
   updatedAt: Timestamp;
 }
 
+const BOT_USER_ID = "bot-rocky-001";
+
 // User Services
 export const userServices = {
   async saveUser(userData: UserData): Promise<void> {
@@ -199,7 +201,7 @@ export const userServices = {
 };
 
 const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map((_, i) => ({
-    user: i === 0 ? { name: "روكي", image: "https://placehold.co/100x100/A755F7/FFFFFF.png", userId: "bot-001" } : null,
+    user: i === 0 ? { name: "روكي", image: "https://placehold.co/100x100/A755F7/FFFFFF.png", userId: BOT_USER_ID } : null,
     isMuted: false,
     isLocked: false
 }));

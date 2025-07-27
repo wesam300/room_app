@@ -52,10 +52,11 @@ interface Supporter {
 
 
 // --- Constants ---
+const BOT_USER_ID = "bot-rocky-001";
 const BOT_USER: UserProfile = {
     name: "روكي",
     image: "https://placehold.co/100x100/A755F7/FFFFFF.png", // A distinct color for the bot
-    userId: "bot-001"
+    userId: BOT_USER_ID
 };
 
 const ADMIN_USER_ID = '368473';
@@ -211,7 +212,7 @@ function RoomScreen({
     const { toast } = useToast();
     const [isGameVisible, setIsGameVisible] = useState(false);
      
-    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
+    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId && slot.user?.userId !== BOT_USER_ID);
     const isOwner = user.userId === room.ownerId;
      
     const { messages: chatMessages, sendMessage: sendChatMessage } = useChatMessages(room.id);
@@ -245,19 +246,22 @@ function RoomScreen({
     };
 
     const handleAscend = (index: number) => {
-        if (myMicIndex !== -1) {
-            toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر."});
-            return;
-        }
         const newSlots = [...(room.micSlots || [])];
-        if (newSlots[index].user) {
-            toast({ variant: "destructive", description: "هذا المايك مشغول."});
+        const targetSlot = newSlots[index];
+
+        if (myMicIndex !== -1) {
+            toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر." });
             return;
         }
-        if (newSlots[index].isLocked) {
-            toast({ variant: "destructive", description: "هذا المايك مقفل."});
+        if (targetSlot.user && targetSlot.user.userId !== BOT_USER_ID) {
+            toast({ variant: "destructive", description: "هذا المايك مشغول." });
             return;
         }
+        if (targetSlot.isLocked) {
+            toast({ variant: "destructive", description: "هذا المايك مقفل." });
+            return;
+        }
+
         newSlots[index] = { ...newSlots[index], user: user.profile, isMuted: false };
         handleUpdateRoomData({ micSlots: newSlots });
     }
@@ -1599,5 +1603,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
-    
