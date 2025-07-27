@@ -932,24 +932,24 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                     <Avatar className="w-14 h-14">
+                        <AvatarImage src={user.profile.image} alt={user.profile.name} />
+                        <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left">
+                        <h2 className="text-lg font-bold">{user.profile.name}</h2>
+                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-start">
+                            <Copy className="w-3 h-3" />
+                            <span>ID: {user.profile.userId}</span>
+                        </button>
+                    </div>
+                </div>
                 <EditProfileDialog user={user.profile} onUserUpdate={onUserUpdate}>
                     <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5" />
                     </Button>
                 </EditProfileDialog>
-                <div className="flex items-center gap-3">
-                    <div className="text-right">
-                        <h2 className="text-lg font-bold">{user.profile.name}</h2>
-                        <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-end">
-                            <Copy className="w-3 h-3" />
-                            <span>ID: {user.profile.userId}</span>
-                        </button>
-                    </div>
-                     <Avatar className="w-14 h-14">
-                        <AvatarImage src={user.profile.image} alt={user.profile.name} />
-                        <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                </div>
              </div>
 
              <div className="mt-8 flex justify-around items-center">
