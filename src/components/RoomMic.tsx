@@ -92,15 +92,14 @@ export default function RoomMic({
                     <Button variant="destructive" onClick={() => handleInteraction(() => onDescend(index))}>النزول من المايك</Button>
                 </>
             ) : !slot.user ? (
-                isOwner ? (
-                    slot.isLocked ? (
-                        <Button onClick={() => handleInteraction(() => onToggleLock(index))}>فتح المايك <Unlock className="mr-2"/></Button>
-                    ) : (
-                        <>
-                            <Button onClick={() => handleInteraction(() => onAscend(index))}>الصعود على المايك</Button>
-                            <Button variant="secondary" onClick={() => handleInteraction(() => onToggleLock(index))}>قفل المايك <Lock className="mr-2"/></Button>
-                        </>
-                    )
+                 isOwner ? (
+                    <div className="flex flex-col gap-2">
+                         <Button onClick={() => handleInteraction(() => onAscend(index))}>الصعود على المايك</Button>
+                         <Button variant="secondary" onClick={() => handleInteraction(() => onToggleLock(index))}>
+                             {slot.isLocked ? <Unlock className="ml-2"/> : <Lock className="ml-2"/>}
+                             {slot.isLocked ? "فتح المايك" : "قفل المايك"}
+                         </Button>
+                    </div>
                 ) : (
                      <Button onClick={() => handleInteraction(() => onAscend(index))} disabled={slot.isLocked}>الصعود على المايك</Button>
                 )
