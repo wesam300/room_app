@@ -935,15 +935,25 @@ function ProfileScreen({
     );
 }
 
-function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean, onOpenChange: (open: boolean) => void, onCreateRoom: (name: string, description: string) => void }) {
+function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean, onOpenChange: (open: boolean) => void, onCreateRoom: (name: string, description: string, image: string) => void }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const roomImages = [
+        "https://placehold.co/150x150/f44336/ffffff.png",
+        "https://placehold.co/150x150/e91e63/ffffff.png",
+        "https://placehold.co/150x150/9c27b0/ffffff.png",
+        "https://placehold.co/150x150/673ab7/ffffff.png",
+        "https://placehold.co/150x150/3f51b5/ffffff.png",
+        "https://placehold.co/150x150/2196f3/ffffff.png",
+    ];
+    const [selectedImage, setSelectedImage] = useState(roomImages[0]);
 
     const handleSubmit = () => {
-        if (name.trim() && description.trim()) {
-            onCreateRoom(name.trim(), description.trim());
+        if (name.trim() && description.trim() && selectedImage) {
+            onCreateRoom(name.trim(), description.trim(), selectedImage);
             setName('');
             setDescription('');
+            setSelectedImage(roomImages[0]);
             onOpenChange(false);
         }
     };
@@ -955,6 +965,21 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                     <DialogTitle className="text-right">إنشاء غرفة جديدة</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
+                    <div className="flex justify-center gap-2 flex-wrap">
+                        {roomImages.map(img => (
+                            <img
+                                key={img}
+                                src={img}
+                                alt="room image option"
+                                data-ai-hint="room image"
+                                className={cn(
+                                    "w-16 h-16 rounded-lg cursor-pointer border-2",
+                                    selectedImage === img ? "border-primary" : "border-transparent"
+                                )}
+                                onClick={() => setSelectedImage(img)}
+                            />
+                        ))}
+                    </div>
                     <Input 
                         placeholder="اسم الغرفة" 
                         value={name} 
@@ -980,12 +1005,12 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (ro
     const { toast } = useToast();
     const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
 
-    const handleCreateRoom = async (name: string, description: string) => {
+    const handleCreateRoom = async (name: string, description: string, image: string) => {
         const newRoomData = {
             name,
             description,
             ownerId: user.userId,
-            image: `https://placehold.co/150x150.png`,
+            image,
         };
         try {
             await onCreateRoom(newRoomData);
