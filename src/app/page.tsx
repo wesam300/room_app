@@ -1288,10 +1288,11 @@ function MainApp({
     const handleExitRoom = async () => {
         if (currentRoom) {
             try {
+                // Check if the current user is on a mic and clear the slot before leaving
                 const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
                 if(myCurrentMicIndex !== -1) {
                     const newSlots = [...(currentRoom.micSlots || [])];
-                    newSlots[myCurrentMicIndex] = { user: null, isMuted: false, isLocked: newSlots[myCurrentMicIndex].isLocked };
+                    newSlots[myCurrentMicIndex] = { ...newSlots[myCurrentMicIndex], user: null, isMuted: false };
                     await roomServices.updateRoomData(currentRoom.id, { micSlots: newSlots });
                 }
                 await roomServices.leaveRoom(currentRoom.id, user.profile);
