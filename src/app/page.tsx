@@ -177,6 +177,10 @@ function GiftSheet({
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto max-h-[70vh] flex flex-col p-0">
+                 <SheetHeader className="p-4 text-right">
+                    <SheetTitle>إرسال هدية</SheetTitle>
+                    <SheetDescription>اختر مستلمًا وهدية لإرسالها.</SheetDescription>
+                </SheetHeader>
                 <div className="px-4 py-2 shrink-0">
                     <h3 className="text-sm font-semibold mb-2 text-right">إرسال إلى:</h3>
                     {usersOnMics.length > 0 ? (
@@ -1101,6 +1105,7 @@ function MainApp({
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
     const { rooms } = useRooms();
+    const { toast } = useToast();
 
     useEffect(() => {
         if (currentRoom) {
@@ -1108,7 +1113,6 @@ function MainApp({
             if (updatedRoom) {
                 setCurrentRoom(updatedRoom);
             } else {
-                // This can happen if the user is in a room that gets deleted.
                 setView('roomsList');
                 setCurrentRoom(null);
             }
@@ -1173,6 +1177,12 @@ function MainApp({
     const handleExitRoom = async () => {
         if (currentRoom) {
             try {
+                const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
+                if(myCurrentMicIndex !== -1) {
+                    const newSlots = [...(currentRoom.micSlots || [])];
+                    newSlots[myCurrentMicIndex] = { user: null, isMuted: false, isLocked: newSlots[myCurrentMicIndex].isLocked };
+                    await roomServices.updateRoomData(currentRoom.id, { micSlots: newSlots });
+                }
                 await roomServices.leaveRoom(currentRoom.id, user);
             } catch (error) {
                 console.error("Error leaving room:", error);
