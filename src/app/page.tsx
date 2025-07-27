@@ -250,18 +250,11 @@ function RoomScreen({
     setBalance,
     setSilverBalance,
 }) {
-    if (!room || !room.micSlots) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-background text-white">
-                <p>...جاري تحميل الغرفة</p>
-            </div>
-        );
-    }
-     const { toast } = useToast();
-     const [isGameVisible, setIsGameVisible] = useState(false);
+    const { toast } = useToast();
+    const [isGameVisible, setIsGameVisible] = useState(false);
      
-     const myMicIndex = room.micSlots.findIndex(slot => slot.user?.userId === user.userId);
-     const isOwner = user.userId === room.ownerId;
+    const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
+    const isOwner = user.userId === room.ownerId;
      
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState("");
@@ -298,7 +291,7 @@ function RoomScreen({
             toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر."});
             return;
         }
-        const newSlots = [...room.micSlots];
+        const newSlots = [...(room.micSlots || [])];
         if (newSlots[index].user) {
             toast({ variant: "destructive", description: "هذا المايك مشغول."});
             return;
@@ -312,7 +305,7 @@ function RoomScreen({
     }
 
     const handleDescend = (indexToDescend: number) => {
-        const newSlots = [...room.micSlots];
+        const newSlots = [...(room.micSlots || [])];
         if (newSlots[indexToDescend].user) {
             newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
             handleUpdateRoomData({ micSlots: newSlots });
@@ -321,7 +314,7 @@ function RoomScreen({
     
     const handleToggleMute = () => {
         if (myMicIndex !== -1) {
-            const newSlots = [...room.micSlots];
+            const newSlots = [...(room.micSlots || [])];
             const currentSlot = newSlots[myMicIndex];
             if (currentSlot) {
                 newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
@@ -332,7 +325,7 @@ function RoomScreen({
 
     const handleToggleLock = (index: number) => {
         if (isOwner) {
-            const newSlots = [...room.micSlots];
+            const newSlots = [...(room.micSlots || [])];
             newSlots[index] = { ...newSlots[index], isLocked: !newSlots[index].isLocked };
             handleUpdateRoomData({ micSlots: newSlots });
         }
@@ -386,7 +379,7 @@ function RoomScreen({
         setIsGiftSheetOpen(true);
     };
 
-    const usersOnMics = room.micSlots.map(slot => slot.user).filter((u): u is UserProfile => u !== null);
+    const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomHeader = () => {
       const roomInfoDisplay = (
@@ -515,7 +508,7 @@ function RoomScreen({
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
-                        {room.micSlots.map((slot, index) => (
+                        {(room.micSlots || []).map((slot, index) => (
                             <RoomMic 
                                 key={index} 
                                 slot={slot} 
@@ -905,7 +898,7 @@ function ProfileScreen({
                 </div>
              </div>
 
-             <div className="mt-8 flex justify-around items-center gap-4">
+             <div className="mt-8 flex justify-around items-center">
                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1518,5 +1511,7 @@ export default function HomePage() {
             rooms={rooms}
         />;
 }
+
+    
 
     
