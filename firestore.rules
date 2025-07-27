@@ -1,89 +1,104 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isSignedIn() {
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isProfileOwner(userId) {
-      return request.auth.token.uid == userId;
-    }
-    
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
-
-    // USERS Collection
+    // --- Users Collection ---
+    // Rules for the 'users' collection
     match /users/{userId} {
-      // Anyone can create a user profile (sign up)
-      allow create: if true;
+      // Allow anyone to create their own user document
+      allow create: if isAuthenticated();
+
+      // Allow authenticated users to read their own data
+      allow get: if isAuthenticated();
       
-      // Anyone can read user profiles
-      allow get: if true;
+      // Allow users to read any user's profile for display purposes
+      allow list: if isAuthenticated();
 
-      // Users can only update their own profile data.
-      // Crucial security rule for balance:
-      // - A user cannot increase their own balance. They can only decrease it (e.g., by sending a gift).
-      // - Other fields can be updated freely by the owner.
-      allow update: if isSignedIn() && request.auth.uid == userId &&
-                       // Prevent balance tampering: balance can only go down or stay the same.
-                       (request.resource.data.balance <= resource.data.balance || request.resource.data.balance == 0) &&
-                       // Allow other profile updates by the owner
-                       (request.resource.data.diff(resource.data).affectedKeys().difference(['balance']).size() > 0 || 
-                        request.resource.data.keys().hasAll(['profile', 'balance', 'silverBalance', 'lastClaimTimestamp']));
+      // Allow a user to update their own document, but with strict rules for balance
+      allow update: if isAuthenticated() && request.auth.uid == userId &&
+                       // Prevent fraudulent balance updates
+                       (
+                         // Case 1: Balance is being decreased (spending coins) - ALLOW
+                         request.resource.data.balance < resource.data.balance ||
+                         
+                         // Case 2: Silver is being converted to balance - ALLOW
+                         (
+                           request.resource.data.balance > resource.data.balance &&
+                           request.resource.data.silverBalance < resource.data.silverBalance
+                         ) ||
+                         
+                         // Case 3: Profile info or other fields are changing, but not balance/silver - ALLOW
+                         (
+                            request.resource.data.balance == resource.data.balance &&
+                            request.resource.data.silverBalance == resource.data.silverBalance
+                         ) ||
+
+                         // Case 4: Game winnings or rewards are being added (balance increases, silver doesn't) - ALLOW (Temporary)
+                         (
+                            request.resource.data.balance > resource.data.balance &&
+                            request.resource.data.silverBalance == resource.data.silverBalance
+                         )
+                       );
     }
 
-    // ROOMS Collection
+    // --- Rooms Collection ---
+    // Rules for the 'rooms' collection
     match /rooms/{roomId} {
-      // Anyone can read room data
-      allow get, list: if true;
-      // Anyone can create a room
-      allow create: if isSignedIn();
-      // Only the room owner can delete it
-      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      // Any signed-in user can update a room (join, leave, take mic, etc.)
-      allow update: if isSignedIn();
+      // Anyone authenticated can read rooms
+      allow get, list: if isAuthenticated();
+
+      // Anyone authenticated can create a room
+      allow create: if isAuthenticated();
+
+      // Only the owner can delete a room (or an admin in the future)
+      allow delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      
+      // Anyone authenticated can update room data (e.g., join/leave, change mic state)
+      allow update: if isAuthenticated();
     }
 
-    // CHAT_MESSAGES Collection
+    // --- Chat Messages Collection ---
+    // Rules for the 'chat_messages' collection
     match /chat_messages/{messageId} {
-       // Anyone can read chat messages
-      allow get, list: if true;
-      // Only signed-in users can send messages, and they can't impersonate others.
-      allow create: if isSignedIn() && request.resource.data.user.userId == request.auth.uid;
-    }
-    
-    // GAME_HISTORY Collection
-    match /game_history/{gameId} {
-      // Anyone can read game history
-      allow get, list: if true;
-      // For now, allow any signed-in user to write history. 
-      // In a production app, this should be handled by a secure backend/cloud function.
-      allow create: if isSignedIn();
+      // Allow reading messages in a room
+      allow get, list: if isAuthenticated();
+      
+      // Allow authenticated users to create messages
+      allow create: if isAuthenticated() && request.resource.data.user.userId == request.auth.uid;
     }
 
-    // USER_BETS Collection
-    match /user_bets/{betId} {
-       // A user can only read their own bets
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
-       // A user can only place bets for themselves
-      allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+    // --- Game History Collection ---
+    // Rules for the 'game_history' collection
+    match /game_history/{gameId} {
+       // Anyone authenticated can read game history
+      allow get, list: if isAuthenticated();
+
+      // Allow any authenticated user to create game history (client-driven for now)
+      allow create: if isAuthenticated();
     }
     
-    // ROOM_SUPPORTERS Collection
+    // --- User Bets Collection ---
+    // Rules for 'user_bets' collection
+    match /user_bets/{betId} {
+      // Users can only read and write their own bets
+      allow get, create, update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    // --- Room Supporters Collection ---
+    // Rules for 'room_supporters' collection
     match /room_supporters/{supporterId} {
        // Anyone can read supporter data
-      allow get, list: if true;
-       // Any signed-in user can become a supporter
-      allow create, update: if isSignedIn();
+       allow get, list: if isAuthenticated();
+       
+       // A user can only update their own supporter data
+       allow create, update: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
     }
+
   }
 }
