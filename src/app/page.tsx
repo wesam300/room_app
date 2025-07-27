@@ -425,7 +425,7 @@ function RoomScreen({
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between px-4 mt-2">
-                        <Popover>
+                         <Popover>
                             <PopoverTrigger asChild>
                                 <button className="flex items-center gap-2 p-1 px-3 rounded-full bg-red-800/50 border border-red-500 cursor-pointer">
                                     <Trophy className="w-5 h-5 text-yellow-400"/>
@@ -952,7 +952,7 @@ function ProfileScreen({
                 </EditProfileDialog>
              </div>
 
-             <div className="mt-8 flex justify-around items-center">
+             <div className="mt-8 flex justify-center items-center gap-4">
                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1119,7 +1119,7 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (ro
                     >
                         <div className="bg-[#412c1c] rounded-2xl p-3 flex items-center gap-4">
                             <div className="relative flex-shrink-0">
-                                <img src={room.image} alt={room.name} className="w-20 h-20 rounded-lg object-cover" />
+                                <img src={room.image} data-ai-hint="room entrance" alt={room.name} className="w-20 h-20 rounded-lg object-cover" />
                                 <div className="absolute -top-2 -left-2 bg-black/50 border border-yellow-500 rounded-md px-2 py-0.5 text-xs font-bold flex items-center gap-1">
                                     <Signal className="w-3 h-3 text-green-400" />
                                     <span>{room.userCount}</span>
@@ -1277,7 +1277,7 @@ function MainApp({
                 const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
                 if(myCurrentMicIndex !== -1) {
                     const newSlots = [...(currentRoom.micSlots || [])];
-                    newSlots[myCurrentMicIndex] = { ...newSlots[myCurrentMicIndex], user: null, isMuted: false };
+                    newSlots[myCurrentMicIndex] = { user: null, isMuted: false, isLocked: newSlots[myCurrentMicIndex].isLocked };
                     await roomServices.updateRoomData(currentRoom.id, { micSlots: newSlots });
                 }
                 await roomServices.leaveRoom(currentRoom.id, user.profile.userId);
