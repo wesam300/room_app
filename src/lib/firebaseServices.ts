@@ -90,18 +90,18 @@ export const userServices = {
   async saveUser(userData: UserData): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userData.profile.userId);
-      // Use setDoc with merge to create or update the user document.
-      // This ensures that new users are always created correctly.
-      await setDoc(userRef, {
-        ...userData,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-
-      // Ensure createdAt is only set once
       const docSnap = await getDoc(userRef);
-      if (docSnap.exists() && !docSnap.data().createdAt) {
+
+      if (!docSnap.exists()) {
+         await setDoc(userRef, {
+           ...userData,
+           createdAt: serverTimestamp(),
+           updatedAt: serverTimestamp(),
+         });
+      } else {
         await updateDoc(userRef, {
-          createdAt: serverTimestamp(),
+           ...userData,
+           updatedAt: serverTimestamp(),
         });
       }
     } catch (error) {
@@ -138,18 +138,15 @@ export const userServices = {
   async updateUserBalance(userId: string, amount: number): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        // If user doesn't exist, do nothing to prevent errors.
-        // The admin might be trying to update a user that hasn't been fully created.
-        console.warn(`Attempted to update balance for non-existent user: ${userId}`);
-        return;
-      }
       await updateDoc(userRef, {
         balance: increment(amount),
         updatedAt: serverTimestamp()
       });
     } catch (error) {
+       if ((error as any).code === 'not-found') {
+         console.warn(`User ${userId} not found for balance update. Ignoring.`);
+         return;
+       }
       console.error('Error updating user balance in Firestore:', error);
       throw error;
     }
@@ -160,7 +157,6 @@ export const userServices = {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-        // If user doesn't exist, create a shell user and ban them.
         await setDoc(userRef, {
           profile: {
             userId: userId,
@@ -216,7 +212,6 @@ export const roomServices = {
       let roomRef;
       let roomExists = true;
 
-      // Generate a unique 6-digit ID
       do {
         newRoomId = String(Math.floor(100000 + Math.random() * 900000));
         roomRef = doc(db, COLLECTIONS.ROOMS, newRoomId);
@@ -306,7 +301,7 @@ export const roomServices = {
 
   async loadRooms(): Promise<RoomData[]> {
       const roomsRef = collection(db, COLLECTIONS.ROOMS);
-      const q = query(roomsRef, orderBy('createdAt', 'desc'));
+      const q = query(roomsRef, orderBy('userCount', 'desc'));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as RoomData);
   },
@@ -341,7 +336,7 @@ export const chatServices = {
     });
   },
 
-  onRoomMessagesChange(roomId: string, callback: (messages: ChatMessageData[]) => void) {
+  onRoomMessagesChange(roomId: string, callback: (messages: ChatMessageData[]) => void, onError: (error: Error) => void) {
     const messagesRef = collection(db, COLLECTIONS.CHAT_MESSAGES);
     const q = query(
       messagesRef,
@@ -352,6 +347,9 @@ export const chatServices = {
     return onSnapshot(q, (querySnapshot) => {
       const messages = querySnapshot.docs.map(doc => doc.data() as ChatMessageData).reverse();
       callback(messages);
+    }, (error) => {
+      console.error("Message listener error:", error);
+      onError(error);
     });
   }
 };
@@ -378,7 +376,7 @@ export const gameServices = {
     await setDoc(betRef, {
       ...betData,
       createdAt: serverTimestamp()
-    });
+    }, { merge: true });
   },
 
   async getUserBets(userId: string, roundId: number): Promise<UserBetData | null> {
@@ -397,15 +395,16 @@ export const gameServices = {
 
 // Room Supporters Services
 export const supporterServices = {
-  async updateRoomSupporter(supporterData: Omit<RoomSupporterData, 'updatedAt'>): Promise<void> {
+  async updateRoomSupporter(supporterData: Omit<RoomSupporterData, 'updatedAt' | 'totalGiftValue'> & { totalGiftValue: number | any }): Promise<void> {
     const supporterRef = doc(db, COLLECTIONS.ROOM_SUPPORTERS, `${supporterData.roomId}_${supporterData.userId}`);
     await setDoc(supporterRef, {
       ...supporterData,
+      totalGiftValue: increment(supporterData.totalGiftValue),
       updatedAt: serverTimestamp()
     }, { merge: true });
   },
 
-  onRoomSupportersChange(roomId: string, callback: (supporters: RoomSupporterData[]) => void) {
+  onRoomSupportersChange(roomId: string, callback: (supporters: RoomSupporterData[], error?: Error) => void) {
     const supportersRef = collection(db, COLLECTIONS.ROOM_SUPPORTERS);
     const q = query(
       supportersRef,
@@ -415,6 +414,9 @@ export const supporterServices = {
     return onSnapshot(q, (querySnapshot) => {
       const supporters = querySnapshot.docs.map(doc => doc.data() as RoomSupporterData);
       callback(supporters);
+    }, (error) => {
+       console.error("Supporters listener error:", error);
+       callback([], error);
     });
   }
 };

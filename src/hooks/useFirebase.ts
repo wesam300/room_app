@@ -143,6 +143,10 @@ export const useChatMessages = (roomId: string | null) => {
     const unsubscribe = chatServices.onRoomMessagesChange(roomId, (messagesData) => {
       setMessages(messagesData);
       setLoading(false);
+    }, (err) => {
+      console.error("Error in chat messages listener:", err);
+      setError("Failed to load chat messages.");
+      setLoading(false);
     });
     return () => unsubscribe();
   }, [roomId]);
@@ -227,23 +231,17 @@ export const useRoomSupporters = (roomId: string | null) => {
     }
     setLoading(true);
     setError(null);
-    const unsubscribe = supporterServices.onRoomSupportersChange(roomId, (supportersData) => {
-      setSupporters(supportersData);
-      setLoading(false);
+    const unsubscribe = supporterServices.onRoomSupportersChange(roomId, (supportersData, err) => {
+       if (err) {
+         console.error("Error in supporters listener:", err);
+         setError("Failed to load supporters.");
+       } else {
+         setSupporters(supportersData);
+       }
+       setLoading(false);
     });
     return () => unsubscribe();
   }, [roomId]);
 
-  const updateSupporter = useCallback(async (supporterData: Omit<RoomSupporterData, 'updatedAt'>) => {
-    try {
-      await supporterServices.updateRoomSupporter(supporterData);
-    } catch (err) {
-      console.error('Error updating supporter:', err);
-      setError('Failed to update supporter');
-    }
-  }, []);
-
-  return { supporters, loading, error, updateSupporter };
+  return { supporters, loading, error };
 };
-
-    

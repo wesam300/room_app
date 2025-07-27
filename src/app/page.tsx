@@ -214,14 +214,14 @@ function RoomScreen({
     const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.userId);
     const isOwner = user.userId === room.ownerId;
      
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+    const { messages: chatMessages, sendMessage: sendChatMessage } = useChatMessages(room.id);
     const [chatInput, setChatInput] = useState("");
     const chatContainerRef = useRef<HTMLDivElement>(null);
 
     const [isGiftSheetOpen, setIsGiftSheetOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
 
-    const [roomSupporters, setRoomSupporters] = useState<Supporter[]>([]);
+    const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
     useEffect(() => {
@@ -258,7 +258,7 @@ function RoomScreen({
             toast({ variant: "destructive", description: "هذا المايك مقفل."});
             return;
         }
-        newSlots[index] = { ...newSlots[index], user: user, isMuted: false };
+        newSlots[index] = { ...newSlots[index], user: user.profile, isMuted: false };
         handleUpdateRoomData({ micSlots: newSlots });
     }
 
@@ -297,41 +297,33 @@ function RoomScreen({
     
     const handleSendMessage = () => {
         if (chatInput.trim() === "") return;
-        const newMessage: ChatMessage = {
-            id: Date.now().toString(),
-            user: user,
+        sendChatMessage({
+            roomId: room.id,
+            user: user.profile,
             text: chatInput.trim(),
-            createdAt: new Date(),
-        };
-        setChatMessages(prev => [...prev, newMessage]);
+        });
         setChatInput("");
     };
 
     const handleSendGift = (gift: GiftItem, recipient: UserProfile, quantity: number) => {
         const totalCost = gift.price * quantity;
-
+        
         onUserDataUpdate((currentData) => {
             if (currentData.balance < totalCost) {
                 toast({ variant: "destructive", title: "رصيد غير كافٍ!", description: `ليس لديك ما يكفي من العملات لإرسال ${quantity}x ${gift.name}.` });
-                return currentData; // Return original data if not enough balance
+                return currentData; 
             }
-
-            // Update local supporters state
-            let newSupporters = [...roomSupporters];
-            const existingSupporterIndex = newSupporters.findIndex(s => s.user?.userId === user.profile.userId);
-            if (existingSupporterIndex !== -1) {
-                const updatedSupporter = { ...newSupporters[existingSupporterIndex] };
-                updatedSupporter.totalGiftValue += totalCost;
-                newSupporters[existingSupporterIndex] = updatedSupporter;
-            } else {
-                newSupporters.push({ user: user.profile, totalGiftValue: totalCost });
-            }
-            setRoomSupporters(newSupporters.sort((a, b) => b.totalGiftValue - a.totalGiftValue));
             
             toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.` });
             setIsGiftSheetOpen(false);
 
-            // Return the updated user data to be saved to Firebase
+            supporterServices.updateRoomSupporter({
+                roomId: room.id,
+                userId: user.profile.userId,
+                user: user.profile,
+                totalGiftValue: (roomSupporters.find(s => s.userId === user.profile.userId)?.totalGiftValue || 0) + totalCost
+            });
+            
             return {
                 ...currentData,
                 balance: currentData.balance - totalCost,
@@ -523,11 +515,11 @@ function RoomScreen({
                         className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
                     >
-                        {chatMessages.map(msg => (
+                        {chatMessages.map(msg => msg && msg.user && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
                                     <AvatarImage src={msg.user.image} />
-                                    <AvatarFallback>{msg.user.name.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback>{msg.user.name ? msg.user.name.charAt(0) : ""}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col items-start">
                                     <span className="text-sm text-muted-foreground">{msg.user.name}</span>
@@ -1213,11 +1205,12 @@ function MainApp({
                     // Room might have been deleted
                     setView('roomsList');
                     setCurrentRoom(null);
+                    toast({ variant: "destructive", title: "تم حذف الغرفة", description: "تم حذف الغرفة من قبل المشرف."})
                 }
             });
             return () => unsubscribe();
         }
-    }, [currentRoom?.id]);
+    }, [currentRoom?.id, toast]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
@@ -1467,7 +1460,7 @@ export default function HomePage() {
       
       // Then update local state and storage
       setUserId(newUserId);
-      setUserData(newUserRecord); // This will also update localStorage via the hook's effect
+      setUserData(newUserRecord);
 
       toast({
           title: "تم حفظ الملف الشخصي",
@@ -1587,7 +1580,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
-    
-
-    
