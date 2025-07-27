@@ -182,6 +182,17 @@ export const roomServices = {
     }
   },
   
+  async getRoom(roomId: string): Promise<RoomData | null> {
+    try {
+        const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+        const docSnap = await getDoc(roomRef);
+        return docSnap.exists() ? docSnap.data() as RoomData : null;
+    } catch (error) {
+        console.error('Error getting room:', error);
+        return null;
+    }
+  },
+
   async updateRoomData(roomId: string, updates: Partial<RoomData>): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
     await updateDoc(roomRef, {

@@ -1113,11 +1113,8 @@ function MainApp({
 
     useEffect(() => {
         if (currentRoom) {
-            // Find the updated room data from the live list
             const updatedRoom = rooms.find(r => r.id === currentRoom.id);
-            // Only update if the new data is valid and has the necessary properties (like micSlots)
-            // This prevents overwriting a good state with a partially loaded one.
-            if (updatedRoom && updatedRoom.micSlots) {
+            if (updatedRoom) {
                 setCurrentRoom(updatedRoom);
             }
         }
@@ -1161,9 +1158,13 @@ function MainApp({
     const handleEnterRoom = async (room: Room) => {
         try {
             await roomServices.joinRoom(room.id, user);
-            const freshRoomData = rooms.find(r => r.id === room.id);
-            setCurrentRoom(freshRoomData || room);
-            setView('inRoom');
+            const freshRoomData = await roomServices.getRoom(room.id); // Fetch the latest data
+            if (freshRoomData) {
+                setCurrentRoom(freshRoomData);
+                setView('inRoom');
+            } else {
+                 console.error("Failed to fetch fresh room data for room:", room.id);
+            }
         } catch (error) {
             console.error("Error joining room:", error);
         }
