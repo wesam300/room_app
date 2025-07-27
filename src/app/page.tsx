@@ -19,7 +19,7 @@ import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -58,7 +58,7 @@ const BOT_USER: UserProfile = {
     userId: "bot-001"
 };
 
-const ADMIN_USER_ID = '327521';
+const ADMIN_USER_ID = '368473';
 
 const GIFTS: GiftItem[] = [
     { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
@@ -769,44 +769,43 @@ function SilverScreen({
 }
 
 
-function AdminPanel({
-    onAddCoins,
-    onDeductCoins,
-}: {
-    onAddCoins: (amount: number) => void;
-    onDeductCoins: (amount: number) => void;
-}) {
+function AdminPanel() {
     const { toast } = useToast();
+    const [targetUserId, setTargetUserId] = useState("");
     const [amount, setAmount] = useState("");
 
-    const handleAdd = () => {
+    const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
         const numAmount = parseInt(amount, 10);
-        if (isNaN(numAmount) || numAmount <= 0) {
-            toast({ variant: "destructive", title: "مبلغ غير صحيح", description: "يرجى إدخال مبلغ صحيح." });
+        if (!targetUserId.trim() || isNaN(numAmount) || numAmount <= 0) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم ومبلغ صحيحين." });
             return;
         }
-        onAddCoins(numAmount);
-        toast({ title: "تمت إضافة الكوينز بنجاح!" });
-        setAmount("");
+
+        try {
+            const amountToUpdate = operation === 'add' ? numAmount : -numAmount;
+            await userServices.updateUserBalance(targetUserId, amountToUpdate);
+            toast({ title: "تم تحديث الرصيد بنجاح!", description: `تم ${operation === 'add' ? 'إضافة' : 'خصم'} ${numAmount} إلى/من المستخدم ${targetUserId}.`});
+            setTargetUserId("");
+            setAmount("");
+        } catch (error) {
+            console.error("Admin operation failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على المستخدم أو حدث خطأ آخر." });
+        }
     };
 
-    const handleDeduct = () => {
-        const numAmount = parseInt(amount, 10);
-        if (isNaN(numAmount) || numAmount <= 0) {
-            toast({ variant: "destructive", title: "مبلغ غير صحيح", description: "يرجى إدخال مبلغ صحيح." });
-            return;
-        }
-        onDeductCoins(numAmount);
-        toast({ title: "تم خصم الكوينز بنجاح!" });
-        setAmount("");
-    };
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
             <h3 className="text-lg font-bold text-center text-primary mb-4">لوحة تحكم المشرف</h3>
-            <div className="space-y-4">
+            <div className="space-y-4 text-right">
                 <div className="space-y-2">
-                    <h4 className="font-semibold text-right">تعديل رصيدك</h4>
+                    <h4 className="font-semibold">تعديل رصيد مستخدم</h4>
+                     <Input
+                        placeholder="معرف المستخدم (ID)"
+                        value={targetUserId}
+                        onChange={(e) => setTargetUserId(e.target.value)}
+                        className="text-left"
+                    />
                     <Input
                         type="number"
                         placeholder="المبلغ"
@@ -815,8 +814,8 @@ function AdminPanel({
                         className="text-left"
                     />
                     <div className="flex gap-2 mt-2">
-                        <Button onClick={handleAdd} className="w-full">إضافة</Button>
-                        <Button onClick={handleDeduct} variant="destructive" className="w-full">خصم</Button>
+                        <Button onClick={() => handleUpdateBalance('add')} className="w-full">إضافة رصيد</Button>
+                        <Button onClick={() => handleUpdateBalance('deduct')} variant="destructive" className="w-full">خصم رصيد</Button>
                     </div>
                 </div>
             </div>
@@ -829,7 +828,6 @@ function ProfileScreen({
     user, 
     onUserUpdate, 
     balance,
-    setBalance,
     silverBalance,
     onNavigate,
     onLogout,
@@ -837,7 +835,6 @@ function ProfileScreen({
     user: UserProfile, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
     balance: number,
-    setBalance: React.Dispatch<React.SetStateAction<number>>,
     silverBalance: number,
     onNavigate: (view: 'coins' | 'silver') => void,
     onLogout: () => void,
@@ -848,14 +845,6 @@ function ProfileScreen({
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.userId);
         toast({ title: "تم نسخ ID المستخدم" });
-    };
-    
-    const handleAddCoins = (amount: number) => {
-        setBalance(prev => prev + amount);
-    };
-    
-    const handleDeductCoins = (amount: number) => {
-        setBalance(prev => Math.max(0, prev - amount));
     };
 
     return (
@@ -908,7 +897,7 @@ function ProfileScreen({
                 </button>
             </div>
 
-            {isAdmin && <AdminPanel onAddCoins={handleAddCoins} onDeductCoins={handleDeductCoins} />}
+            {isAdmin && <AdminPanel />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
         </div>
@@ -934,7 +923,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 
     const handleSubmit = () => {
         const finalImage = imagePreview ?? 'https://placehold.co/150x150/673ab7/ffffff.png';
-        if (name.trim() && description.trim()) {
+        if (name.trim()) {
             onCreateRoom(name.trim(), description.trim(), finalImage);
             // Reset state
             setName('');
@@ -961,7 +950,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                                 <Camera className="w-8 h-8" />
                             </AvatarFallback>
                         </Avatar>
-                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                             <span className="text-sm text-white">اختر صورة</span>
                         </div>
                         <input
@@ -1316,7 +1305,6 @@ function MainApp({
                     user={user} 
                     onUserUpdate={handleUserUpdateAndReset} 
                     balance={balance}
-                    setBalance={handleBalanceChange}
                     silverBalance={silverBalance}
                     onNavigate={setProfileView}
                     onLogout={onLogout}
@@ -1433,7 +1421,7 @@ export default function HomePage() {
       userId: userId
     };
     
-    const initialBalance = userId === '368473' ? 1000000000 : 10000000;
+    const initialBalance = userId === ADMIN_USER_ID ? 1000000000 : 10000000;
 
     const newUserRecord: UserData = {
         profile: newUserProfile,

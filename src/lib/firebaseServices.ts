@@ -133,12 +133,15 @@ export const userServices = {
     }
   },
 
-  async updateUserBalance(userId: string, balance: number, silverBalance: number): Promise<void> {
+  async updateUserBalance(userId: string, amount: number): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
+       const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        throw new Error("User not found");
+      }
       await updateDoc(userRef, {
-        balance,
-        silverBalance,
+        balance: increment(amount),
         updatedAt: serverTimestamp()
       });
     } catch (error) {
