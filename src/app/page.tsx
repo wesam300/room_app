@@ -239,7 +239,7 @@ function RoomScreen({
     };
 
     const handleAscend = (index: number) => {
-        if ((room.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId) !== -1) {
+        if ((room.micSlots || []).some(slot => slot.user?.userId === user.profile.userId)) {
             toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر." });
             return;
         }
@@ -359,7 +359,7 @@ function RoomScreen({
 
     const RoomHeader = () => {
       return (
-        <header className="flex items-center justify-between p-3">
+        <header className="flex items-center justify-between p-3 shrink-0">
              <div className="flex items-center gap-2">
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -421,10 +421,10 @@ function RoomScreen({
                     balance={user.balance}
                     initialRecipient={initialRecipientForGift}
                 />
+                
+                <RoomHeader />
 
                 <div className="flex-1 overflow-y-auto">
-                    <RoomHeader />
-
                     <div className="flex items-center justify-between px-4 mt-2">
                         <div className="flex items-center gap-2">
                            <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
@@ -517,7 +517,7 @@ function RoomScreen({
                         className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
                     >
-                        {chatMessages.map(msg => msg && msg.user && msg.user.name && (
+                        {chatMessages.map(msg => (msg && msg.user && msg.user.name) && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
                                     <AvatarImage src={msg.user.image} />
@@ -1272,7 +1272,6 @@ function MainApp({
     const handleExitRoom = async () => {
         if (currentRoom) {
             try {
-                // Check if the current user is on a mic and clear the slot before leaving
                 const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
                 if(myCurrentMicIndex !== -1) {
                     const newSlots = [...(currentRoom.micSlots || [])];
