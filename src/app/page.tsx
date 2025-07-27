@@ -569,12 +569,31 @@ function RoomScreen({
 
 function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile, onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, children: React.ReactNode }) {
     const [name, setName] = useState(user.name);
+    const [image, setImage] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-    const placeholderImage = "https://placehold.co/100x100.png";
+
+    useEffect(() => {
+        if (isOpen) {
+            setName(user.name);
+            setImage(user.image);
+        }
+    }, [isOpen, user.name, user.image]);
+
+    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImage(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSave = () => {
-        const updatedUser = { name, image: placeholderImage };
+        const updatedUser = { name, image: image || user.image };
         onUserUpdate(updatedUser);
         toast({ title: "تم تحديث الملف الشخصي!" });
         setIsOpen(false);
@@ -589,11 +608,25 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
                     <div className="flex flex-col items-center gap-4">
-                        <Avatar className="w-24 h-24">
-                            <AvatarImage src={user.image} />
-                            <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
-                        </Avatar>
-                         <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية.</p>
+                        <button
+                            className="relative group"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Avatar className="w-24 h-24">
+                                <AvatarImage src={image ?? undefined} />
+                                <AvatarFallback><User className="w-8 h-8" /></AvatarFallback>
+                            </Avatar>
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="w-8 h-8 text-white" />
+                            </div>
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
                     </div>
                     <Input
                         id="name"
@@ -919,7 +952,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
                     <button
-                        className="flex flex-col items-center gap-4 cursor-pointer"
+                        className="flex flex-col items-center gap-4 cursor-pointer group relative"
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <Avatar className="w-24 h-24">
@@ -928,7 +961,9 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                                 <Camera className="w-8 h-8" />
                             </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-primary hover:underline">اختر صورة للغرفة</span>
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-sm text-white">اختر صورة</span>
+                        </div>
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -1517,3 +1552,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
