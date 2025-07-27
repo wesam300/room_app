@@ -1482,11 +1482,7 @@ export default function HomePage() {
 
     try {
       localStorage.setItem("userData", JSON.stringify(newUserRecord));
-      try {
-        await updateUser(newUserRecord);
-      } catch (firebaseError) {
-        console.error('Firebase save failed, using localStorage only:', firebaseError);
-      }
+      await updateUser(newUserRecord);
       setUserId(userId);
       toast({
           title: "تم حفظ الملف الشخصي",
@@ -1495,7 +1491,7 @@ export default function HomePage() {
       
     } catch (error) {
       console.error('Error creating profile:', error);
-      localStorage.setItem("userData", JSON.stringify(newUserRecord));
+      // Fallback to local-only if Firebase fails
       setUserId(userId);
       toast({
           title: "تم حفظ الملف الشخصي (وضع عدم الاتصال)",
