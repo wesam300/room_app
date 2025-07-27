@@ -424,12 +424,15 @@ function RoomScreen({
                     <div className="flex items-center justify-between px-4 mt-2">
                         <div className="flex items-center gap-2">
                            <div className="flex -space-x-4 rtl:space-x-reverse">
-                             {(room.attendees || []).slice(0, 3).map(attendee => (
-                               <Avatar key={attendee.userId} className="w-8 h-8 border-2 border-background">
-                                   <AvatarImage src={attendee.image} />
-                                   <AvatarFallback>{attendee.name.charAt(0)}</AvatarFallback>
-                               </Avatar>
-                             ))}
+                             {(room.attendees || []).filter(Boolean).slice(0, 3).map(attendee => {
+                               const validAttendee = attendee as UserProfile;
+                               return validAttendee ? (
+                                 <Avatar key={validAttendee.userId} className="w-8 h-8 border-2 border-background">
+                                   <AvatarImage src={validAttendee.image} />
+                                   <AvatarFallback>{validAttendee.name.charAt(0)}</AvatarFallback>
+                                 </Avatar>
+                               ) : null;
+                             })}
                            </div>
                            <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
                                 {room.userCount}
@@ -1584,3 +1587,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
