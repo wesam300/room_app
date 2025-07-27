@@ -85,49 +85,6 @@ function formatNumber(num: number): string {
     return num.toLocaleString('en-US');
 }
 
-
-function EditRoomDialog({ room, onRoomUpdated, children }: { room: Room, onRoomUpdated: (updatedRoom: Partial<Room>) => void, children: React.ReactNode }) {
-    const [roomName, setRoomName] = useState(room.name);
-    const { toast } = useToast();
-    const placeholderImage = "https://placehold.co/100x100.png";
-
-    const handleSaveChanges = () => {
-        const updatedRoomData = { name: roomName, image: placeholderImage };
-        onRoomUpdated(updatedRoomData);
-        toast({ title: "تم تحديث الغرفة!" });
-    };
-
-    return (
-        <Dialog>
-            <DialogTrigger asChild>{children}</DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle className="text-right">تعديل الغرفة</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4 text-right">
-                    <div className="flex flex-col items-center gap-4">
-                         <Avatar className="w-24 h-24">
-                            <AvatarImage src={room.image} />
-                            <AvatarFallback><Camera className="w-8 h-8" /></AvatarFallback>
-                        </Avatar>
-                        <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية.</p>
-                    </div>
-                     <Input
-                        id="name"
-                        placeholder="أدخل اسم الغرفة..."
-                        value={roomName}
-                        onChange={(e) => setRoomName(e.target.value)}
-                        className="text-right"
-                    />
-                </div>
-                <DialogClose asChild>
-                    <Button onClick={handleSaveChanges}>حفظ التغييرات</Button>
-                </DialogClose>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 // New Gift Sheet Component
 function GiftSheet({
     isOpen,
@@ -385,24 +342,6 @@ function RoomScreen({
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomHeader = () => {
-      const roomInfoDisplay = (
-        <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={room.image} alt={room.name} />
-            <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-          </Avatar>
-          <div className="text-right">
-            <p className="font-bold text-sm">{room.name}</p>
-            <div className="flex items-center justify-end gap-1.5">
-              <span className="text-xs text-muted-foreground">{room.id}</span>
-              <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                <Copy className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-  
       return (
         <header className="flex items-center justify-between p-3">
             <AlertDialog>
@@ -424,13 +363,21 @@ function RoomScreen({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            {isOwner ? (
-                <EditRoomDialog room={room} onRoomUpdated={(updates) => handleUpdateRoomData(updates)}>
-                     {roomInfoDisplay}
-                </EditRoomDialog>
-            ) : (
-                roomInfoDisplay
-            )}
+            <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={room.image} alt={room.name} />
+                <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="text-right">
+                <p className="font-bold text-sm">{room.name}</p>
+                <div className="flex items-center justify-end gap-1.5">
+                  <span className="text-xs text-muted-foreground">{room.id}</span>
+                  <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
         </header>
       )
   }
@@ -953,9 +900,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
     };
 
     const handleSubmit = () => {
-        // NOTE: For now, we'll use a placeholder image.
-        // The actual image upload to a service like Firebase Storage is a next step.
-        const finalImage = 'https://placehold.co/150x150/673ab7/ffffff.png';
+        const finalImage = imagePreview ?? 'https://placehold.co/150x150/673ab7/ffffff.png';
         if (name.trim() && description.trim()) {
             onCreateRoom(name.trim(), description.trim(), finalImage);
             // Reset state
@@ -973,13 +918,17 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                     <DialogTitle className="text-right">إنشاء غرفة جديدة</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4 text-right">
-                    <div className="flex flex-col items-center gap-4">
+                    <button
+                        className="flex flex-col items-center gap-4 cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
                         <Avatar className="w-24 h-24">
                             <AvatarImage src={imagePreview ?? undefined} />
                             <AvatarFallback>
                                 <Camera className="w-8 h-8" />
                             </AvatarFallback>
                         </Avatar>
+                        <span className="text-sm text-primary hover:underline">اختر صورة للغرفة</span>
                         <input
                             type="file"
                             ref={fileInputRef}
@@ -987,11 +936,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
                             accept="image/*"
                             className="hidden"
                         />
-                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            تغيير الصورة
-                        </Button>
-                         <p className="text-sm text-muted-foreground">سيتم استخدام صورة افتراضية مؤقتًا.</p>
-                    </div>
+                    </button>
                     <Input 
                         placeholder="اسم الغرفة" 
                         value={name} 
