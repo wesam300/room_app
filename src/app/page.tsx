@@ -1088,7 +1088,6 @@ function MainApp({
     lastClaimTimestamp,
     setUserData,
     onLogout,
-    createRoom,
 }: { 
     user: UserProfile, 
     balance: number, 
@@ -1096,7 +1095,6 @@ function MainApp({
     lastClaimTimestamp: number | null,
     setUserData: React.Dispatch<React.SetStateAction<UserData | null>>
     onLogout: () => void,
-    createRoom: (roomData: Omit<RoomData, 'id'| 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => Promise<void>,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
@@ -1104,7 +1102,7 @@ function MainApp({
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
-    const { rooms } = useRooms();
+    const { rooms, createRoom, loading: roomsLoading, error: roomsError } = useRooms();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -1234,9 +1232,22 @@ function MainApp({
             handleLastClaimTimestampChange(Date.now());
         }
     };
+    
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'userCount'| 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => {
+        try {
+            await createRoom(roomData);
+        } catch(e) {
+            console.error("Failed to create room", e);
+            toast({
+                variant: "destructive",
+                title: "Error creating room",
+                description: "Please try again later."
+            })
+        }
+    }
 
     const renderContent = () => {
-        if (isJoiningRoom) {
+        if (isJoiningRoom || roomsLoading) {
              return (
                 <div className="flex items-center justify-center h-full bg-background text-foreground">
                     <p className="text-xl font-bold">...جاري تحميل الغرفة</p>
@@ -1282,7 +1293,7 @@ function MainApp({
                 />
             );
         }
-        return <RoomsListScreen rooms={rooms} onEnterRoom={handleEnterRoom} onCreateRoom={createRoom} user={user}/>;
+        return <RoomsListScreen rooms={rooms} onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user}/>;
     };
 
 
@@ -1353,7 +1364,6 @@ export default function HomePage() {
   });
 
   const { userData, loading: userLoading, error: userError, updateUser } = useUser(userId);
-  const { createRoom, loading: roomsLoading, error: roomsError } = useRooms();
 
   const setUserData = (updater: React.SetStateAction<UserData | null>) => {
     if (typeof updater === 'function' && userData) {
@@ -1375,20 +1385,6 @@ export default function HomePage() {
       }
     }
   };
-
-  const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'userCount'| 'micSlots' | 'isRoomMuted' | 'attendees' | 'createdAt' | 'updatedAt'>) => {
-      try {
-          await createRoom(roomData);
-      } catch(e) {
-          console.error("Failed to create room", e);
-          toast({
-              variant: "destructive",
-              title: "Error creating room",
-              description: "Please try again later."
-          })
-      }
-  }
-
 
   const handleCreateProfile = async (name: string) => {
     if (!name.trim()) {
@@ -1454,15 +1450,12 @@ export default function HomePage() {
     }
   }
 
-  if (userLoading || roomsLoading) {
+  if (userLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
             {userError && (
                 <p className="text-red-400 mt-2">تحذير: {userError}</p>
-            )}
-             {roomsError && (
-                <p className="text-red-400 mt-2">تحذير: {roomsError}</p>
             )}
             <p className="text-gray-400 mt-4 text-sm">إذا استمر التحميل، جرب تحديث الصفحة</p>
         </div>
@@ -1527,6 +1520,5 @@ export default function HomePage() {
             lastClaimTimestamp={userData.lastClaimTimestamp}
             setUserData={setUserData}
             onLogout={handleLogout}
-            createRoom={createRoomWrapper}
         />;
 }
