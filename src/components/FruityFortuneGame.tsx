@@ -234,7 +234,7 @@ const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
     const styles = rankStyles[rank as keyof typeof rankStyles];
   
     return (
-        <div className={cn("relative flex flex-col items-center gap-1 transition-all", styles.container)}>
+        <div className={cn("relative flex flex-col items-center gap-1 transition-all w-24", styles.container)}>
             <div className={cn("relative p-1 rounded-full", styles.border)} style={{ borderWidth: '3px' }}>
                 <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-2 border-background">
                     <AvatarImage src={winner.user.image} alt={winner.user.name} />
@@ -244,7 +244,7 @@ const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
                     {styles.crownIcon}
                 </div>
             </div>
-            <p className="font-bold text-sm text-white truncate">{winner.user.name}</p>
+            <p className="font-bold text-sm text-white truncate max-w-full">{winner.user.name}</p>
             <p className="font-bold text-base text-yellow-300">{formatNumber(winner.payout)}</p>
         </div>
     )
@@ -555,18 +555,24 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
                              <div className="h-px flex-1 bg-yellow-400/50"></div>
                         </div>
 
-                        <div className="relative flex justify-center items-end gap-4 px-4 h-40">
-                             {/* Rank 2 */}
-                             {winnerScreenInfo.topWinners[1] && 
-                                <WinnerCard winner={winnerScreenInfo.topWinners[1]} rank={2}/>
+                        <div className="grid grid-cols-3 items-end h-40">
+                             {/* Rank 3 - Left */}
+                             {winnerScreenInfo.topWinners[2] && 
+                                <div className="col-start-1 justify-self-start">
+                                    <WinnerCard winner={winnerScreenInfo.topWinners[2]} rank={3}/>
+                                </div>
                             }
-                             {/* Rank 1 */}
+                             {/* Rank 1 - Center */}
                              {winnerScreenInfo.topWinners[0] && 
-                                <WinnerCard winner={winnerScreenInfo.topWinners[0]} rank={1}/>
+                                <div className="col-start-2 justify-self-center">
+                                    <WinnerCard winner={winnerScreenInfo.topWinners[0]} rank={1}/>
+                                </div>
                             }
-                            {/* Rank 3 */}
-                            {winnerScreenInfo.topWinners[2] && 
-                                <WinnerCard winner={winnerScreenInfo.topWinners[2]} rank={3}/>
+                            {/* Rank 2 - Right */}
+                            {winnerScreenInfo.topWinners[1] && 
+                                <div className="col-start-3 justify-self-end">
+                                    <WinnerCard winner={winnerScreenInfo.topWinners[1]} rank={2}/>
+                                </div>
                             }
                         </div>
                     </motion.div>
