@@ -559,7 +559,7 @@ function RoomScreen({
                                 onAscend={handleAscend}
                                 onDescend={handleDescend}
                                 onToggleLock={handleToggleLock}
-                                onToggleMute={onToggleMute}
+                                onToggleMute={handleToggleMute}
                                 onAdminMute={handleAdminMute}
                                 onOpenGiftDialog={handleOpenGiftSheet}
                             />
