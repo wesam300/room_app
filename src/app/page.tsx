@@ -19,7 +19,7 @@ import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts } from 
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -390,34 +390,21 @@ function RoomScreen({
         }
     
         try {
-            // Deduct balance from the sender
-            onUserDataUpdate((currentData) => ({
-                ...currentData,
-                balance: currentData.balance - totalCost,
-            }));
-
-            // Add silver balance to the recipient
-            await userServices.updateUserSilverBalance(recipient.userId, totalCost * 0.20);
-    
-            // Update room supporter data for the sender
-            await supporterServices.updateRoomSupporter({
-                roomId: room.id,
-                userId: user.profile.userId,
-                user: user.profile,
-                totalGiftValue: totalCost,
-            });
+            await userServices.sendGiftAndUpdateLevels(
+                user.profile.userId,
+                recipient.userId,
+                room.id,
+                user.profile,
+                gift,
+                quantity
+            );
     
             toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.`, duration: 2000 });
             setIsGiftSheetOpen(false);
 
         } catch (error) {
             console.error("Error sending gift:", error);
-            toast({ variant: "destructive", title: "فشل إرسال الهدية", description: "حدث خطأ ما. يرجى المحاولة مرة أخرى.", duration: 2000});
-            // Revert sender's balance if something failed
-            onUserDataUpdate((currentData) => ({
-                ...currentData,
-                balance: currentData.balance + totalCost,
-            }));
+            toast({ variant: "destructive", title: "فشل إرسال الهدية", description: (error as Error).message || "حدث خطأ ما. يرجى المحاولة مرة أخرى.", duration: 2000});
         }
     };
 
@@ -572,7 +559,7 @@ function RoomScreen({
                                 onAscend={handleAscend}
                                 onDescend={handleDescend}
                                 onToggleLock={handleToggleLock}
-                                onToggleMute={handleToggleMute}
+                                onToggleMute={onToggleMute}
                                 onAdminMute={handleAdminMute}
                                 onOpenGiftDialog={handleOpenGiftSheet}
                             />
@@ -864,6 +851,47 @@ function SilverScreen({
     );
 }
 
+function LevelScreen({ onBack, user }: { onBack: () => void, user: UserData }) {
+    const { level, progress, currentLevelXp, nextLevelXp } = calculateLevel(user.totalSupportGiven);
+
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                 <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ChevronLeft className="w-6 h-6" />
+                </Button>
+                <h2 className="text-xl font-bold">المستوى</h2>
+                <div></div>
+            </header>
+
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <div className="relative mb-8">
+                    <Star className="w-32 h-32 text-yellow-400/20" />
+                    <div className="absolute inset-0 flex items-center justify-center text-5xl font-bold text-yellow-400">
+                        {level}
+                    </div>
+                </div>
+
+                <h3 className="text-2xl font-bold mb-2">مستواك الحالي: {level}</h3>
+                <p className="text-muted-foreground mb-6">
+                    استمر في دعم المضيفين للوصول إلى مستويات أعلى!
+                </p>
+
+                <div className="w-full max-w-sm bg-black/20 p-4 rounded-xl">
+                    <div className="flex justify-between items-center mb-2 text-sm">
+                        <span className="font-bold text-primary">المستوى {level}</span>
+                        <span className="font-bold text-muted-foreground">المستوى {level + 1}</span>
+                    </div>
+                    <Progress value={progress} className="h-3" />
+                    <div className="text-center mt-2 text-xs text-muted-foreground">
+                        {formatNumber(currentLevelXp)} / {formatNumber(nextLevelXp)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function AdminGiftManager() {
     const { gifts } = useGifts();
     const { toast } = useToast();
@@ -1099,7 +1127,7 @@ function ProfileScreen({
 }: { 
     user: UserData, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    onNavigate: (view: 'coins' | 'silver') => void,
+    onNavigate: (view: 'coins' | 'silver' | 'level') => void,
     onLogout: () => void,
 }) {
     const { toast } = useToast();
@@ -1160,7 +1188,7 @@ function ProfileScreen({
                         </div>
                     </button>
                 </div>
-                <button onClick={() => { /* Placeholder for future navigation */ }} className="bg-gradient-to-r from-purple-600 to-blue-500 rounded-2xl p-3 flex items-center justify-between w-full max-w-xs h-16 shadow-md text-white">
+                <button onClick={() => onNavigate('level')} className="bg-gradient-to-r from-purple-600 to-blue-500 rounded-2xl p-3 flex items-center justify-between w-full max-w-[calc(352px+1rem)] h-16 shadow-md text-white">
                     <div className="flex items-center justify-center w-12 h-12 bg-white/20 rounded-full border-2 border-white/50">
                         <Star className="w-6 h-6 text-white"/>
                     </div>
@@ -1382,7 +1410,7 @@ function MainApp({
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
-    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver'>('profile');
+    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
     const [canClaim, setCanClaim] = useState(false);
@@ -1543,20 +1571,23 @@ function MainApp({
                     />;
         }
         if (view === 'profile') {
-            if (profileView === 'coins') {
-                return <CoinsScreen onBack={() => setProfileView('profile')} balance={user.balance} />;
+            switch (profileView) {
+                case 'coins':
+                    return <CoinsScreen onBack={() => setProfileView('profile')} balance={user.balance} />;
+                case 'silver':
+                    return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={user.silverBalance} onConvert={handleConvertSilver} />;
+                case 'level':
+                    return <LevelScreen onBack={() => setProfileView('profile')} user={user} />;
+                default:
+                    return (
+                        <ProfileScreen 
+                            user={user} 
+                            onUserUpdate={handleUserUpdate}
+                            onNavigate={setProfileView}
+                            onLogout={onLogout}
+                        />
+                    );
             }
-            if (profileView === 'silver') {
-                return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={user.silverBalance} onConvert={handleConvertSilver} />;
-            }
-            return (
-                <ProfileScreen 
-                    user={user} 
-                    onUserUpdate={handleUserUpdate}
-                    onNavigate={setProfileView}
-                    onLogout={onLogout}
-                />
-            );
         }
         return <RoomsListScreen onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user.profile}/>;
     };
@@ -1653,6 +1684,8 @@ export default function HomePage() {
         balance: initialBalance,
         silverBalance: 50000,
         lastClaimTimestamp: null,
+        level: 0,
+        totalSupportGiven: 0,
         isBanned: false,
     };
 

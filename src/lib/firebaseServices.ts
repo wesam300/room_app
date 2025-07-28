@@ -17,7 +17,8 @@ import {
   arrayRemove,
   increment,
   writeBatch,
-  addDoc
+  addDoc,
+  runTransaction
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from './firebase';
 
@@ -33,6 +34,8 @@ export interface UserData {
   balance: number;
   silverBalance: number;
   lastClaimTimestamp: number | null;
+  level: number;
+  totalSupportGiven: number;
   isBanned?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -100,6 +103,46 @@ export interface GiftItem {
     image: string;
 }
 
+// --- Leveling System ---
+const BASE_XP = 10_000_000;
+const GROWTH_FACTOR = 1.5;
+
+// Pre-calculate cumulative XP thresholds for levels 1 to 100
+const calculatedThresholds: number[] = [0]; // Level 0 has 0 XP
+for (let i = 1; i <= 100; i++) {
+    const requiredForThisLevel = Math.floor(BASE_XP * Math.pow(i, GROWTH_FACTOR));
+    const requiredForPrevLevels = calculatedThresholds[i - 1];
+    calculatedThresholds.push(requiredForPrevLevels + requiredForThisLevel);
+}
+export const LEVEL_THRESHOLDS: readonly number[] = calculatedThresholds;
+
+
+// Calculates level based on total support given
+export const calculateLevel = (totalSupport: number): { level: number, progress: number, currentLevelXp: number, nextLevelXp: number } => {
+    let level = 0;
+    for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+        if (totalSupport >= LEVEL_THRESHOLDS[i]) {
+            level = i;
+        } else {
+            break;
+        }
+    }
+
+    const currentLevelThreshold = LEVEL_THRESHOLDS[level];
+    const nextLevelThreshold = LEVEL_THRESHOLDS[level + 1] || Infinity;
+    
+    const xpIntoCurrentLevel = totalSupport - currentLevelThreshold;
+    const xpForNextLevel = nextLevelThreshold - currentLevelThreshold;
+    
+    const progress = xpForNextLevel > 0 ? (xpIntoCurrentLevel / xpForNextLevel) * 100 : 100;
+
+    return { 
+        level, 
+        progress: Math.min(100, progress),
+        currentLevelXp: xpIntoCurrentLevel,
+        nextLevelXp: xpForNextLevel
+    };
+};
 
 // User Services
 export const userServices = {
@@ -111,6 +154,8 @@ export const userServices = {
       if (!docSnap.exists()) {
          await setDoc(userRef, {
            ...userData,
+           level: userData.level || 0,
+           totalSupportGiven: userData.totalSupportGiven || 0,
            createdAt: serverTimestamp(),
            updatedAt: serverTimestamp(),
          });
@@ -131,7 +176,11 @@ export const userServices = {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
-        return userSnap.data() as UserData;
+        const data = userSnap.data() as UserData;
+        // Ensure default values for leveling system if they don't exist
+        data.level = data.level ?? 0;
+        data.totalSupportGiven = data.totalSupportGiven ?? 0;
+        return data;
       }
       return null;
     } catch (error) {
@@ -168,6 +217,54 @@ export const userServices = {
     }
   },
 
+  async sendGiftAndUpdateLevels(
+    senderId: string, 
+    recipientId: string, 
+    roomId: string,
+    senderProfile: UserProfile,
+    gift: GiftItem,
+    quantity: number
+  ): Promise<void> {
+    const totalCost = gift.price * quantity;
+
+    await runTransaction(db, async (transaction) => {
+        const senderRef = doc(db, COLLECTIONS.USERS, senderId);
+        const senderDoc = await transaction.get(senderRef);
+
+        if (!senderDoc.exists() || senderDoc.data().balance < totalCost) {
+            throw new Error("Insufficient balance.");
+        }
+
+        // 1. Deduct balance from sender
+        transaction.update(senderRef, { balance: increment(-totalCost) });
+
+        // 2. Add silver balance to recipient
+        const recipientRef = doc(db, COLLECTIONS.USERS, recipientId);
+        transaction.update(recipientRef, { silverBalance: increment(totalCost * 0.20) });
+
+        // 3. Update room supporter data for the sender
+        const supporterRef = doc(db, COLLECTIONS.ROOM_SUPPORTERS, `${roomId}_${senderId}`);
+        transaction.set(supporterRef, {
+            roomId: roomId,
+            userId: senderId,
+            user: senderProfile,
+            totalGiftValue: increment(totalCost),
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        // 4. Update sender's total support and level
+        const currentTotalSupport = senderDoc.data().totalSupportGiven || 0;
+        const newTotalSupport = currentTotalSupport + totalCost;
+        const { level: newLevel } = calculateLevel(newTotalSupport);
+
+        transaction.update(senderRef, {
+            totalSupportGiven: increment(totalCost),
+            level: newLevel,
+            updatedAt: serverTimestamp(),
+        });
+    });
+  },
+
   async updateUserSilverBalance(userId: string, amount: number): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
@@ -201,6 +298,8 @@ export const userServices = {
           silverBalance: 0,
           lastClaimTimestamp: null,
           isBanned: isBanned,
+          level: 0,
+          totalSupportGiven: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -220,7 +319,15 @@ export const userServices = {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       return onSnapshot(userRef, (doc) => {
-        callback(doc.exists() ? doc.data() as UserData : null);
+        if(doc.exists()){
+            const data = doc.data() as UserData;
+            // Ensure default values
+            data.level = data.level ?? 0;
+            data.totalSupportGiven = data.totalSupportGiven ?? 0;
+            callback(data);
+        } else {
+            callback(null);
+        }
       }, (error) => {
         console.error('Firebase user listener error:', error);
         callback(null);
