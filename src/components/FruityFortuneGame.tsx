@@ -316,7 +316,9 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
       const { winner: finalWinner } = getWinnerForRound(currentRoundId);
       const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
       const allUsers = await userServices.getAllUsers();
-      const userMap = new Map<string, UserData>(allUsers.map(u => [u.profile.userId, u]));
+      const userMap = new Map<string, UserData>(
+        allUsers.filter(u => u && u.profile).map(u => [u.profile.userId, u])
+      );
 
       let allWinners: TopWinner[] = [];
       for (const betData of allRoundBets) {
@@ -596,7 +598,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
       </div>
 
 
-      <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30">
+      <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30 my-1">
         <div className="relative grid grid-cols-3 gap-2 sm:gap-3" ref={gridRef}>
             <AnimatePresence>
               {highlightPosition && isSpinning && (
@@ -653,8 +655,8 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
         </div>
       </main>
 
-      <footer className="w-full max-w-sm mt-2 flex flex-col items-center">
-        <div className="flex justify-center gap-1 mb-2 w-full">
+      <footer className="w-full max-w-sm flex flex-col items-center">
+        <div className="flex justify-center gap-1 mb-1 w-full">
           {BET_AMOUNTS.map((amount) => (
             <button 
                 key={amount} 
@@ -695,5 +697,3 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     </div>
   );
 }
-
-    
