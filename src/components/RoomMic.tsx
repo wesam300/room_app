@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift } from "lucide-react";
+import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { MicSlotData, RoomData } from '@/lib/firebaseServices';
@@ -75,6 +75,7 @@ export default function RoomMic({
     const handleCopyUserId = (id: string) => {
         navigator.clipboard.writeText(id);
         toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
+        setIsPopoverOpen(false);
     };
 
     const handleInteraction = (action: () => void) => {
@@ -83,57 +84,64 @@ export default function RoomMic({
     };
 
     const popoverContent = (
-        <div className="flex flex-col gap-2 p-2">
-            {isCurrentUserOnThisMic && slot.user ? (
-                <>
-                    <Button variant="outline" onClick={() => handleInteraction(onToggleMute)}>
-                        {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
-                    </Button>
-                    <Button variant="destructive" onClick={() => handleInteraction(() => onDescend(index))}>النزول من المايك</Button>
-                </>
-            ) : !slot.user ? (
-                 isOwner ? (
-                    <div className="flex flex-col gap-2">
-                         <Button onClick={() => handleInteraction(() => onAscend(index))}>الصعود على المايك</Button>
-                         <Button variant="secondary" onClick={() => handleInteraction(() => onToggleLock(index))}>
-                             {slot.isLocked ? <Unlock className="ml-2"/> : <Lock className="ml-2"/>}
-                             {slot.isLocked ? "فتح المايك" : "قفل المايك"}
-                         </Button>
-                    </div>
-                ) : (
-                     <Button onClick={() => handleInteraction(() => onAscend(index))} disabled={slot.isLocked}>الصعود على المايك</Button>
-                )
-            ) : ( 
-               <div className="flex flex-col items-center gap-3 text-center">
-                   <Avatar className="w-16 h-16">
+        <div className="flex flex-col gap-2 p-2 w-56">
+            {slot.user ? (
+                // --- User is on the mic ---
+                <div className="flex flex-col items-center gap-3 text-center">
+                   <Avatar className="w-20 h-20 border-2 border-primary">
                        <AvatarImage src={slot.user.image} alt={slot.user.name} />
                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                    </Avatar>
-                   <p className="font-bold">{slot.user.name}</p>
-                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                   <p className="font-bold text-lg">{slot.user.name}</p>
+                   <button onClick={() => handleCopyUserId(slot.user!.userId)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                        <span>ID: {slot.user.userId}</span>
-                       <button onClick={() => handleInteraction(() => handleCopyUserId(slot.user!.userId))}>
-                           <Copy className="w-3 h-3" />
-                       </button>
-                   </div>
-                   <Button onClick={() => handleInteraction(() => onOpenGiftDialog(slot.user!))}>
-                        <Gift className="w-4 h-4 ml-2" />
-                        إرسال هدية
-                   </Button>
-                   {isOwner && (
-                       <div className="grid grid-cols-2 gap-2 w-full mt-2">
-                           <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onAdminMute(index))}>
-                               {slot.isMuted ? <Mic className="ml-1"/> : <MicOff className="ml-1"/>}
-                               {slot.isMuted ? "إلغاء الكتم" : "كتم"}
-                            </Button>
-                           <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onToggleLock(index))}>
-                               {slot.isLocked ? <Unlock className="ml-1"/> : <Lock className="ml-1"/>}
-                               {slot.isLocked ? "فتح" : "قفل"}
+                       <Copy className="w-3 h-3" />
+                   </button>
+                   
+                   <div className="w-full border-t border-border my-1"></div>
+
+                   {isCurrentUserOnThisMic ? (
+                       // Options for myself
+                       <div className="w-full grid gap-2">
+                           <Button variant="outline" onClick={() => handleInteraction(onToggleMute)}>
+                               {slot.isMuted ? <Mic className="ml-2"/> : <MicOff className="ml-2"/>}
+                               {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
                            </Button>
-                           <Button variant="destructive" size="sm" className="col-span-2" onClick={() => handleInteraction(() => onDescend(index))}>طرد من المايك</Button>
+                           <Button variant="destructive" onClick={() => handleInteraction(() => onDescend(index))}>النزول من المايك</Button>
+                       </div>
+                   ) : (
+                       // Options for another user
+                       <div className="w-full grid gap-2">
+                           <Button onClick={() => handleInteraction(() => onOpenGiftDialog(slot.user!))}>
+                               <Gift className="w-4 h-4 ml-2" />
+                               إرسال هدية
+                           </Button>
+                           {isOwner && (
+                               <div className="grid grid-cols-2 gap-2 w-full pt-2 border-t border-border">
+                                   <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onAdminMute(index))}>
+                                       {slot.isMuted ? <Mic className="w-4 h-4"/> : <MicOff className="w-4 h-4"/>}
+                                   </Button>
+                                   <Button variant="destructive" size="sm" onClick={() => handleInteraction(() => onDescend(index))}>
+                                      طرد
+                                   </Button>
+                               </div>
+                           )}
                        </div>
                    )}
                </div>
+            ) : (
+                // --- Mic is empty ---
+                <div className="w-full grid gap-2">
+                    <Button onClick={() => handleInteraction(() => onAscend(index))} disabled={slot.isLocked}>
+                        الصعود على المايك
+                    </Button>
+                    {isOwner && (
+                        <Button variant="secondary" onClick={() => handleInteraction(() => onToggleLock(index))}>
+                            {slot.isLocked ? <Unlock className="ml-2"/> : <Lock className="ml-2"/>}
+                            {slot.isLocked ? "فتح المايك" : "قفل المايك"}
+                        </Button>
+                    )}
+                </div>
             )}
         </div>
     );
@@ -167,12 +175,12 @@ export default function RoomMic({
                                 </Avatar>
                                  {slot.isMuted && (
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                                        <XCircle className="w-6 h-6 text-red-500"/>
+                                        <MicOff className="w-6 h-6 text-white"/>
                                     </div>
                                 )}
                                  {slot.user.userId === room.ownerId && (
-                                    <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border-2 border-background">
-                                        OWNER
+                                    <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black p-1 rounded-full border-2 border-background">
+                                        <Crown className="w-3 h-3"/>
                                     </div>
                                 )}
                             </div>
