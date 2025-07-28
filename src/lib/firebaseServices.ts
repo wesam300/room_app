@@ -476,7 +476,7 @@ export const giftServices = {
   async initializeGifts() {
     try {
         const DEFAULT_GIFTS: GiftItem[] = [
-            { id: 'fruit_basket', name: 'سلة فواكه', price: 100000, image: 'https://placehold.co/150x150/4caf50/ffffff.png' },
+            { id: 'fruit_basket', name: 'مرطبات', price: 100000, image: 'https://placehold.co/150x150/4caf50/ffffff.png' },
             { id: 'ice_cream', name: 'آيس كريم', price: 250000, image: 'https://placehold.co/150x150/e91e63/ffffff.png' },
             { id: 'teddy_bear', name: 'دبدوب', price: 500000, image: 'https://placehold.co/150x150/795548/ffffff.png' },
             { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
