@@ -104,15 +104,24 @@ export interface GiftItem {
 }
 
 // --- Leveling System ---
-const BASE_XP = 10_000_000;
-const GROWTH_FACTOR = 1.5;
-
-// Pre-calculate cumulative XP thresholds for levels 1 to 100
 const calculatedThresholds: number[] = [0]; // Level 0 has 0 XP
 for (let i = 1; i <= 100; i++) {
-    const requiredForThisLevel = Math.floor(BASE_XP * Math.pow(i, GROWTH_FACTOR));
-    const requiredForPrevLevels = calculatedThresholds[i - 1];
-    calculatedThresholds.push(requiredForPrevLevels + requiredForThisLevel);
+    let requiredForThisLevel: number;
+    const prevLevelThreshold = calculatedThresholds[i - 1];
+
+    if (i <= 25) {
+        // Easier curve for the first 25 levels
+        const base_xp_easy = 10_000_000;
+        const growth_factor_easy = 1.15;
+        requiredForThisLevel = Math.floor(base_xp_easy * Math.pow(i, growth_factor_easy));
+    } else {
+        // Harder curve after level 25
+        const base_xp_hard = 25_000_000; // Start higher
+        const growth_factor_hard = 2.2; // Steeper growth
+        requiredForThisLevel = Math.floor(base_xp_hard * Math.pow(i - 24, growth_factor_hard));
+    }
+    
+    calculatedThresholds.push(prevLevelThreshold + requiredForThisLevel);
 }
 export const LEVEL_THRESHOLDS: readonly number[] = calculatedThresholds;
 
