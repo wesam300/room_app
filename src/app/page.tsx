@@ -617,33 +617,38 @@ function RoomScreen({
                             </div>
                         ))}
                     </div>
-                     <div className="flex items-center gap-2">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="bg-black/40 rounded-full h-14 w-14"
-                            onClick={() => setIsGameVisible(true)}
-                        >
-                            <Gamepad2 className="w-7 h-7 text-primary" />
-                        </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="bg-black/40 rounded-full h-14 w-14"
-                            onClick={() => handleOpenGiftSheet(null)}
-                        >
-                             <Gift className="w-7 h-7 text-primary" />
-                        </Button>
-                        <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
-                            <Input
-                                placeholder="اكتب رسالتك..."
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
-                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                            />
-                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
-                                <Send className="w-5 h-5" />
+                     <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 flex items-center gap-2">
+                            <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                                <Input
+                                    placeholder="اكتب رسالتك..."
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                />
+                                <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                                    <Send className="w-5 h-5" />
+                                </Button>
+                            </div>
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-14 w-14"
+                                onClick={() => handleOpenGiftSheet(null)}
+                            >
+                                 <Gift className="w-7 h-7 text-primary" />
+                            </Button>
+                        </div>
+
+                        <div className="relative">
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-14 w-14"
+                                onClick={() => setIsGameVisible(true)}
+                            >
+                                <Gamepad2 className="w-7 h-7 text-primary" />
                             </Button>
                         </div>
                     </div>
@@ -1821,4 +1826,3 @@ export default function HomePage() {
         />;
 }
 
-    
