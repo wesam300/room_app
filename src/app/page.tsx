@@ -617,8 +617,8 @@ function RoomScreen({
                             </div>
                         ))}
                     </div>
-                     <div className="flex items-center justify-between gap-2">
-                        <div className="flex-1 flex items-center gap-2">
+                    <div className="flex items-end justify-between gap-2">
+                        <div className="flex-1 flex items-end gap-2">
                             <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                                 <Input
                                     placeholder="اكتب رسالتك..."
@@ -641,7 +641,7 @@ function RoomScreen({
                             </Button>
                         </div>
 
-                        <div className="relative">
+                        <div className="relative mb-20">
                              <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -1825,4 +1825,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
