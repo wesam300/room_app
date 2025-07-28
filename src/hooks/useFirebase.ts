@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, announcementServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem, AnnouncementData } from '@/lib/firebaseServices';
+import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem } from '@/lib/firebaseServices';
 
 // Hook for user data
 export const useUser = (userId: string | null) => {
@@ -251,24 +251,4 @@ export const useGifts = () => {
     }, []);
   
     return { gifts, loading, error };
-};
-
-// Hook for room announcements
-export const useRoomAnnouncements = (roomId: string | null) => {
-    const [latestAnnouncement, setLatestAnnouncement] = useState<AnnouncementData | null>(null);
-
-    useEffect(() => {
-        if (!roomId) {
-            setLatestAnnouncement(null);
-            return;
-        }
-
-        const unsubscribe = announcementServices.onNewAnnouncement(roomId, (announcement) => {
-            setLatestAnnouncement(announcement);
-        });
-
-        return () => unsubscribe();
-    }, [roomId]);
-
-    return { latestAnnouncement };
 };

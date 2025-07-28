@@ -1,3 +1,4 @@
+
 {
   "indexes": [
     {
@@ -24,20 +25,6 @@
         },
         {
           "fieldPath": "totalGiftValue",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "room_announcements",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "roomId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
