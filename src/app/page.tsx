@@ -618,24 +618,22 @@ function RoomScreen({
                         ))}
                     </div>
                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                             <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="bg-black/40 rounded-full h-14 w-14"
-                                onClick={() => setIsGameVisible(true)}
-                            >
-                                <Gamepad2 className="w-7 h-7 text-primary" />
-                            </Button>
-                             <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="bg-black/40 rounded-full h-14 w-14"
-                                onClick={() => handleOpenGiftSheet(null)}
-                            >
-                                 <Gift className="w-7 h-7 text-primary" />
-                            </Button>
-                        </div>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full h-14 w-14"
+                            onClick={() => setIsGameVisible(true)}
+                        >
+                            <Gamepad2 className="w-7 h-7 text-primary" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full h-14 w-14"
+                            onClick={() => handleOpenGiftSheet(null)}
+                        >
+                             <Gift className="w-7 h-7 text-primary" />
+                        </Button>
                         <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                             <Input
                                 placeholder="اكتب رسالتك..."
