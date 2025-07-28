@@ -602,20 +602,31 @@ function RoomScreen({
                         className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
                     >
-                        {chatMessages.map(msg => (msg && msg.user && msg.user.name) && (
+                        {chatMessages.map(msg => {
+                          const chatUserData = roomUsersData.get(msg.user.userId);
+                          return (msg && msg.user && msg.user.name) && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
                                     <AvatarImage src={msg.user.image} />
                                     <AvatarFallback>{msg.user.name ? msg.user.name.charAt(0) : ""}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex flex-col items-start">
-                                    <span className="text-sm text-muted-foreground">{msg.user.name}</span>
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-sm text-muted-foreground">{msg.user.name}</span>
+                                       {chatUserData?.isOfficial && (
+                                            <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded-full text-xs font-bold">
+                                                <Medal className="w-3 h-3" />
+                                                <span>رسمي</span>
+                                            </div>
+                                       )}
+                                    </div>
                                     <div className="bg-primary/20 p-2 rounded-lg rounded-tl-none">
                                         <p className="text-sm text-foreground">{msg.text}</p>
                                     </div>
                                 </div>
                             </div>
-                        ))}
+                          )
+                        })}
                     </div>
                     <div className="flex items-end justify-between gap-2">
                         <div className="flex-1 flex items-center gap-2">

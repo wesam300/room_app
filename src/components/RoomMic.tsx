@@ -99,8 +99,13 @@ export default function RoomMic({
                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                    </Avatar>
                    <div className="flex items-center gap-2">
-                     {userData.isOfficial && <Medal className="w-5 h-5 text-yellow-500" />}
                      <p className="font-bold text-lg">{slot.user.name}</p>
+                     {userData.isOfficial && (
+                        <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full text-xs font-bold">
+                            <Medal className="w-4 h-4" />
+                            <span>رسمي</span>
+                        </div>
+                     )}
                    </div>
 
                    {levelInfo && (
@@ -208,7 +213,12 @@ export default function RoomMic({
                         )}
                     </div>
                     <div className="flex items-center gap-1">
-                       {userData?.isOfficial && <Medal className="w-3 h-3 text-yellow-500" />}
+                       {userData?.isOfficial && (
+                           <div className="flex items-center gap-1 text-yellow-500 text-xs">
+                                <Medal className="w-3 h-3" />
+                                <span>رسمي</span>
+                           </div>
+                       )}
                        <span className="text-xs text-muted-foreground truncate max-w-16">
                          {slot.user ? slot.user.name : `no.${index + 1}`}
                        </span>
