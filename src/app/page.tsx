@@ -147,16 +147,16 @@ function GiftSheet({
                              <div
                                 key={gift.id}
                                 onClick={() => setSelectedGift(gift)}
-                                style={{ backgroundImage: `url(${gift.image})` }}
                                 className={cn(
-                                    "relative aspect-square flex flex-col items-center justify-end p-2 rounded-lg bg-cover bg-center cursor-pointer transition-all border-2 overflow-hidden",
+                                    "relative aspect-square flex flex-col items-center justify-center p-0 rounded-lg bg-cover bg-center cursor-pointer transition-all border-2 overflow-hidden bg-black/30",
                                     selectedGift?.id === gift.id ? "border-primary" : "border-transparent hover:border-primary/50"
                                 )}
                                 data-ai-hint="gift present"
                             >
-                                <div className="absolute inset-0 bg-black/30"></div>
-                                <div className="relative w-full text-center py-1 bg-black/50 backdrop-blur-sm rounded-md">
-                                    <span className="text-xs font-bold text-white">{formatNumber(gift.price)}</span>
+                                <img src={gift.image} alt={gift.name} className="absolute inset-0 w-full h-full object-cover"/>
+                                <div className="absolute inset-0 bg-black/20"></div>
+                                <div className="absolute bottom-0 left-0 right-0 w-full text-center py-1 bg-gradient-to-t from-black/80 to-black/0">
+                                    <span className="text-xs font-bold text-white drop-shadow-md">{formatNumber(gift.price)}</span>
                                 </div>
                             </div>
                         ))}
@@ -1006,7 +1006,7 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                 <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                      <Avatar className="w-14 h-14">
                         <AvatarImage src={user.profile.image} alt={user.profile.name} />
                         <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
