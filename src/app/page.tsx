@@ -19,7 +19,7 @@ import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/u
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -412,42 +412,9 @@ function RoomScreen({
              <div className="absolute inset-0 bg-cover bg-center z-0">
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
-             <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
-                <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
-                    <Avatar className="w-10 h-10">
-                        <AvatarImage src={room.image} alt={room.name} />
-                        <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="text-left">
-                        <p className="font-bold text-sm">{room.name}</p>
-                        <div className="flex items-center gap-1.5">
-                        <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
-                            <Copy className="h-3 w-3" />
-                        </button>
-                        <span className="text-xs text-muted-foreground">{room.id}</span>
-                        </div>
-                    </div>
-                </div>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
-                            <X className="w-6 h-6 text-primary" />
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                هل تريد حقًا مغادرة الغرفة؟
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                            <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </header>
+             
+             <RoomHeader />
+
              <div className="relative z-10 flex flex-col flex-1 min-h-0">
                 <GiftSheet 
                     isOpen={isGiftSheetOpen}
@@ -882,6 +849,16 @@ function AdminPanel() {
             toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على الغرفة أو حدث خطأ آخر.", duration: 2000 });
         }
     };
+    
+    const handleSetDifficulty = async (level: DifficultyLevel) => {
+        try {
+            await gameServices.setGameDifficulty(level);
+            toast({ title: "تم تحديث نسبة الفوز", description: `تم ضبط الصعوبة على: ${level}`, duration: 2000 });
+        } catch (error) {
+            console.error("Admin set difficulty failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث صعوبة اللعبة.", duration: 2000 });
+        }
+    }
 
 
     return (
@@ -939,6 +916,19 @@ function AdminPanel() {
                     />
                     <Button onClick={handleBanRoom} variant="destructive" className="w-full">حظر الغرفة</Button>
                 </div>
+                <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">التحكم بنسبة الفوز باللعبة</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                         <Button onClick={() => handleSetDifficulty('very_easy')} variant="outline">سهل جدا</Button>
+                         <Button onClick={() => handleSetDifficulty('easy')} variant="outline">سهل</Button>
+                         <Button onClick={() => handleSetDifficulty('medium')} variant="outline">متوسط</Button>
+                         <Button onClick={() => handleSetDifficulty('medium_hard')} variant="outline">اكثر من المتوسط</Button>
+                         <Button onClick={() => handleSetDifficulty('hard')} variant="outline">صعب</Button>
+                         <Button onClick={() => handleSetDifficulty('very_hard')} variant="outline">صعب جدا</Button>
+                         <Button onClick={() => handleSetDifficulty('impossible')} variant="destructive" className="col-span-2">لا أحد يفوز</Button>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -967,7 +957,7 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                 <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                      <Avatar className="w-14 h-14">
                         <AvatarImage src={user.profile.image} alt={user.profile.name} />
                         <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
@@ -1627,4 +1617,5 @@ export default function HomePage() {
     
 
       
+
 

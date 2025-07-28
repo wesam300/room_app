@@ -13,7 +13,7 @@ import { Timer, Coins, Trophy, RefreshCw, Crown } from 'lucide-react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { UserData, UserProfile as IUserProfile, gameServices, userServices } from '@/lib/firebaseServices';
+import { UserData, UserProfile as IUserProfile, gameServices, userServices, DifficultyLevel } from '@/lib/firebaseServices';
 
 
 // --- Types ---
@@ -46,22 +46,19 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
 ];
 
 // --- New Probability-based Winner Generation ---
+const PROBABILITY_MATRIX_LEVELS: Record<DifficultyLevel, number[]> = {
+    // [5x, 10x, 15x, 25x, 45x]
+    very_easy:   [0.30, 0.25, 0.20, 0.15, 0.10], // High chance of big wins
+    easy:        [0.40, 0.22, 0.18, 0.12, 0.08],
+    medium:      [0.50, 0.20, 0.15, 0.10, 0.05], // Default balanced
+    medium_hard: [0.60, 0.18, 0.12, 0.07, 0.03],
+    hard:        [0.70, 0.15, 0.10, 0.04, 0.01],
+    very_hard:   [0.85, 0.10, 0.05, 0.00, 0.00], // Mostly small wins
+    impossible:  [1.00, 0.00, 0.00, 0.00, 0.00], // Only 5x wins
+};
 
-// 1. Define the probability matrix based on the user's table
-const PROBABILITY_MATRIX = [
-  // Level 0: 0 rounds since big win
-  { 5: 0.70, 10: 0.08, 15: 0.04, 25: 0.002, 45: 0 },
-  // Level 1: 1 round
-  { 5: 0.60, 10: 0.12, 15: 0.06, 25: 0.005, 45: 0.001 },
-  // Level 2: 2 rounds
-  { 5: 0.55, 10: 0.15, 15: 0.08, 25: 0.01, 45: 0.002 },
-  // Level 3: 3 rounds
-  { 5: 0.50, 10: 0.18, 15: 0.10, 25: 0.015, 45: 0.003 },
-  // Level 4: 4 rounds
-  { 5: 0.45, 10: 0.20, 15: 0.12, 25: 0.02, 45: 0.005 },
-  // Level 5: 5+ rounds
-  { 5: 0.40, 10: 0.22, 15: 0.14, 25: 0.03, 45: 0.01 },
-];
+const MULTIPLIERS = [5, 10, 15, 25, 45];
+
 
 // 2. Group fruits by their multiplier
 const FRUITS_BY_MULTIPLIER: Record<number, FruitKey[]> = {
@@ -77,9 +74,9 @@ for (const key in FRUITS) {
 
 // --- Cached Calculations for Deterministic Results ---
 // This avoids re-calculating the entire history on every render.
-const deterministicWinnerCache = new Map<number, { winner: FruitKey, isBigWin: boolean }>();
+const deterministicWinnerCache = new Map<number, { winner: FruitKey }>();
 
-function getWinnerForRound(roundId: number): { winner: FruitKey, isBigWin: boolean } {
+function getWinnerForRound(roundId: number, difficulty: DifficultyLevel): { winner: FruitKey } {
     if (deterministicWinnerCache.has(roundId)) {
         return deterministicWinnerCache.get(roundId)!;
     }
@@ -93,77 +90,57 @@ function getWinnerForRound(roundId: number): { winner: FruitKey, isBigWin: boole
 
     // --- Special Event Logic ---
     const displayRoundId = (roundId % 1000);
-    // Every 20 rounds, guarantee a medium win (overrides the 10-round rule)
-    if (roundId > 0 && displayRoundId > 0 && displayRoundId % 20 === 0) {
-        const mediumWinFruits = [...FRUITS_BY_MULTIPLIER[10], ...FRUITS_BY_MULTIPLIER[15]];
-        const winner = mediumWinFruits[Math.floor(pseudoRandom() * mediumWinFruits.length)];
-        const result = { winner, isBigWin: true };
-        deterministicWinnerCache.set(roundId, result);
-        return result;
-    }
-
-    // Every 10 rounds, a low-tier fruit wins (simulates "lowest bet wins")
-    if (roundId > 0 && displayRoundId > 0 && displayRoundId % 10 === 0) {
-         const lowestTierFruits = FRUITS_BY_MULTIPLIER[5];
-         const winner = lowestTierFruits[Math.floor(pseudoRandom() * lowestTierFruits.length)];
-         const result = { winner, isBigWin: false }; // 5x is not a big win
-         deterministicWinnerCache.set(roundId, result);
-         return result;
-    }
-
-
-    // --- Standard Probability Logic ---
-    let roundsSinceBigWin = 0;
-    // To calculate roundsSinceBigWin, we must check previous rounds deterministically
-    let checkRound = roundId - 1;
-    while(checkRound >= 0) {
-        const previousRoundResult = getWinnerForRound(checkRound); // Recursive call to get historical data
-        if (previousRoundResult.isBigWin) {
-            break; // Found the last big win
+    if (roundId > 0 && displayRoundId > 0) {
+        // Every 20 rounds, guarantee a medium win (10x or 15x)
+        if (displayRoundId % 20 === 0) {
+            const mediumWinFruits = [...FRUITS_BY_MULTIPLIER[10], ...FRUITS_BY_MULTIPLIER[15]];
+            const winner = mediumWinFruits[Math.floor(pseudoRandom() * mediumWinFruits.length)];
+            const result = { winner };
+            deterministicWinnerCache.set(roundId, result);
+            return result;
         }
-        roundsSinceBigWin++;
-        checkRound--;
+
+        // Every 10 rounds, a low-tier fruit wins (simulates "lowest bet wins")
+        if (displayRoundId % 10 === 0) {
+            const lowestTierFruits = FRUITS_BY_MULTIPLIER[5];
+            const winner = lowestTierFruits[Math.floor(pseudoRandom() * lowestTierFruits.length)];
+            const result = { winner };
+            deterministicWinnerCache.set(roundId, result);
+            return result;
+        }
     }
-    
-    // Determine the probability level, maxing out at the last level
-    const level = Math.min(roundsSinceBigWin, PROBABILITY_MATRIX.length - 1);
-    const probabilities = PROBABILITY_MATRIX[level];
+
+
+    // --- Standard Probability Logic based on Difficulty ---
+    const probabilities = PROBABILITY_MATRIX_LEVELS[difficulty] || PROBABILITY_MATRIX_LEVELS['medium'];
     
     let random = pseudoRandom();
-    let winningMultiplier: number | null = null;
+    let winningMultiplier: number = 5; // Default to 5x
     
     // Select a multiplier category based on the probabilities
-    for (const multiplierStr in probabilities) {
-        const multiplier = parseInt(multiplierStr, 10);
-        const chance = probabilities[multiplier as keyof typeof probabilities];
+    for (let i = 0; i < probabilities.length; i++) {
+        const chance = probabilities[i];
         if (random < chance) {
-            winningMultiplier = multiplier;
+            winningMultiplier = MULTIPLIERS[i];
             break;
         }
         random -= chance;
     }
     
-    // Fallback to 5x if no category was chosen (due to floating point inaccuracies)
-    if (winningMultiplier === null) {
-        winningMultiplier = 5;
-    }
-    
     // Get all fruits with that multiplier
     const possibleWinners = FRUITS_BY_MULTIPLIER[winningMultiplier];
     if (!possibleWinners || possibleWinners.length === 0) {
-         // Fallback if a multiplier has no fruits (should not happen with current config)
+         // Fallback if a multiplier has no fruits
         const fallbackWinners = FRUITS_BY_MULTIPLIER[5];
-        winningMultiplier = 5;
         const winner = fallbackWinners[Math.floor(pseudoRandom() * fallbackWinners.length)];
-        const result = { winner, isBigWin: false };
+        const result = { winner };
         deterministicWinnerCache.set(roundId, result);
         return result;
     }
     
     // Select a random fruit from the chosen category
     const winner = possibleWinners[Math.floor(pseudoRandom() * possibleWinners.length)];
-    const isBigWin = winningMultiplier > 5;
-    const result = { winner, isBigWin };
+    const result = { winner };
     deterministicWinnerCache.set(roundId, result);
     return result;
 }
@@ -262,6 +239,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
   
   const { toast } = useToast();
   const { saveGameHistory, saveUserBets, getUserBets } = useGameHistory();
@@ -274,6 +252,8 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   // Load state from Firebase on initial mount
   useEffect(() => {
     setIsClient(true);
+    const unsubscribe = gameServices.onDifficultyChange(setDifficulty);
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -313,7 +293,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   
   // The main game loop, driven by a simple interval
   const calculateAndShowResults = useCallback(async (currentRoundId: number) => {
-      const { winner: finalWinner } = getWinnerForRound(currentRoundId);
+      const { winner: finalWinner } = getWinnerForRound(currentRoundId, difficulty);
       const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
       const allUsers = await userServices.getAllUsers();
       const userMap = new Map<string, UserData>(
@@ -347,7 +327,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
       setWinnerScreenInfo({ fruit: finalWinner, payout: myPayout, topWinners: allWinners.slice(0, 3) });
       setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
 
-  }, [bets, onBalanceChange]);
+  }, [bets, onBalanceChange, difficulty]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -367,7 +347,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
             setRoundId(currentRoundId);
 
             // On a new round, the winner of the *previous* round is determined
-            const { winner: previousWinner } = getWinnerForRound(currentRoundId - 1);
+            const { winner: previousWinner } = getWinnerForRound(currentRoundId - 1, difficulty);
             
             // Update history
             setHistory(prev => [previousWinner, ...prev.slice(0, 4)]);
@@ -394,7 +374,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
             if (!isSpinning) {
                 // ---- START OF SPIN PHASE ----
                 setIsSpinning(true);
-                const { winner } = getWinnerForRound(currentRoundId);
+                const { winner } = getWinnerForRound(currentRoundId, difficulty);
 
                 // 1. Generate animation sequence
                 const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -447,7 +427,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, difficulty]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -585,7 +565,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
         )}
       </AnimatePresence>
       <div className="w-full max-w-sm flex flex-col items-center">
-        <header className="w-full flex justify-between items-center mb-2 gap-2">
+        <header className="w-full flex justify-between items-center mb-1 gap-2">
             <div className="flex-1 bg-gradient-to-b from-yellow-400 to-amber-600 rounded-lg p-2 text-center border-2 border-yellow-600 shadow-[inset_0_2px_4px_rgba(0,0,0,0.4),0_4px_6px_rgba(0,0,0,0.2)]">
                 <div className="text-sm font-bold text-black/80" style={{textShadow: '1px 1px 1px rgba(255,255,255,0.3)'}}>رصيدك</div>
                 <div className="text-lg font-bold text-black" style={{textShadow: '1px 1px 2px rgba(255,255,255,0.5)'}}>{balance.toLocaleString('en-US')}</div>
@@ -598,8 +578,8 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
       </div>
 
 
-      <main className="w-full max-w-sm bg-black/20 p-3 rounded-3xl border border-yellow-400/30 my-1">
-        <div className="relative grid grid-cols-3 gap-2 sm:gap-3" ref={gridRef}>
+      <main className="w-full max-w-sm bg-black/20 p-2 sm:p-3 rounded-3xl border border-yellow-400/30 my-1">
+        <div className="relative grid grid-cols-3 gap-2" ref={gridRef}>
             <AnimatePresence>
               {highlightPosition && isSpinning && (
                 <motion.div
@@ -675,7 +655,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
         
         <div className="bg-black/30 w-full p-2 rounded-full flex items-center justify-between mt-1">
           <span className="text-sm font-bold text-yellow-300 ml-2">الجولات:</span>
-          <div className="flex flex-1 justify-evenly items-center h-10">
+          <div className="flex flex-1 justify-evenly items-center h-8">
             {history.length > 0 ? history.map((fruitKey, index) => (
               <div key={`${fruitKey}-${index}`} className="relative">
                 <div className={cn("bg-purple-900/50 p-1 rounded-full w-8 h-8 flex items-center justify-center", index === 0 && "scale-110 border-2 border-yellow-300")}>

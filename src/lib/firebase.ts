@@ -41,7 +41,8 @@ export const COLLECTIONS = {
   CHAT_MESSAGES: 'chat_messages',
   GAME_HISTORY: 'game_history',
   USER_BETS: 'user_bets',
-  ROOM_SUPPORTERS: 'room_supporters'
+  ROOM_SUPPORTERS: 'room_supporters',
+  GAME_SETTINGS: 'game_settings'
 } as const;
 
 export default app;

@@ -84,6 +84,14 @@ export interface RoomSupporterData {
   updatedAt: Timestamp;
 }
 
+export type DifficultyLevel = 'very_easy' | 'easy' | 'medium' | 'medium_hard' | 'hard' | 'very_hard' | 'impossible';
+
+export interface GameSettingsData {
+    difficulty: DifficultyLevel;
+    updatedAt: Timestamp;
+}
+
+
 // User Services
 export const userServices = {
   async saveUser(userData: UserData): Promise<void> {
@@ -396,6 +404,35 @@ export const gameServices = {
       const q = query(betsRef, where('roundId', '==', roundId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as UserBetData);
+  },
+
+  async setGameDifficulty(difficulty: DifficultyLevel): Promise<void> {
+    try {
+      const settingsRef = doc(db, COLLECTIONS.GAME_SETTINGS, 'fruity_fortune');
+      await setDoc(settingsRef, {
+        difficulty: difficulty,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error setting game difficulty:', error);
+      throw error;
+    }
+  },
+
+  onDifficultyChange(callback: (difficulty: DifficultyLevel) => void): () => void {
+    const settingsRef = doc(db, COLLECTIONS.GAME_SETTINGS, 'fruity_fortune');
+    return onSnapshot(settingsRef, (doc) => {
+        if (doc.exists()) {
+            const data = doc.data() as GameSettingsData;
+            callback(data.difficulty);
+        } else {
+            // Default to medium if not set
+            callback('medium');
+        }
+    }, (error) => {
+        console.error('Error listening to difficulty changes:', error);
+        callback('medium'); // Default on error
+    });
   }
 };
 
