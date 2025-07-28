@@ -343,7 +343,7 @@ function RoomScreen({
         }
     }
     
-    const handleToggleMute = () => {
+    const handleToggleMute = (index: number) => {
         if (myMicIndex !== -1) {
             const newSlots = [...(room.micSlots || [])];
             const currentSlot = newSlots[myMicIndex];
@@ -617,37 +617,37 @@ function RoomScreen({
                             </div>
                         ))}
                     </div>
-                     <div className="relative">
-                        <div className="flex items-center gap-2">
-                           <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3 max-w-[calc(100%-8rem)]">
-                                <Input
-                                    placeholder="اكتب رسالتك..."
-                                    value={chatInput}
-                                    onChange={(e) => setChatInput(e.target.value)}
-                                    className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                />
-                                <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary" onClick={handleSendMessage}>
-                                    <Send className="w-5 h-5" />
-                                </Button>
-                            </div>
+                     <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                              <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="bg-black/40 rounded-full h-12 w-12 flex-shrink-0"
+                                className="bg-black/40 rounded-full h-14 w-14"
+                                onClick={() => setIsGameVisible(true)}
+                            >
+                                <Gamepad2 className="w-7 h-7 text-primary" />
+                            </Button>
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-14 w-14"
                                 onClick={() => handleOpenGiftSheet(null)}
                             >
-                                 <Gift className="w-6 h-6 text-primary" />
+                                 <Gift className="w-7 h-7 text-primary" />
                             </Button>
                         </div>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="bg-black/40 rounded-full absolute bottom-16 left-0 h-12 w-12"
-                            onClick={() => setIsGameVisible(true)}
-                        >
-                            <Gamepad2 className="w-6 h-6 text-primary" />
-                        </Button>
+                        <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                            <Input
+                                placeholder="اكتب رسالتك..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            />
+                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                                <Send className="w-5 h-5" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
