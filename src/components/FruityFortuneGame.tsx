@@ -451,7 +451,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
-      toast({ title: "انتهى وقت الرهان", description: "انتظر حتى الجولة القادمة", variant: "destructive", duration: 2500 });
+      toast({ title: "انتهى وقت الرهان", description: "انتظر حتى الجولة القادمة", variant: "destructive", duration: 2000 });
       return;
     }
     
@@ -461,13 +461,13 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
             title: "تم الوصول للحد الأقصى", 
             description: `لا يمكنك المراهنة على أكثر من ${MAX_BET_SLOTS} خيارات.`, 
             variant: "destructive",
-            duration: 2500,
+            duration: 2000,
         });
         return;
     }
 
     if (balance < activeBet) {
-       toast({ title: "رصيد غير كاف", description: "ليس لديك ما يكفي من الرصيد للقيام بهذا الرهان", variant: "destructive", duration: 2500 });
+       toast({ title: "رصيد غير كاف", description: "ليس لديك ما يكفي من الرصيد للقيام بهذا الرهان", variant: "destructive", duration: 2000 });
        return;
     }
     onBalanceChange(prev => prev - activeBet);

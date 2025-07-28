@@ -412,7 +412,42 @@ function RoomScreen({
              <div className="absolute inset-0 bg-cover bg-center z-0">
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
-             <RoomHeader />
+             <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
+                <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
+                    <Avatar className="w-10 h-10">
+                        <AvatarImage src={room.image} alt={room.name} />
+                        <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-left">
+                        <p className="font-bold text-sm">{room.name}</p>
+                        <div className="flex items-center gap-1.5">
+                        <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                            <Copy className="h-3 w-3" />
+                        </button>
+                        <span className="text-xs text-muted-foreground">{room.id}</span>
+                        </div>
+                    </div>
+                </div>
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
+                            <X className="w-6 h-6 text-primary" />
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                هل تريد حقًا مغادرة الغرفة؟
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                            <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </header>
              <div className="relative z-10 flex flex-col flex-1 min-h-0">
                 <GiftSheet 
                     isOpen={isGiftSheetOpen}
@@ -1592,3 +1627,4 @@ export default function HomePage() {
     
 
       
+
