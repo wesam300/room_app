@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { userServices, roomServices, chatServices, gameServices, supporterServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData } from '@/lib/firebaseServices';
+import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem } from '@/lib/firebaseServices';
 
 // Hook for user data
 export const useUser = (userId: string | null) => {
@@ -229,4 +229,26 @@ export const useRoomSupporters = (roomId: string | null) => {
   return { supporters, loading, error };
 };
 
-    
+// Hook for gifts
+export const useGifts = () => {
+    const [gifts, setGifts] = useState<GiftItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+  
+    useEffect(() => {
+      setLoading(true);
+      setError(null);
+      const unsubscribe = giftServices.onGiftsChange((giftsData, err) => {
+        if (err) {
+          console.error("Error in gifts listener:", err);
+          setError("Failed to load gifts.");
+        } else {
+          setGifts(giftsData);
+        }
+        setLoading(false);
+      });
+      return () => unsubscribe();
+    }, []);
+  
+    return { gifts, loading, error };
+};

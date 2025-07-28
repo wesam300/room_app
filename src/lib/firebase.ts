@@ -42,7 +42,8 @@ export const COLLECTIONS = {
   GAME_HISTORY: 'game_history',
   USER_BETS: 'user_bets',
   ROOM_SUPPORTERS: 'room_supporters',
-  GAME_SETTINGS: 'game_settings'
+  GAME_SETTINGS: 'game_settings',
+  GIFTS: 'gifts',
 } as const;
 
 export default app;

@@ -15,7 +15,8 @@ import {
   Timestamp,
   arrayUnion,
   arrayRemove,
-  increment
+  increment,
+  writeBatch
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from './firebase';
 
@@ -91,6 +92,12 @@ export interface GameSettingsData {
     updatedAt: Timestamp;
 }
 
+export interface GiftItem {
+    id: string;
+    name: string;
+    price: number;
+    image: string;
+}
 
 // User Services
 export const userServices = {
@@ -462,4 +469,47 @@ export const supporterServices = {
        callback([], error);
     });
   }
+};
+
+// Gift Services
+export const giftServices = {
+  async initializeGifts() {
+    const giftsRef = collection(db, COLLECTIONS.GIFTS);
+    const snapshot = await getDocs(query(giftsRef, limit(1)));
+    if (snapshot.empty) {
+        console.log("Initializing default gifts in Firestore...");
+        const DEFAULT_GIFTS: GiftItem[] = [
+            { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
+            { id: 'perfume', name: 'عطر', price: 2000000, image: 'https://placehold.co/150x150/ff8a4d/ffffff.png' },
+            { id: 'car', name: 'سيارة', price: 5000000, image: 'https://placehold.co/150x150/ffc14d/ffffff.png' },
+            { id: 'plane', name: 'طائرة', price: 10000000, image: 'https://placehold.co/150x150/c1ff4d/000000.png' },
+            { id: 'yacht', name: 'يخت', price: 15000000, image: 'https://placehold.co/150x150/4dffc1/000000.png' },
+            { id: 'castle', name: 'قلعة', price: 30000000, image: 'https://placehold.co/150x150/4dc1ff/ffffff.png' },
+            { id: 'lion', name: 'أسد', price: 50000000, image: 'https://placehold.co/150x150/c14dff/ffffff.png' },
+        ];
+        const batch = writeBatch(db);
+        DEFAULT_GIFTS.forEach(gift => {
+            const docRef = doc(db, COLLECTIONS.GIFTS, gift.id);
+            batch.set(docRef, gift);
+        });
+        await batch.commit();
+    }
+  },
+
+  onGiftsChange(callback: (gifts: GiftItem[], error?: Error) => void) {
+    const giftsRef = collection(db, COLLECTIONS.GIFTS);
+    const q = query(giftsRef, orderBy('price', 'asc'));
+    return onSnapshot(q, (snapshot) => {
+        const gifts = snapshot.docs.map(doc => doc.data() as GiftItem);
+        callback(gifts);
+    }, (error) => {
+        console.error("Gifts listener error:", error);
+        callback([], error);
+    });
+  },
+
+  async updateGiftImage(giftId: string, imageUrl: string): Promise<void> {
+    const giftRef = doc(db, COLLECTIONS.GIFTS, giftId);
+    await updateDoc(giftRef, { image: imageUrl });
+  },
 };

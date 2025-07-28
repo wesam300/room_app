@@ -15,11 +15,11 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useRoomSupporters } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -38,13 +38,6 @@ interface ChatMessage {
     createdAt: any;
 }
 
-interface GiftItem {
-    id: string;
-    name: string;
-    price: number;
-    image: string;
-}
-
 interface Supporter {
     user: UserProfile;
     totalGiftValue: number;
@@ -53,17 +46,6 @@ interface Supporter {
 
 // --- Constants ---
 const ADMIN_USER_IDS = ['368473', '607162'];
-
-const GIFTS: GiftItem[] = [
-    { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
-    { id: 'perfume', name: 'عطر', price: 2000000, image: 'https://placehold.co/150x150/ff8a4d/ffffff.png' },
-    { id: 'car', name: 'سيارة رياضية', price: 5000000, image: 'https://placehold.co/150x150/ffc14d/ffffff.png' },
-    { id: 'plane', name: 'طائرة خاصة', price: 10000000, image: 'https://placehold.co/150x150/c1ff4d/000000.png' },
-    { id: 'yacht', name: 'يخت', price: 15000000, image: 'https://placehold.co/150x150/4dffc1/000000.png' },
-    { id: 'castle', name: 'قلعة', price: 30000000, image: 'https://placehold.co/150x150/4dc1ff/ffffff.png' },
-    { id: 'lion', name: 'الأسد الذهبي', price: 50000000, image: 'https://placehold.co/150x150/c14dff/ffffff.png' },
-];
-
 const DAILY_REWARD_AMOUNT = 10000000;
 
 
@@ -95,6 +77,7 @@ function GiftSheet({
     balance: number,
     initialRecipient: UserProfile | null,
 }) {
+    const { gifts } = useGifts();
     const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(initialRecipient);
     const [selectedGift, setSelectedGift] = useState<GiftItem | null>(null);
     const [quantity, setQuantity] = useState(1);
@@ -160,7 +143,7 @@ function GiftSheet({
 
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-4 gap-4">
-                        {GIFTS.map(gift => (
+                        {gifts.map(gift => (
                             <div
                                 key={gift.id}
                                 onClick={() => setSelectedGift(gift)}
@@ -772,6 +755,68 @@ function SilverScreen({
     );
 }
 
+function AdminGiftManager() {
+    const { gifts } = useGifts();
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedGiftId, setSelectedGiftId] = useState<string | null>(null);
+
+    const handleEditClick = (giftId: string) => {
+        setSelectedGiftId(giftId);
+        fileInputRef.current?.click();
+    };
+
+    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file && selectedGiftId) {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const newImageBase64 = reader.result as string;
+                try {
+                    await giftServices.updateGiftImage(selectedGiftId, newImageBase64);
+                    toast({ title: "تم تحديث صورة الهدية بنجاح!", duration: 2000 });
+                } catch (error) {
+                    console.error("Failed to update gift image:", error);
+                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+                } finally {
+                    setSelectedGiftId(null);
+                    // Reset file input
+                    if(fileInputRef.current) fileInputRef.current.value = "";
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <h4 className="font-semibold">إدارة الهدايا</h4>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+            />
+            <div className="grid grid-cols-4 gap-2">
+                {gifts.map(gift => (
+                    <button
+                        key={gift.id}
+                        onClick={() => handleEditClick(gift.id)}
+                        className="relative aspect-square flex flex-col items-center justify-center p-1 rounded-lg bg-black/30 cursor-pointer transition-all border-2 border-transparent hover:border-primary group"
+                    >
+                        <img src={gift.image} alt={gift.name} className="w-10 h-10 object-contain" />
+                        <span className="text-xs text-muted-foreground mt-1">{gift.name}</span>
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                           <Edit className="w-6 h-6 text-white"/>
+                        </div>
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 
 function AdminPanel() {
     const { toast } = useToast();
@@ -916,6 +961,8 @@ function AdminPanel() {
                     />
                     <Button onClick={handleBanRoom} variant="destructive" className="w-full">حظر الغرفة</Button>
                 </div>
+                <hr className="border-primary/20"/>
+                <AdminGiftManager />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز باللعبة</h4>
@@ -1457,6 +1504,11 @@ export default function HomePage() {
 
   const { userData, loading, error, setUserData } = useUser(userId);
 
+  // Initialize gifts in Firestore if they don't exist
+  useEffect(() => {
+    giftServices.initializeGifts();
+  }, []);
+
   const handleCreateProfile = async (name: string) => {
     if (!name.trim()) {
        toast({
@@ -1613,9 +1665,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
-    
-
-      
-
-
