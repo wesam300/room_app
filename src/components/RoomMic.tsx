@@ -17,6 +17,7 @@ interface UserProfile {
     name: string;
     image: string;
     userId: string;
+    displayId?: string;
 }
 
 interface RoomMicProps {
@@ -78,8 +79,9 @@ export default function RoomMic({
     const isCurrentUserOnThisMic = slot.user?.userId === currentUser.userId;
     const showSpeakingAnimation = !slot.isMuted && isSpeaking;
 
-    const handleCopyUserId = (id: string) => {
-        navigator.clipboard.writeText(id);
+    const handleCopyUserId = (user: UserProfile) => {
+        const idToCopy = user.displayId || user.userId;
+        navigator.clipboard.writeText(idToCopy);
         toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
         setIsPopoverOpen(false);
     };
@@ -115,8 +117,8 @@ export default function RoomMic({
                         </div>
                    )}
 
-                   <button onClick={() => handleCopyUserId(slot.user!.userId)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                       <span>ID: {slot.user.userId}</span>
+                   <button onClick={() => handleCopyUserId(slot.user!)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                       <span>ID: {slot.user.displayId || slot.user.userId}</span>
                        <Copy className="w-3 h-3" />
                    </button>
                    
@@ -231,3 +233,4 @@ export default function RoomMic({
         </Popover>
     )
 }
+

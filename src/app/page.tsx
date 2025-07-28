@@ -26,6 +26,7 @@ interface UserProfile {
     name: string;
     image: string;
     userId: string;
+    displayId?: string;
 }
 
 type Room = RoomData;
@@ -298,7 +299,7 @@ function RoomScreen({
         }
     }, [chatMessages]);
 
-     const handleCopyId = () => {
+     const handleCopyRoomId = () => {
         navigator.clipboard.writeText(room.id);
         toast({ title: "تم نسخ ID الغرفة", duration: 2000 });
     };
@@ -441,7 +442,7 @@ function RoomScreen({
               <div className="text-left">
                 <p className="font-bold text-sm">{room.name}</p>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={(e) => { e.stopPropagation(); handleCopyId(); }} className="text-muted-foreground hover:text-foreground">
+                  <button onClick={(e) => { e.stopPropagation(); handleCopyRoomId(); }} className="text-muted-foreground hover:text-foreground">
                     <Copy className="h-3 w-3" />
                   </button>
                   <span className="text-xs text-muted-foreground">{room.id}</span>
@@ -629,7 +630,7 @@ function RoomScreen({
                         })}
                     </div>
                     <div className="flex items-end justify-between gap-2">
-                        <div className="flex-1 flex items-center gap-2">
+                         <div className="flex-1 flex items-center gap-2">
                             <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                                 <Input
                                     placeholder="اكتب رسالتك..."
@@ -652,7 +653,7 @@ function RoomScreen({
                             </Button>
                         </div>
                         
-                        <div className="relative mb-20">
+                         <div className="relative mb-20">
                              <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -977,6 +978,7 @@ function AdminGiftManager() {
 function AdminPanel() {
     const { toast } = useToast();
     const [targetUserId, setTargetUserId] = useState("");
+    const [newDisplayId, setNewDisplayId] = useState("");
     const [amount, setAmount] = useState("");
     const [checkedUserBalance, setCheckedUserBalance] = useState<number | null>(null);
     const [targetRoomId, setTargetRoomId] = useState("");
@@ -1022,6 +1024,22 @@ function AdminPanel() {
         }
     };
     
+    const handleChangeDisplayId = async () => {
+        if (!targetUserId.trim() || !newDisplayId.trim()) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف المستخدم والمعرف الجديد.", duration: 2000 });
+            return;
+        }
+        try {
+            await userServices.changeUserDisplayId(targetUserId.trim(), newDisplayId.trim());
+            toast({ title: "تم تغيير معرف العرض بنجاح!", duration: 2000});
+            setTargetUserId("");
+            setNewDisplayId("");
+        } catch (error) {
+            console.error("Admin change display ID failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: (error as Error).message || "حدث خطأ ما.", duration: 2000 });
+        }
+    };
+
     const handleSetBanStatus = async (isBanned: boolean) => {
         if (!targetUserId.trim()) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم.", duration: 2000 });
@@ -1125,6 +1143,23 @@ function AdminPanel() {
                     </div>
                 </div>
                  <hr className="border-primary/20"/>
+                 <div className="space-y-2">
+                    <h4 className="font-semibold">تغيير معرف العرض</h4>
+                    <Input
+                        placeholder="معرف المستخدم الحالي"
+                        value={targetUserId}
+                        onChange={(e) => setTargetUserId(e.target.value)}
+                        className="text-left"
+                    />
+                    <Input
+                        placeholder="معرف العرض الجديد"
+                        value={newDisplayId}
+                        onChange={(e) => setNewDisplayId(e.target.value)}
+                        className="text-left"
+                    />
+                    <Button onClick={handleChangeDisplayId} className="w-full">حفظ المعرف الجديد</Button>
+                </div>
+                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">إدارة الغرف</h4>
                     <Input
@@ -1171,7 +1206,8 @@ function ProfileScreen({
     const isAdmin = ADMIN_USER_IDS.includes(user.profile.userId);
 
     const handleCopyId = () => {
-        navigator.clipboard.writeText(user.profile.userId);
+        const idToCopy = user.profile.displayId || user.profile.userId;
+        navigator.clipboard.writeText(idToCopy);
         toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
     };
 
@@ -1187,7 +1223,7 @@ function ProfileScreen({
                         <h2 className="text-lg font-bold">{user.profile.name}</h2>
                         <button onClick={handleCopyId} className="flex items-center gap-1 text-sm text-muted-foreground w-full justify-start">
                             <Copy className="w-3 h-3" />
-                            <span>ID: {user.profile.userId}</span>
+                            <span>ID: {user.profile.displayId || user.profile.userId}</span>
                         </button>
                     </div>
                 </div>
@@ -1711,7 +1747,8 @@ export default function HomePage() {
     const newUserProfile: UserProfile = { 
       name: name.trim(), 
       image: `https://placehold.co/128x128.png`,
-      userId: newUserId
+      userId: newUserId,
+      displayId: newUserId,
     };
     
     const initialBalance = ADMIN_USER_IDS.includes(newUserId) ? 1000000000 : 0;
@@ -1855,3 +1892,4 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+

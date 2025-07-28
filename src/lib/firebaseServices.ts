@@ -27,6 +27,7 @@ export interface UserProfile {
     name: string;
     image: string;
     userId: string;
+    displayId?: string;
 }
 
 export interface UserData {
@@ -164,6 +165,10 @@ export const userServices = {
       if (!docSnap.exists()) {
          await setDoc(userRef, {
            ...userData,
+           profile: {
+               ...userData.profile,
+               displayId: userData.profile.displayId || userData.profile.userId,
+           },
            level: userData.level || 0,
            totalSupportGiven: userData.totalSupportGiven || 0,
            isOfficial: userData.isOfficial || false,
@@ -249,6 +254,26 @@ export const userServices = {
       throw error;
     }
   },
+  
+  async isDisplayIdTaken(displayId: string): Promise<boolean> {
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where('profile.displayId', '==', displayId), limit(1));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  },
+
+  async changeUserDisplayId(userId: string, newDisplayId: string): Promise<void> {
+    const isTaken = await this.isDisplayIdTaken(newDisplayId);
+    if (isTaken) {
+      throw new Error(`معرف العرض "${newDisplayId}" مستخدم بالفعل.`);
+    }
+
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(userRef, {
+      'profile.displayId': newDisplayId,
+      updatedAt: serverTimestamp(),
+    });
+  },
 
   async sendGiftAndUpdateLevels(
     senderId: string, 
@@ -324,6 +349,7 @@ export const userServices = {
         await setDoc(userRef, {
           profile: {
             userId: userId,
+            displayId: userId,
             name: `Banned User ${userId}`,
             image: "https://placehold.co/128x128.png",
           },
@@ -722,3 +748,4 @@ export const giftServices = {
     await updateDoc(giftRef, { image: imageUrl });
   },
 };
+
