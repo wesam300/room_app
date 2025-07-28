@@ -144,16 +144,18 @@ function GiftSheet({
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="grid grid-cols-4 gap-4">
                         {gifts.map(gift => (
-                            <div
+                             <div
                                 key={gift.id}
                                 onClick={() => setSelectedGift(gift)}
+                                style={{ backgroundImage: `url(${gift.image})` }}
                                 className={cn(
-                                    "relative aspect-square flex flex-col items-center justify-center p-2 rounded-lg bg-black/30 cursor-pointer transition-all border-2",
+                                    "relative aspect-square flex flex-col items-center justify-end p-2 rounded-lg bg-cover bg-center cursor-pointer transition-all border-2 overflow-hidden",
                                     selectedGift?.id === gift.id ? "border-primary" : "border-transparent hover:border-primary/50"
                                 )}
+                                data-ai-hint="gift present"
                             >
-                                <img src={gift.image} data-ai-hint="gift present" alt={gift.name} className="w-3/4 h-3/4 object-contain" />
-                                <div className="flex items-center gap-1 mt-1">
+                                <div className="absolute inset-0 bg-black/30"></div>
+                                <div className="relative w-full text-center py-1 bg-black/50 backdrop-blur-sm rounded-md">
                                     <span className="text-xs font-bold text-white">{formatNumber(gift.price)}</span>
                                 </div>
                             </div>
@@ -1004,7 +1006,7 @@ function ProfileScreen({
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3">
                      <Avatar className="w-14 h-14">
                         <AvatarImage src={user.profile.image} alt={user.profile.name} />
                         <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
@@ -1025,7 +1027,7 @@ function ProfileScreen({
              </div>
 
              <div className="mt-8 flex justify-center items-center gap-4">
-                <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('coins')} className="bg-[#3e3424] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                     <div className="flex items-center justify-center w-12 h-12 bg-[#eab308]/50 rounded-full border-2 border-yellow-400">
                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z" fill="#eab308"/>
@@ -1037,7 +1039,7 @@ function ProfileScreen({
                         <p className="text-gray-400 text-sm">{formatNumber(user.balance)}</p>
                     </div>
                 </button>
-                <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
+                 <button onClick={() => onNavigate('silver')} className="bg-[#2a2d36] rounded-2xl p-3 flex items-center justify-between w-44 h-16 shadow-md">
                      <div className="flex items-center justify-center w-12 h-12 bg-[#4a4e5a] rounded-full border-2 border-gray-400">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M5 16L3 5L8.5 9L12 4L15.5 9L21 5L19 16H5Z" stroke="#87CEEB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -1665,3 +1667,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
