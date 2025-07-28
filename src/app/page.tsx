@@ -367,7 +367,7 @@ function RoomScreen({
                 totalGiftValue: totalCost,
             });
     
-            toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.`, duration: 2000 });
+            // toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.`, duration: 2000 });
             setIsGiftSheetOpen(false);
 
             // Add global announcement if gift is expensive
