@@ -269,7 +269,7 @@ export const useRoomAnnouncements = (roomId: string | null) => {
             if (announcement) {
                 setTimeout(() => {
                     setLatestAnnouncement(null);
-                }, 8000); // Hide after 8 seconds
+                }, 2000); // Hide after 2 seconds
             }
         });
 
