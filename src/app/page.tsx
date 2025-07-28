@@ -52,7 +52,7 @@ interface Supporter {
 
 
 // --- Constants ---
-const ADMIN_USER_ID = '368473';
+const ADMIN_USER_IDS = ['368473', '607162'];
 
 const GIFTS: GiftItem[] = [
     { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
@@ -922,7 +922,7 @@ function ProfileScreen({
     onLogout: () => void,
 }) {
     const { toast } = useToast();
-    const isAdmin = user.profile.userId === ADMIN_USER_ID;
+    const isAdmin = ADMIN_USER_IDS.includes(user.profile.userId);
 
     const handleCopyId = () => {
         navigator.clipboard.writeText(user.profile.userId);
@@ -1450,7 +1450,7 @@ export default function HomePage() {
       userId: newUserId
     };
     
-    const initialBalance = newUserId === ADMIN_USER_ID ? 1000000000 : 10000000;
+    const initialBalance = ADMIN_USER_IDS.includes(newUserId) ? 1000000000 : 10000000;
 
     const newUserRecord: UserData = {
         profile: newUserProfile,
@@ -1590,3 +1590,5 @@ export default function HomePage() {
 }
 
     
+
+      
