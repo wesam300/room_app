@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -142,20 +143,20 @@ function GiftSheet({
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                    <div className="grid grid-cols-4 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                         {gifts.map(gift => (
                              <div
                                 key={gift.id}
                                 onClick={() => setSelectedGift(gift)}
                                 className={cn(
-                                    "relative aspect-square flex flex-col items-center justify-center p-0 rounded-lg bg-cover bg-center cursor-pointer transition-all border-2 overflow-hidden bg-black/30",
+                                    "relative aspect-square flex flex-col items-center p-0 rounded-lg bg-cover bg-center cursor-pointer transition-all border-2 overflow-hidden bg-black/30",
                                     selectedGift?.id === gift.id ? "border-primary" : "border-transparent hover:border-primary/50"
                                 )}
+                                style={{ backgroundImage: `url(${gift.image})` }}
                                 data-ai-hint="gift present"
                             >
-                                <img src={gift.image} alt={gift.name} className="absolute inset-0 w-full h-full object-cover"/>
                                 <div className="absolute inset-0 bg-black/20"></div>
-                                <div className="absolute bottom-0 left-0 right-0 w-full text-center py-1 bg-gradient-to-t from-black/80 to-black/0">
+                                <div className="absolute bottom-0 left-0 right-0 w-full text-center py-1 bg-gradient-to-t from-black/80 to-transparent">
                                     <span className="text-xs font-bold text-white drop-shadow-md">{formatNumber(gift.price)}</span>
                                 </div>
                             </div>
