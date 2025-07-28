@@ -486,6 +486,8 @@ export const giftServices = {
             { id: 'yacht', name: 'يخت', price: 15000000, image: 'https://placehold.co/150x150/4dffc1/000000.png' },
             { id: 'castle', name: 'قلعة', price: 30000000, image: 'https://placehold.co/150x150/4dc1ff/ffffff.png' },
             { id: 'lion', name: 'أسد', price: 50000000, image: 'https://placehold.co/150x150/c14dff/ffffff.png' },
+            { id: 'rocket', name: 'صاروخ', price: 100000000, image: 'https://placehold.co/150x150/f0f8ff/000000.png' },
+            { id: 'planet', name: 'كوكب', price: 200000000, image: 'https://placehold.co/150x150/deb887/000000.png' },
         ];
         const batch = writeBatch(db);
         DEFAULT_GIFTS.forEach(gift => {
