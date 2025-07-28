@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -143,7 +142,7 @@ function GiftSheet({
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4">
-                    <div className="grid grid-cols-3 gap-4">
+                     <div className="grid grid-cols-3 gap-4">
                         {gifts.map(gift => (
                              <div
                                 key={gift.id}
@@ -182,6 +181,90 @@ function GiftSheet({
     );
 }
 
+
+function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean, onOpenChange: (open: boolean) => void, room: Room | null, onUpdate: (updates: { name: string, description: string, image: string }) => void }) {
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (open && room) {
+            setName(room.name);
+            setDescription(room.description);
+            setImagePreview(room.image);
+        }
+    }, [open, room]);
+
+    const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = () => {
+        if (room && name.trim()) {
+            onUpdate({
+                name: name.trim(),
+                description: description.trim(),
+                image: imagePreview ?? room.image,
+            });
+            onOpenChange(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="text-right">تعديل الغرفة</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4 text-right">
+                    <button
+                        className="flex flex-col items-center gap-4 cursor-pointer group relative"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <Avatar className="w-24 h-24">
+                            <AvatarImage src={imagePreview ?? undefined} />
+                            <AvatarFallback>
+                                <Camera className="w-8 h-8" />
+                            </AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-sm text-white">تغيير الصورة</span>
+                        </div>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleImageChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                    </button>
+                    <Input
+                        placeholder="اسم الغرفة"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="text-right"
+                    />
+                    <Input
+                        placeholder="وصف الغرفة"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        className="text-right"
+                    />
+                </div>
+                <Button onClick={handleSubmit}>حفظ التغييرات</Button>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function RoomScreen({ 
     room, 
     user, 
@@ -200,6 +283,7 @@ function RoomScreen({
 
     const [isGiftSheetOpen, setIsGiftSheetOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
+    const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
@@ -219,6 +303,7 @@ function RoomScreen({
     const handleUpdateRoomData = async (updates: Partial<RoomData>) => {
         try {
             await roomServices.updateRoomData(room.id, updates);
+            toast({ title: "تم تحديث بيانات الغرفة بنجاح!", duration: 2000 });
         } catch (error) {
             console.error("Error updating room data:", error);
             toast({ variant: "destructive", title: "خطأ", description: "لم يتم تحديث الغرفة. حاول مرة أخرى.", duration: 2000});
@@ -341,13 +426,26 @@ function RoomScreen({
         setInitialRecipientForGift(recipient);
         setIsGiftSheetOpen(true);
     };
+    
+    const handleHeaderClick = () => {
+        if (isOwner) {
+            setIsEditRoomOpen(true);
+        }
+    };
 
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
 
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
-            <div className="flex items-center gap-2 p-1.5 rounded-full bg-black/20">
+            <button 
+                onClick={handleHeaderClick} 
+                disabled={!isOwner}
+                className={cn(
+                    "flex items-center gap-2 p-1.5 rounded-full bg-black/20",
+                    isOwner && "cursor-pointer hover:bg-black/40"
+                )}
+            >
               <Avatar className="w-10 h-10">
                 <AvatarImage src={room.image} alt={room.name} />
                 <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
@@ -355,13 +453,13 @@ function RoomScreen({
               <div className="text-left">
                 <p className="font-bold text-sm">{room.name}</p>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={handleCopyId} className="text-muted-foreground hover:text-foreground">
+                  <button onClick={(e) => { e.stopPropagation(); handleCopyId(); }} className="text-muted-foreground hover:text-foreground">
                     <Copy className="h-3 w-3" />
                   </button>
                   <span className="text-xs text-muted-foreground">{room.id}</span>
                 </div>
               </div>
-            </div>
+            </button>
             <div className="flex items-center gap-2">
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -401,6 +499,13 @@ function RoomScreen({
              </div>
              
              <RoomHeader />
+             
+             <EditRoomDialog 
+                open={isEditRoomOpen}
+                onOpenChange={setIsEditRoomOpen}
+                room={room}
+                onUpdate={handleUpdateRoomData}
+             />
 
              <div className="relative z-10 flex flex-col flex-1 min-h-0">
                 <GiftSheet 
