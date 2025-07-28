@@ -288,6 +288,25 @@ function RoomScreen({
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
+    const [roomUsersData, setRoomUsersData] = useState<Map<string, UserData>>(new Map());
+
+    const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
+
+    useEffect(() => {
+        const fetchUsersData = async () => {
+            const userIds = usersOnMics.map(u => u.userId).filter(id => !roomUsersData.has(id));
+            if (userIds.length > 0) {
+                const newUsersData = await userServices.getMultipleUsers(userIds);
+                setRoomUsersData(prev => {
+                    const newMap = new Map(prev);
+                    newUsersData.forEach(u => newMap.set(u.profile.userId, u));
+                    return newMap;
+                });
+            }
+        };
+        fetchUsersData();
+    }, [usersOnMics, roomUsersData]);
+
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -420,8 +439,6 @@ function RoomScreen({
         }
     };
 
-    const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
-
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
@@ -548,22 +565,26 @@ function RoomScreen({
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
-                        {(room.micSlots || []).map((slot, index) => (
-                            <RoomMic 
-                                key={index}
-                                room={room}
-                                slot={slot} 
-                                index={index}
-                                isOwner={isOwner}
-                                currentUser={user.profile}
-                                onAscend={handleAscend}
-                                onDescend={handleDescend}
-                                onToggleLock={handleToggleLock}
-                                onToggleMute={handleToggleMute}
-                                onAdminMute={handleAdminMute}
-                                onOpenGiftDialog={handleOpenGiftSheet}
-                            />
-                        ))}
+                        {(room.micSlots || []).map((slot, index) => {
+                            const userData = slot.user ? roomUsersData.get(slot.user.userId) : null;
+                            return (
+                                <RoomMic 
+                                    key={index}
+                                    room={room}
+                                    slot={slot} 
+                                    userData={userData}
+                                    index={index}
+                                    isOwner={isOwner}
+                                    currentUser={user.profile}
+                                    onAscend={handleAscend}
+                                    onDescend={handleDescend}
+                                    onToggleLock={handleToggleLock}
+                                    onToggleMute={handleToggleMute}
+                                    onAdminMute={handleAdminMute}
+                                    onOpenGiftDialog={handleOpenGiftSheet}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
 

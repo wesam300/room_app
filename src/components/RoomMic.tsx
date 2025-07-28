@@ -6,10 +6,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift, Crown } from "lucide-react";
+import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift, Crown, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { MicSlotData, RoomData } from '@/lib/firebaseServices';
+import type { MicSlotData, RoomData, UserData } from '@/lib/firebaseServices';
+import { Progress } from '@/components/ui/progress';
+import { calculateLevel } from '@/lib/firebaseServices';
 
 interface UserProfile {
     name: string;
@@ -19,6 +21,7 @@ interface UserProfile {
 
 interface RoomMicProps {
     slot: MicSlotData;
+    userData: UserData | null;
     index: number;
     isOwner: boolean;
     currentUser: UserProfile;
@@ -33,6 +36,7 @@ interface RoomMicProps {
 
 export default function RoomMic({
     slot,
+    userData,
     index,
     isOwner,
     currentUser,
@@ -47,6 +51,8 @@ export default function RoomMic({
     const { toast } = useToast();
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+    const levelInfo = userData ? calculateLevel(userData.totalSupportGiven) : null;
 
     useEffect(() => {
         if (!slot.user || slot.isMuted) {
@@ -85,7 +91,7 @@ export default function RoomMic({
 
     const popoverContent = (
         <div className="flex flex-col gap-2 p-2 w-56">
-            {slot.user ? (
+            {slot.user && userData ? (
                 // --- User is on the mic ---
                 <div className="flex flex-col items-center gap-3 text-center">
                    <Avatar className="w-20 h-20 border-2 border-primary">
@@ -93,6 +99,20 @@ export default function RoomMic({
                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                    </Avatar>
                    <p className="font-bold text-lg">{slot.user.name}</p>
+
+                   {levelInfo && (
+                        <div className="w-full px-4">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                    <Star className="w-4 h-4 text-yellow-400" />
+                                    <span>المستوى {levelInfo.level}</span>
+                                </div>
+                                <span>{levelInfo.level + 1}</span>
+                            </div>
+                            <Progress value={levelInfo.progress} className="h-1.5 mt-1" />
+                        </div>
+                   )}
+
                    <button onClick={() => handleCopyUserId(slot.user!.userId)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                        <span>ID: {slot.user.userId}</span>
                        <Copy className="w-3 h-3" />

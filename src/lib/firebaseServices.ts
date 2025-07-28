@@ -188,6 +188,27 @@ export const userServices = {
       throw error;
     }
   },
+
+  async getMultipleUsers(userIds: string[]): Promise<UserData[]> {
+    if (userIds.length === 0) return [];
+    try {
+      const usersData: UserData[] = [];
+      // Firestore 'in' query supports up to 30 items. We'll chunk it if needed.
+      for (let i = 0; i < userIds.length; i += 30) {
+        const chunk = userIds.slice(i, i + 30);
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, where('profile.userId', 'in', chunk));
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach(doc => {
+            usersData.push(doc.data() as UserData);
+        });
+      }
+      return usersData;
+    } catch (error) {
+        console.error('Error getting multiple users from Firestore:', error);
+        throw error;
+    }
+  },
   
   async getAllUsers(): Promise<UserData[]> {
     try {
