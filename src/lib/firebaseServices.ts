@@ -479,16 +479,16 @@ export const roomServices = {
 
   async leaveRoom(roomId: string, userId: string): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-    const roomSnap = await getDoc(roomRef);
-    if(roomSnap.exists()){
-       const currentCount = roomSnap.data().userCount || 0;
-       if (currentCount > 0) {
-         await updateDoc(roomRef, {
-             userCount: increment(-1),
-             updatedAt: serverTimestamp(),
-         });
-       }
-    }
+    await runTransaction(db, async (transaction) => {
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) {
+            return;
+        }
+        transaction.update(roomRef, { 
+            userCount: increment(-1),
+            updatedAt: serverTimestamp(),
+        });
+    });
   },
 
   async loadRooms(): Promise<RoomData[]> {
