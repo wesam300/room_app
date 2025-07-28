@@ -15,7 +15,7 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
@@ -288,25 +288,9 @@ function RoomScreen({
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
-    const [roomUsersData, setRoomUsersData] = useState<Map<string, UserData>>(new Map());
-
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
-
-    useEffect(() => {
-        const fetchUsersData = async () => {
-            const userIds = usersOnMics.map(u => u.userId).filter(id => !roomUsersData.has(id));
-            if (userIds.length > 0) {
-                const newUsersData = await userServices.getMultipleUsers(userIds);
-                setRoomUsersData(prev => {
-                    const newMap = new Map(prev);
-                    newUsersData.forEach(u => newMap.set(u.profile.userId, u));
-                    return newMap;
-                });
-            }
-        };
-        fetchUsersData();
-    }, [usersOnMics, roomUsersData]);
-
+    const userIdsOnMics = usersOnMics.map(u => u.userId);
+    const { users: roomUsersData } = useRoomUsers(userIdsOnMics);
 
     useEffect(() => {
         if (chatContainerRef.current) {

@@ -252,3 +252,46 @@ export const useGifts = () => {
   
     return { gifts, loading, error };
 };
+
+// Hook for real-time user data for a list of users (e.g., in a room)
+export const useRoomUsers = (userIds: string[]) => {
+  const [users, setUsers] = useState<Map<string, UserData>>(new Map());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Remove duplicates
+    const uniqueUserIds = [...new Set(userIds)].filter(id => id);
+
+    if (uniqueUserIds.length === 0) {
+      setUsers(new Map());
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
+    const unsubscribe = userServices.onMultipleUsersChange(uniqueUserIds, (updatedUsers, err) => {
+      if (err) {
+        setError("Failed to load user data for the room.");
+        console.error(err);
+      } else {
+        setUsers(prevUsers => {
+          const newUsers = new Map(prevUsers);
+          updatedUsers.forEach(user => {
+            if (user) {
+              newUsers.set(user.profile.userId, user);
+            }
+          });
+          return newUsers;
+        });
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+
+  }, [JSON.stringify(userIds)]); // Deep compare the array of IDs
+
+  return { users, loading, error };
+};

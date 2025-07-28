@@ -357,6 +357,38 @@ export const userServices = {
       console.error('Error setting up Firebase user listener:', error);
       return () => {};
     }
+  },
+  
+  onMultipleUsersChange(
+    userIds: string[], 
+    callback: (users: (UserData | null)[], error?: Error) => void
+  ): () => void {
+    if (userIds.length === 0) {
+      callback([]);
+      return () => {};
+    }
+    try {
+      const unsubscribes = userIds.map(userId => {
+        const userRef = doc(db, COLLECTIONS.USERS, userId);
+        return onSnapshot(userRef, (doc) => {
+          const user = doc.exists() ? doc.data() as UserData : null;
+          if (user) {
+            user.level = user.level ?? 0;
+            user.totalSupportGiven = user.totalSupportGiven ?? 0;
+          }
+          callback([user]); // Callback with each user update individually
+        }, (error) => {
+          console.error(`Error listening to user ${userId}:`, error);
+          callback([], error);
+        });
+      });
+      // Return a function that unsubscribes from all listeners
+      return () => unsubscribes.forEach(unsub => unsub());
+    } catch (error) {
+      console.error('Error setting up Firebase multi-user listener:', error);
+      callback([], error as Error);
+      return () => {};
+    }
   }
 };
 
