@@ -1450,7 +1450,7 @@ export default function HomePage() {
       userId: newUserId
     };
     
-    const initialBalance = ADMIN_USER_IDS.includes(newUserId) ? 1000000000 : 10000000;
+    const initialBalance = ADMIN_USER_IDS.includes(newUserId) ? 1000000000 : 0;
 
     const newUserRecord: UserData = {
         profile: newUserProfile,
