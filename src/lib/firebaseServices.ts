@@ -474,10 +474,7 @@ export const supporterServices = {
 // Gift Services
 export const giftServices = {
   async initializeGifts() {
-    const giftsRef = collection(db, COLLECTIONS.GIFTS);
-    const snapshot = await getDocs(query(giftsRef, limit(1)));
-    if (snapshot.empty) {
-        console.log("Initializing default gifts in Firestore...");
+    try {
         const DEFAULT_GIFTS: GiftItem[] = [
             { id: 'rose', name: 'وردة', price: 1000000, image: 'https://placehold.co/150x150/ff4d4d/ffffff.png' },
             { id: 'perfume', name: 'عطر', price: 2000000, image: 'https://placehold.co/150x150/ff8a4d/ffffff.png' },
@@ -489,12 +486,26 @@ export const giftServices = {
             { id: 'rocket', name: 'صاروخ', price: 100000000, image: 'https://placehold.co/150x150/f0f8ff/000000.png' },
             { id: 'planet', name: 'كوكب', price: 200000000, image: 'https://placehold.co/150x150/deb887/000000.png' },
         ];
+        
         const batch = writeBatch(db);
-        DEFAULT_GIFTS.forEach(gift => {
+        let itemsAdded = 0;
+        
+        for (const gift of DEFAULT_GIFTS) {
             const docRef = doc(db, COLLECTIONS.GIFTS, gift.id);
-            batch.set(docRef, gift);
-        });
-        await batch.commit();
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+                batch.set(docRef, gift);
+                itemsAdded++;
+            }
+        }
+
+        if (itemsAdded > 0) {
+            console.log(`Adding ${itemsAdded} new default gifts to Firestore...`);
+            await batch.commit();
+        }
+
+    } catch (error) {
+        console.error("Error initializing gifts:", error);
     }
   },
 
