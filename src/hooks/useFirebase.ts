@@ -265,12 +265,6 @@ export const useRoomAnnouncements = (roomId: string | null) => {
 
         const unsubscribe = announcementServices.onNewAnnouncement(roomId, (announcement) => {
             setLatestAnnouncement(announcement);
-            // The banner will be displayed for a limited time in the component itself.
-            if (announcement) {
-                setTimeout(() => {
-                    setLatestAnnouncement(null);
-                }, 2000); // Hide after 2 seconds
-            }
         });
 
         return () => unsubscribe();
