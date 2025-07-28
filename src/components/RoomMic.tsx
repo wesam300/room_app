@@ -29,7 +29,7 @@ interface RoomMicProps {
     onAscend: (index: number) => void;
     onDescend: (index: number) => void;
     onToggleLock: (index: number) => void;
-    onToggleMute: () => void;
+    onToggleMute: (index: number) => void;
     onAdminMute: (index: number) => void;
     onOpenGiftDialog: (recipient: UserProfile | null) => void;
 }
@@ -101,15 +101,9 @@ export default function RoomMic({
                    <p className="font-bold text-lg">{slot.user.name}</p>
 
                    {levelInfo && (
-                        <div className="w-full px-4">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                    <Star className="w-4 h-4 text-yellow-400" />
-                                    <span>المستوى {levelInfo.level}</span>
-                                </div>
-                                <span>{levelInfo.level + 1}</span>
-                            </div>
-                            <Progress value={levelInfo.progress} className="h-1.5 mt-1" />
+                        <div className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                            <Star className="w-4 h-4 text-yellow-400" />
+                            <span>المستوى {levelInfo.level}</span>
                         </div>
                    )}
 
@@ -123,7 +117,7 @@ export default function RoomMic({
                    {isCurrentUserOnThisMic ? (
                        // Options for myself
                        <div className="w-full grid gap-2">
-                           <Button variant="outline" onClick={() => handleInteraction(onToggleMute)}>
+                           <Button variant="outline" onClick={() => handleInteraction(() => onToggleMute(index))}>
                                {slot.isMuted ? <Mic className="ml-2"/> : <MicOff className="ml-2"/>}
                                {slot.isMuted ? "إلغاء الكتم" : "كتم المايك"}
                            </Button>
