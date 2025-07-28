@@ -16,7 +16,8 @@ import {
   arrayUnion,
   arrayRemove,
   increment,
-  writeBatch
+  writeBatch,
+  addDoc
 } from 'firebase/firestore';
 import { db, COLLECTIONS } from './firebase';
 
@@ -98,6 +99,15 @@ export interface GiftItem {
     price: number;
     image: string;
 }
+
+export interface AnnouncementData {
+    roomId: string;
+    sender: UserProfile;
+    recipient: UserProfile;
+    gift: GiftItem;
+    createdAt: Timestamp;
+}
+
 
 // User Services
 export const userServices = {
@@ -528,4 +538,40 @@ export const giftServices = {
     const giftRef = doc(db, COLLECTIONS.GIFTS, giftId);
     await updateDoc(giftRef, { image: imageUrl });
   },
+};
+
+// Announcement Services
+export const announcementServices = {
+    async addAnnouncement(data: Omit<AnnouncementData, 'createdAt'>): Promise<void> {
+        try {
+            await addDoc(collection(db, COLLECTIONS.ROOM_ANNOUNCEMENTS), {
+                ...data,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error('Error adding announcement:', error);
+        }
+    },
+
+    onNewAnnouncement(roomId: string, callback: (announcement: AnnouncementData | null) => void) {
+        const announcementsRef = collection(db, COLLECTIONS.ROOM_ANNOUNCEMENTS);
+        const q = query(
+            announcementsRef,
+            where('roomId', '==', roomId),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                callback(doc.data() as AnnouncementData);
+            } else {
+                callback(null);
+            }
+        }, (error) => {
+            console.error('Announcement listener error:', error);
+            callback(null);
+        });
+    }
 };

@@ -16,11 +16,11 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomAnnouncements } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, announcementServices } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -182,6 +182,50 @@ function GiftSheet({
     );
 }
 
+function GiftAnnouncementBanner({ announcement }) {
+    if (!announcement) return null;
+
+    const { sender, recipient, gift } = announcement;
+    
+    return (
+        <AnimatePresence>
+            <motion.div
+                initial={{ y: -100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -100, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-md mx-auto z-50"
+            >
+                <div className="bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-400 p-0.5 rounded-full shadow-lg">
+                    <div className="bg-background/80 backdrop-blur-sm rounded-full px-2 py-1 flex items-center justify-between gap-2 overflow-hidden">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                            <Avatar className="w-8 h-8">
+                                <AvatarImage src={sender.image} alt={sender.name} />
+                                <AvatarFallback>{sender.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <p className="text-xs font-bold text-white truncate max-w-[80px]">{sender.name}</p>
+                        </div>
+                        
+                        <div className="flex flex-col items-center flex-shrink text-center">
+                            <img src={gift.image} alt={gift.name} className="w-8 h-8 object-contain drop-shadow-lg" />
+                            <p className="text-xs text-yellow-300 font-semibold">أرسل {gift.name}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                             <p className="text-xs font-bold text-white truncate max-w-[80px]">{recipient.name}</p>
+                            <Avatar className="w-8 h-8">
+                                <AvatarImage src={recipient.image} alt={recipient.name} />
+                                <AvatarFallback>{recipient.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        </div>
+                    </div>
+                </div>
+            </motion.div>
+        </AnimatePresence>
+    )
+}
+
+
 function RoomScreen({ 
     room, 
     user, 
@@ -203,6 +247,8 @@ function RoomScreen({
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
+    const { latestAnnouncement } = useRoomAnnouncements(room.id);
+
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -323,6 +369,16 @@ function RoomScreen({
     
             toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.`, duration: 2000 });
             setIsGiftSheetOpen(false);
+
+            // Add global announcement if gift is expensive
+            if (totalCost >= 1000000) {
+                 await announcementServices.addAnnouncement({
+                    roomId: room.id,
+                    sender: user.profile,
+                    recipient: recipient,
+                    gift: gift,
+                });
+            }
     
         } catch (error) {
             console.error("Error sending gift:", error);
@@ -399,6 +455,8 @@ function RoomScreen({
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
              
+             <GiftAnnouncementBanner announcement={latestAnnouncement} />
+
              <RoomHeader />
 
              <div className="relative z-10 flex flex-col flex-1 min-h-0">
