@@ -618,7 +618,7 @@ function RoomScreen({
                         ))}
                     </div>
                     <div className="flex items-end justify-between gap-2">
-                        <div className="flex-1 flex items-end gap-2">
+                        <div className="flex-1 flex items-center gap-2">
                             <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                                 <Input
                                     placeholder="اكتب رسالتك..."
@@ -640,7 +640,7 @@ function RoomScreen({
                                  <Gift className="w-7 h-7 text-primary" />
                             </Button>
                         </div>
-
+                        
                         <div className="relative mb-20">
                              <Button 
                                 variant="ghost" 
@@ -1025,6 +1025,20 @@ function AdminPanel() {
         }
     };
 
+    const handleSetOfficialStatus = async (isOfficial: boolean) => {
+        if (!targetUserId.trim()) {
+            toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف مستخدم.", duration: 2000 });
+            return;
+        }
+        try {
+            await userServices.setUserOfficialStatus(targetUserId.trim(), isOfficial);
+            toast({ title: "تم تحديث الحالة الرسمية للمستخدم", description: `تم ${isOfficial ? 'منح' : 'إزالة'} الشارة الرسمية للمستخدم ${targetUserId}.`, duration: 2000 });
+        } catch (error) {
+            console.error("Admin set official status failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: (error as Error).message || "حدث خطأ أثناء تحديث حالة المستخدم.", duration: 2000 });
+        }
+    };
+
     const handleBanRoom = async () => {
         if (!targetRoomId.trim()) {
             toast({ variant: "destructive", title: "بيانات غير صحيحة", description: "يرجى إدخال معرف غرفة صحيح.", duration: 2000 });
@@ -1093,6 +1107,10 @@ function AdminPanel() {
                     <div className="flex gap-2">
                         <Button onClick={() => handleSetBanStatus(true)} variant="destructive" className="w-full">حظر المستخدم</Button>
                         <Button onClick={() => handleSetBanStatus(false)} className="w-full bg-green-600 hover:bg-green-700">رفع الحظر</Button>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleSetOfficialStatus(true)} className="w-full bg-blue-600 hover:bg-blue-700">جعله رسميًا</Button>
+                        <Button onClick={() => handleSetOfficialStatus(false)} variant="outline" className="w-full">إزالة الرسمية</Button>
                     </div>
                 </div>
                  <hr className="border-primary/20"/>
@@ -1695,6 +1713,7 @@ export default function HomePage() {
         level: 0,
         totalSupportGiven: 0,
         isBanned: false,
+        isOfficial: false,
     };
 
     try {

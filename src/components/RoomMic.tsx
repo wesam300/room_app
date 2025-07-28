@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift, Crown, Star } from "lucide-react";
+import { Mic, MicOff, XCircle, Lock, Unlock, Copy, Gift, Crown, Star, Medal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { MicSlotData, RoomData, UserData } from '@/lib/firebaseServices';
@@ -98,7 +98,10 @@ export default function RoomMic({
                        <AvatarImage src={slot.user.image} alt={slot.user.name} />
                        <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                    </Avatar>
-                   <p className="font-bold text-lg">{slot.user.name}</p>
+                   <div className="flex items-center gap-2">
+                     {userData.isOfficial && <Medal className="w-5 h-5 text-yellow-500" />}
+                     <p className="font-bold text-lg">{slot.user.name}</p>
+                   </div>
 
                    {levelInfo && (
                         <div className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
@@ -205,6 +208,7 @@ export default function RoomMic({
                         )}
                     </div>
                     <div className="flex items-center gap-1">
+                       {userData?.isOfficial && <Medal className="w-3 h-3 text-yellow-500" />}
                        <span className="text-xs text-muted-foreground truncate max-w-16">
                          {slot.user ? slot.user.name : `no.${index + 1}`}
                        </span>

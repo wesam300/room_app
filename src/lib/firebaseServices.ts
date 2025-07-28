@@ -37,6 +37,7 @@ export interface UserData {
   level: number;
   totalSupportGiven: number;
   isBanned?: boolean;
+  isOfficial?: boolean;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -165,6 +166,7 @@ export const userServices = {
            ...userData,
            level: userData.level || 0,
            totalSupportGiven: userData.totalSupportGiven || 0,
+           isOfficial: userData.isOfficial || false,
            createdAt: serverTimestamp(),
            updatedAt: serverTimestamp(),
          });
@@ -189,6 +191,7 @@ export const userServices = {
         // Ensure default values for leveling system if they don't exist
         data.level = data.level ?? 0;
         data.totalSupportGiven = data.totalSupportGiven ?? 0;
+        data.isOfficial = data.isOfficial ?? false;
         return data;
       }
       return null;
@@ -328,6 +331,7 @@ export const userServices = {
           silverBalance: 0,
           lastClaimTimestamp: null,
           isBanned: isBanned,
+          isOfficial: false,
           level: 0,
           totalSupportGiven: 0,
           createdAt: serverTimestamp(),
@@ -345,6 +349,22 @@ export const userServices = {
     }
   },
 
+  async setUserOfficialStatus(userId: string, isOfficial: boolean): Promise<void> {
+    try {
+      const userRef = doc(db, COLLECTIONS.USERS, userId);
+      await updateDoc(userRef, {
+        isOfficial: isOfficial,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      if ((error as any).code === 'not-found') {
+         throw new Error(`User with ID ${userId} not found.`);
+      }
+      console.error('Error updating user official status in Firestore:', error);
+      throw error;
+    }
+  },
+
   onUserChange(userId: string, callback: (userData: UserData | null) => void) {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
@@ -354,6 +374,7 @@ export const userServices = {
             // Ensure default values
             data.level = data.level ?? 0;
             data.totalSupportGiven = data.totalSupportGiven ?? 0;
+            data.isOfficial = data.isOfficial ?? false;
             callback(data);
         } else {
             callback(null);
@@ -384,6 +405,7 @@ export const userServices = {
           if (user) {
             user.level = user.level ?? 0;
             user.totalSupportGiven = user.totalSupportGiven ?? 0;
+            user.isOfficial = user.isOfficial ?? false;
           }
           callback([user]); // Callback with each user update individually
         }, (error) => {
