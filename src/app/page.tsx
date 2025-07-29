@@ -15,11 +15,11 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -182,6 +182,46 @@ function GiftSheet({
     );
 }
 
+// New Game Selection Sheet
+function GameSelectionSheet({
+    isOpen,
+    onOpenChange,
+    onSelectGame,
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSelectGame: (gameId: string) => void;
+}) {
+    const { games } = useGames();
+
+    const handleSelect = (gameId: string) => {
+        onSelectGame(gameId);
+        onOpenChange(false);
+    };
+
+    return (
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+            <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto">
+                <SheetHeader className="p-4 text-center">
+                    <SheetTitle>اختر لعبة</SheetTitle>
+                </SheetHeader>
+                <div className="flex justify-center items-center gap-4 p-4">
+                    {games.map((game) => (
+                        <button
+                            key={game.id}
+                            onClick={() => handleSelect(game.id)}
+                            className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl bg-black/30 border border-primary/40 hover:bg-primary/20 transition-colors w-28 h-28"
+                        >
+                            <img src={game.image} alt={game.name} className="w-12 h-12 rounded-lg object-cover" />
+                            <span className="font-semibold text-sm">{game.name}</span>
+                        </button>
+                    ))}
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
 
 function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean, onOpenChange: (open: boolean) => void, room: Room | null, onUpdate: (updates: { name: string, description: string, image: string }) => void }) {
     const [name, setName] = useState('');
@@ -273,7 +313,8 @@ function RoomScreen({
     onUserDataUpdate
 }) {
     const { toast } = useToast();
-    const [isGameVisible, setIsGameVisible] = useState(false);
+    const [activeGame, setActiveGame] = useState<string | null>(null);
+    const [isGameSelectionSheetOpen, setGameSelectionSheetOpen] = useState(false);
      
     const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
     const isOwner = user.profile.userId === room.ownerId;
@@ -424,6 +465,14 @@ function RoomScreen({
         }
     };
 
+    const handleSelectGame = (gameId: string) => {
+        if (gameId === 'fruity_fortune') {
+            setActiveGame(gameId);
+        } else {
+            toast({ title: "قريباً!", description: "لعبة كراش ستكون متاحة قريباً.", duration: 2000 });
+        }
+    };
+
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
@@ -505,6 +554,11 @@ function RoomScreen({
                     balance={user.balance}
                     initialRecipient={initialRecipientForGift}
                 />
+                <GameSelectionSheet
+                    isOpen={isGameSelectionSheetOpen}
+                    onOpenChange={setGameSelectionSheetOpen}
+                    onSelectGame={handleSelectGame}
+                />
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between px-4 mt-2">
@@ -574,7 +628,7 @@ function RoomScreen({
                 </div>
 
                 <AnimatePresence>
-                    {isGameVisible && (
+                    {activeGame === 'fruity_fortune' && (
                         <motion.div 
                             className="absolute inset-x-0 bottom-0 top-[10%] bg-background z-20 rounded-t-2xl overflow-hidden"
                             initial={{ y: "100%" }}
@@ -588,7 +642,7 @@ function RoomScreen({
                                     variant="ghost" 
                                     size="icon" 
                                     className="absolute top-4 right-4 bg-black/50 rounded-full text-white hover:bg-black/70 z-30"
-                                    onClick={() => setIsGameVisible(false)}
+                                    onClick={() => setActiveGame(null)}
                                 >
                                     <X className="w-6 h-6" />
                                 </Button>
@@ -653,12 +707,12 @@ function RoomScreen({
                             </Button>
                         </div>
                         
-                         <div className="relative mb-20">
+                         <div className="relative">
                              <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="bg-black/40 rounded-full h-14 w-14"
-                                onClick={() => setIsGameVisible(true)}
+                                onClick={() => setGameSelectionSheetOpen(true)}
                             >
                                 <Gamepad2 className="w-7 h-7 text-primary" />
                             </Button>
@@ -974,6 +1028,67 @@ function AdminGiftManager() {
     )
 }
 
+function AdminGameManager() {
+    const { games } = useGames();
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+
+    const handleEditClick = (gameId: string) => {
+        setSelectedGameId(gameId);
+        fileInputRef.current?.click();
+    };
+
+    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file && selectedGameId) {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const newImageBase64 = reader.result as string;
+                try {
+                    await gameMetaServices.updateGameImage(selectedGameId, newImageBase64);
+                    toast({ title: "تم تحديث صورة اللعبة بنجاح!", duration: 2000 });
+                } catch (error) {
+                    console.error("Failed to update game image:", error);
+                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+                } finally {
+                    setSelectedGameId(null);
+                    if(fileInputRef.current) fileInputRef.current.value = "";
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <h4 className="font-semibold">إدارة صور الألعاب</h4>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+            />
+            <div className="flex gap-2">
+                {games.map(game => (
+                    <button
+                        key={game.id}
+                        onClick={() => handleEditClick(game.id)}
+                        className="relative flex flex-col items-center justify-center gap-2 p-2 rounded-lg bg-black/30 cursor-pointer transition-all border-2 border-transparent hover:border-primary group"
+                    >
+                        <img src={game.image} alt={game.name} className="w-12 h-12 object-cover rounded-md" />
+                        <span className="text-xs text-muted-foreground">{game.name}</span>
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                           <Edit className="w-6 h-6 text-white"/>
+                        </div>
+                    </button>
+                ))}
+            </div>
+        </div>
+    )
+}
+
 
 function AdminPanel() {
     const { toast } = useToast();
@@ -1172,6 +1287,8 @@ function AdminPanel() {
                 </div>
                 <hr className="border-primary/20"/>
                 <AdminGiftManager />
+                <hr className="border-primary/20"/>
+                <AdminGameManager />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز باللعبة</h4>
@@ -1727,9 +1844,10 @@ export default function HomePage() {
 
   const { userData, loading, error, setUserData } = useUser(userId);
 
-  // Initialize gifts in Firestore if they don't exist
+  // Initialize gifts and games in Firestore if they don't exist
   useEffect(() => {
     giftServices.initializeGifts();
+    gameMetaServices.initializeGames();
   }, []);
 
   const handleCreateProfile = async (name: string) => {

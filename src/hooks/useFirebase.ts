@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem } from '@/lib/firebaseServices';
+import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, gameMetaServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem, GameInfo } from '@/lib/firebaseServices';
 
 // Hook for user data
 export const useUser = (userId: string | null) => {
@@ -294,4 +294,28 @@ export const useRoomUsers = (userIds: string[]) => {
   }, [JSON.stringify(userIds)]); // Deep compare the array of IDs
 
   return { users, loading, error };
+};
+
+// Hook for game metadata
+export const useGames = () => {
+    const [games, setGames] = useState<GameInfo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setLoading(true);
+        setError(null);
+        const unsubscribe = gameMetaServices.onGamesChange((gamesData, err) => {
+            if (err) {
+                console.error("Error in games listener:", err);
+                setError("Failed to load games.");
+            } else {
+                setGames(gamesData);
+            }
+            setLoading(false);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    return { games, loading, error };
 };

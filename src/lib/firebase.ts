@@ -44,6 +44,7 @@ export const COLLECTIONS = {
   ROOM_SUPPORTERS: 'room_supporters',
   GAME_SETTINGS: 'game_settings',
   GIFTS: 'gifts',
+  GAMES: 'games',
 } as const;
 
 export default app;

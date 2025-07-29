@@ -105,6 +105,13 @@ export interface GiftItem {
     image: string;
 }
 
+export interface GameInfo {
+    id: string;
+    name: string;
+    image: string;
+}
+
+
 // --- Leveling System ---
 const calculatedThresholds: number[] = [0]; // Level 0 has 0 XP
 for (let i = 1; i <= 100; i++) {
@@ -230,7 +237,7 @@ export const userServices = {
   async getAllUsers(): Promise<UserData[]> {
     try {
         const usersRef = collection(db, COLLECTIONS.USERS);
-        const querySnapshot = await getDocs(usersRef);
+        const querySnapshot = await getDocs(q);
         return querySnapshot.docs.map(doc => doc.data() as UserData);
     } catch (error) {
         console.error('Error getting all users from Firestore:', error);
@@ -749,3 +756,51 @@ export const giftServices = {
   },
 };
 
+
+// Game Metadata Services
+export const gameMetaServices = {
+    async initializeGames() {
+        try {
+            const DEFAULT_GAMES: GameInfo[] = [
+                { id: 'fruity_fortune', name: 'فواكه الحظ', image: 'https://placehold.co/150x150/ff9800/ffffff.png' },
+                { id: 'crash', name: 'كراش', image: 'https://placehold.co/150x150/f44336/ffffff.png' },
+            ];
+
+            const batch = writeBatch(db);
+            let itemsAdded = 0;
+
+            for (const game of DEFAULT_GAMES) {
+                const docRef = doc(db, COLLECTIONS.GAMES, game.id);
+                const docSnap = await getDoc(docRef);
+                if (!docSnap.exists()) {
+                    batch.set(docRef, game);
+                    itemsAdded++;
+                }
+            }
+
+            if (itemsAdded > 0) {
+                console.log(`Adding ${itemsAdded} new default games to Firestore...`);
+                await batch.commit();
+            }
+        } catch (error) {
+            console.error("Error initializing games:", error);
+        }
+    },
+
+    onGamesChange(callback: (games: GameInfo[], error?: Error) => void) {
+        const gamesRef = collection(db, COLLECTIONS.GAMES);
+        const q = query(gamesRef);
+        return onSnapshot(q, (snapshot) => {
+            const games = snapshot.docs.map(doc => doc.data() as GameInfo);
+            callback(games);
+        }, (error) => {
+            console.error("Games listener error:", error);
+            callback([], error);
+        });
+    },
+
+    async updateGameImage(gameId: string, imageUrl: string): Promise<void> {
+        const gameRef = doc(db, COLLECTIONS.GAMES, gameId);
+        await updateDoc(gameRef, { image: imageUrl });
+    },
+};
