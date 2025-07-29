@@ -1248,7 +1248,7 @@ function AdminPanel() {
     
     const handleSetDifficulty = async (level: DifficultyLevel) => {
         try {
-            await gameServices.setGameDifficulty(level);
+            await gameServices.setGameDifficulty('crash', level);
             toast({ title: "تم تحديث نسبة الفوز", description: `تم ضبط الصعوبة على: ${level}`, duration: 2000 });
         } catch (error) {
             console.error("Admin set difficulty failed:", error);
@@ -1339,7 +1339,7 @@ function AdminPanel() {
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
-                    <h4 className="font-semibold">التحكم بنسبة الفوز باللعبة</h4>
+                    <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
                     <div className="grid grid-cols-2 gap-2">
                          <Button onClick={() => handleSetDifficulty('very_easy')} variant="outline">سهل جدا</Button>
                          <Button onClick={() => handleSetDifficulty('easy')} variant="outline">سهل</Button>

@@ -1,14 +1,15 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Coins, Wallet } from 'lucide-react';
-import type { UserProfile as IUserProfile, GameInfo } from '@/lib/firebaseServices';
+import type { UserProfile as IUserProfile, GameInfo, DifficultyLevel } from '@/lib/firebaseServices';
 import { useToast } from '@/hooks/use-toast';
+import { gameServices } from '@/lib/firebaseServices';
 
 // --- Types ---
 interface UserProfile extends IUserProfile {}
@@ -41,6 +42,38 @@ function formatNumber(num: number): string {
     return num.toLocaleString();
 }
 
+const getCrashPoint = (difficulty: DifficultyLevel): number => {
+    const r = Math.random(); // 0 to 1
+
+    switch (difficulty) {
+        case 'very_easy':
+            // High multipliers are common (e.g., 3x - 15x)
+            return 3 + r * 12;
+        case 'easy':
+            // Good multipliers (e.g., 2x - 10x)
+            return 2 + r * 8;
+        case 'medium':
+            // Balanced, wide range (e.g., 1.1x - 8x, with occasional highs)
+            // Creates a curve where low multipliers are more common
+            return 1 / (1 - r * 0.95); 
+        case 'medium_hard':
+             // Mostly lower multipliers (e.g., 1x - 4x)
+            return 1 + Math.pow(r, 2) * 3;
+        case 'hard':
+            // Very likely to crash early (e.g., 1x - 2.5x)
+            return 1 + Math.pow(r, 3) * 1.5;
+        case 'very_hard':
+            // Almost always crashes very early (e.g., 1x - 1.5x)
+            return 1 + Math.pow(r, 4) * 0.5;
+        case 'impossible':
+            // Always crashes at the very beginning
+            return 1.00;
+        default:
+            return 1 / (1 - r * 0.9);
+    }
+};
+
+
 export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: CrashGameProps) {
   const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
   const [gameState, setGameState] = useState(GAME_STATE.BETTING);
@@ -49,10 +82,17 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
   const [playerBet, setPlayerBet] = useState<number | null>(null);
   const [hasCashedOut, setHasCashedOut] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
 
   const { toast } = useToast();
   const crashPointRef = useRef(1.00);
   const multiplierIntervalRef = useRef<NodeJS.Timeout>();
+
+  useEffect(() => {
+    if (!gameInfo) return;
+    const unsubscribe = gameServices.onDifficultyChange(gameInfo.id, setDifficulty);
+    return () => unsubscribe();
+  }, [gameInfo]);
 
   const resetGame = () => {
     setGameState(GAME_STATE.BETTING);
@@ -78,9 +118,8 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
         });
       }, 1000);
     } else if (gameState === GAME_STATE.IN_PROGRESS) {
-        // In a real game, this would be determined by the server.
-        const randomCrashPoint = Math.max(1.01, 1 + Math.random() * 19);
-        crashPointRef.current = randomCrashPoint;
+        const randomCrashPoint = getCrashPoint(difficulty);
+        crashPointRef.current = Math.max(1.01, randomCrashPoint);
 
         multiplierIntervalRef.current = setInterval(() => {
             setMultiplier(prevMultiplier => {
@@ -111,7 +150,7 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
       clearInterval(countdownTimer);
       clearInterval(multiplierIntervalRef.current);
     };
-  }, [gameState]);
+  }, [gameState, difficulty]);
 
 
   const handlePlaceBet = () => {

@@ -238,7 +238,7 @@ export const userServices = {
   async getAllUsers(): Promise<UserData[]> {
     try {
         const usersRef = collection(db, COLLECTIONS.USERS);
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(usersRef);
         return querySnapshot.docs.map(doc => doc.data() as UserData);
     } catch (error) {
         console.error('Error getting all users from Firestore:', error);
@@ -540,6 +540,7 @@ export const roomServices = {
         if (!roomDoc.exists()) {
             return;
         }
+        const currentCount = roomDoc.data().userCount || 0;
         transaction.update(roomRef, { 
             userCount: increment(-1),
             updatedAt: serverTimestamp(),
@@ -640,9 +641,9 @@ export const gameServices = {
       return querySnapshot.docs.map(doc => doc.data() as UserBetData);
   },
 
-  async setGameDifficulty(difficulty: DifficultyLevel): Promise<void> {
+  async setGameDifficulty(gameId: string, difficulty: DifficultyLevel): Promise<void> {
     try {
-      const settingsRef = doc(db, COLLECTIONS.GAME_SETTINGS, 'fruity_fortune');
+      const settingsRef = doc(db, COLLECTIONS.GAME_SETTINGS, gameId);
       await setDoc(settingsRef, {
         difficulty: difficulty,
         updatedAt: serverTimestamp()
@@ -653,8 +654,8 @@ export const gameServices = {
     }
   },
 
-  onDifficultyChange(callback: (difficulty: DifficultyLevel) => void): () => void {
-    const settingsRef = doc(db, COLLECTIONS.GAME_SETTINGS, 'fruity_fortune');
+  onDifficultyChange(gameId: string, callback: (difficulty: DifficultyLevel) => void): () => void {
+    const settingsRef = doc(db, COLLECTIONS.GAME_SETTINGS, gameId);
     return onSnapshot(settingsRef, (doc) => {
         if (doc.exists()) {
             const data = doc.data() as GameSettingsData;
