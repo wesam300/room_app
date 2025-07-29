@@ -64,7 +64,7 @@ const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 2, name: 'VIP 2', price: 30000000, features: ['شارة بجانب الاسم في الدردشة والبروفايل', 'مكافآت يومية'], gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
     { level: 3, name: 'VIP 3', price: 60000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة'], gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
     { level: 4, name: 'VIP 4', price: 100000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة ملونة'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
-    { level: 5, name: 'VIP 5', price: 200000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
+    { level: 5, name: 'VIP 5', price: 200000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة بلون مختلف', 'ايدي مميز لمدة اسبوع'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
     { level: 6, name: 'VIP 6', price: 400000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
     { level: 7, name: 'VIP 7', price: 700000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
     { level: 8, name: 'VIP 8', price: 1000000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
@@ -733,7 +733,8 @@ function RoomScreen({
                     >
                         {chatMessages.map(msg => {
                           const chatUserData = roomUsersData.get(msg.user.userId);
-                          const isVip4Plus = chatUserData?.vipLevel && chatUserData.vipLevel >= 4;
+                          const isVip4 = chatUserData?.vipLevel === 4;
+                          const isVip5Plus = chatUserData?.vipLevel && chatUserData.vipLevel >= 5;
                           return (msg && msg.user && msg.user.name) && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
@@ -752,7 +753,9 @@ function RoomScreen({
                                        )}
                                     </div>
                                     <div className={cn("p-2 rounded-lg rounded-tl-none",
-                                        isVip4Plus 
+                                        isVip5Plus 
+                                            ? "bg-gradient-to-br from-pink-500/30 to-fuchsia-600/30 border border-fuchsia-400"
+                                        : isVip4 
                                             ? "bg-gradient-to-br from-amber-500/30 to-yellow-600/30 border border-amber-400" 
                                             : "bg-primary/20"
                                     )}>
