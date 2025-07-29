@@ -704,40 +704,36 @@ function RoomScreen({
                         })}
                     </div>
                     <div className="flex items-end justify-between gap-2">
-                         <div className="flex items-center gap-2">
-                            <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
-                                <Input
-                                    placeholder="اكتب رسالتك..."
-                                    value={chatInput}
-                                    onChange={(e) => setChatInput(e.target.value)}
-                                    className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                />
-                                <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
-                                    <Send className="w-5 h-5" />
-                                </Button>
-                            </div>
-                             <Button 
+                         <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                            <Input
+                                placeholder="اكتب رسالتك..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            />
+                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                                <Send className="w-5 h-5" />
+                            </Button>
+                        </div>
+
+                         <div className="flex flex-col-reverse items-center gap-2">
+                            <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="bg-black/40 rounded-full h-14 w-14"
                                 onClick={() => handleOpenGiftSheet(null)}
                             >
-                                 <Gift className="w-7 h-7 text-primary" />
+                                <Gift className="w-7 h-7 text-primary" />
                             </Button>
-                        </div>
-                        
-                         <div className="relative">
-                            <div className="absolute -top-16 right-0 mb-20">
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="bg-black/40 rounded-full h-14 w-14"
-                                    onClick={() => setGameSelectionSheetOpen(true)}
-                                >
-                                    <Gamepad2 className="w-7 h-7 text-primary" />
-                                </Button>
-                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-14 w-14"
+                                onClick={() => setGameSelectionSheetOpen(true)}
+                            >
+                                <Gamepad2 className="w-7 h-7 text-primary" />
+                            </Button>
                          </div>
                     </div>
                 </div>
