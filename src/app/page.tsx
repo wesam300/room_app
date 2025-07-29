@@ -1492,10 +1492,10 @@ function ProfileScreen({
 
     const buttonKeys = ['level', 'vip', 'store', 'medal'] as const;
     const buttonDefaults = {
-        level: { icon: Star },
-        vip: { icon: Crown },
-        store: { icon: Store },
-        medal: { icon: Medal },
+        level: { name: 'المستوى', icon: Star },
+        vip: { name: 'VIP', icon: Crown },
+        store: { name: 'المتجر', icon: Store },
+        medal: { name: 'ميدالية', icon: Medal },
     };
 
     return (
@@ -1522,32 +1522,40 @@ function ProfileScreen({
              </div>
 
             <div className="mt-6 flex-1 flex flex-col">
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-br from-yellow-400/20 to-yellow-600/10 p-3 rounded-2xl flex flex-col text-center">
+                 <div className="grid grid-cols-2 gap-4">
+                    <button 
+                        className="bg-gradient-to-br from-yellow-400/20 to-yellow-600/10 p-3 rounded-2xl flex flex-col text-center"
+                        onClick={() => onNavigate('coins')}
+                    >
                         <span className="font-bold text-2xl text-yellow-300">{formatNumber(user.balance)}</span>
                         <span className="text-xs text-yellow-200/80">الكوينز</span>
-                    </div>
-                    <div className="bg-gradient-to-br from-gray-400/20 to-gray-600/10 p-3 rounded-2xl flex flex-col text-center">
+                    </button>
+                    <button 
+                        className="bg-gradient-to-br from-gray-400/20 to-gray-600/10 p-3 rounded-2xl flex flex-col text-center"
+                        onClick={() => onNavigate('silver')}
+                    >
                         <span className="font-bold text-2xl text-gray-300">{formatNumber(user.silverBalance)}</span>
                         <span className="text-xs text-gray-200/80">الفضة</span>
-                    </div>
+                    </button>
                 </div>
 
                 <div className="grid grid-cols-4 gap-4 mt-6">
                     {buttonKeys.map(key => (
-                         <button 
-                            key={key}
-                            onClick={() => key === 'level' && onNavigate('level')} 
-                            className="flex flex-col items-center justify-center bg-black/20 rounded-2xl aspect-square transition-colors hover:bg-primary/10 overflow-hidden"
-                         >
-                            {appStatus?.profileButtonImages?.[key] ? (
-                                <img src={appStatus.profileButtonImages[key]} alt={key} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                    {React.createElement(buttonDefaults[key].icon, { className: "w-8 h-8 text-primary" })}
-                                </div>
-                            )}
-                        </button>
+                        <div key={key} className="flex flex-col items-center gap-1.5">
+                             <button 
+                                onClick={() => key === 'level' && onNavigate('level')} 
+                                className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full aspect-square transition-colors hover:bg-primary/10 overflow-hidden"
+                             >
+                                {appStatus?.profileButtonImages?.[key] ? (
+                                    <img src={appStatus.profileButtonImages[key]} alt={key} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        {React.createElement(buttonDefaults[key].icon, { className: "w-8 h-8 text-primary" })}
+                                    </div>
+                                )}
+                            </button>
+                            <span className="text-xs text-muted-foreground font-semibold">{buttonDefaults[key].name}</span>
+                        </div>
                     ))}
                 </div>
             </div>
