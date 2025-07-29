@@ -731,15 +731,16 @@ function RoomScreen({
                         >
                             <Gift className="w-6 h-6 text-primary" />
                         </Button>
-                         <div className="relative h-12 w-12" />
-                         <Button
-                                variant="ghost"
-                                size="icon"
-                                className="absolute bottom-0 right-0 bg-black/40 rounded-full h-12 w-12"
-                                onClick={() => setGameSelectionSheetOpen(true)}
-                            >
-                            <Gamepad2 className="w-6 h-6 text-primary" />
-                        </Button>
+                         <div className="relative h-12 w-12">
+                            <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute bottom-0 right-0 bg-black/40 rounded-full h-12 w-12"
+                                    onClick={() => setGameSelectionSheetOpen(true)}
+                                >
+                                <Gamepad2 className="w-6 h-6 text-primary" />
+                            </Button>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -1136,25 +1137,35 @@ function AdminGameManager() {
     )
 }
 
-function AdminVipManager() {
+function AdminProfileButtonsManager() {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { appStatus } = useAppStatus();
+    const [selectedButtonKey, setSelectedButtonKey] = useState<string | null>(null);
+
+    const buttonKeys = ['level', 'vip', 'store', 'medal'] as const;
+    const buttonDefaults = {
+        level: { name: 'المستوى', icon: Star },
+        vip: { name: 'VIP', icon: Crown },
+        store: { name: 'المتجر', icon: Store },
+        medal: { name: 'ميدالية', icon: Medal },
+    };
 
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file) {
+        if (file && selectedButtonKey) {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const newImageBase64 = reader.result as string;
                 try {
-                    await appStatusServices.setVipButtonImage(newImageBase64);
-                    toast({ title: "تم تحديث صورة زر VIP بنجاح!", duration: 2000 });
+                    await appStatusServices.setProfileButtonImage(selectedButtonKey, newImageBase64);
+                    toast({ title: `تم تحديث صورة زر ${buttonDefaults[selectedButtonKey as keyof typeof buttonDefaults].name} بنجاح!`, duration: 2000 });
                 } catch (error) {
-                    console.error("Failed to update VIP button image:", error);
+                    console.error("Failed to update profile button image:", error);
                     toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
                 } finally {
                     if(fileInputRef.current) fileInputRef.current.value = "";
+                    setSelectedButtonKey(null);
                 }
             };
             reader.readAsDataURL(file);
@@ -1163,7 +1174,7 @@ function AdminVipManager() {
 
     return (
         <div className="space-y-2">
-            <h4 className="font-semibold">إدارة زر VIP</h4>
+            <h4 className="font-semibold">إدارة أزرار الملف الشخصي</h4>
             <input
                 type="file"
                 ref={fileInputRef}
@@ -1171,26 +1182,34 @@ function AdminVipManager() {
                 accept="image/*"
                 className="hidden"
             />
-            <div className="flex items-center gap-4">
-                <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative group"
-                >
-                    <Avatar className="w-20 h-20 rounded-md">
-                        <AvatarImage src={appStatus?.vipButtonImageUrl ?? undefined} />
-                        <AvatarFallback>VIP</AvatarFallback>
-                    </Avatar>
-                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
-                       <Edit className="w-6 h-6 text-white"/>
+            <div className="grid grid-cols-4 gap-4">
+                {buttonKeys.map(key => (
+                    <div key={key} className="flex flex-col items-center gap-2">
+                        <button
+                            onClick={() => {
+                                setSelectedButtonKey(key);
+                                fileInputRef.current?.click();
+                            }}
+                            className="relative group w-16 h-16"
+                        >
+                            <Avatar className="w-full h-full rounded-md">
+                                <AvatarImage src={appStatus?.profileButtonImages?.[key] ?? undefined} className="object-cover" />
+                                <AvatarFallback className="bg-primary/20 rounded-md">
+                                    {React.createElement(buttonDefaults[key].icon, { className: "w-8 h-8 text-primary" })}
+                                </AvatarFallback>
+                            </Avatar>
+                             <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                               <Edit className="w-6 h-6 text-white"/>
+                            </div>
+                        </button>
+                        <span className="text-sm text-muted-foreground">{buttonDefaults[key].name}</span>
                     </div>
-                </button>
-                <div className="text-sm text-muted-foreground">
-                    انقر على الصورة لتغييرها.
-                </div>
+                ))}
             </div>
         </div>
     );
 }
+
 
 
 function AdminPanel() {
@@ -1408,7 +1427,7 @@ function AdminPanel() {
                 <hr className="border-primary/20"/>
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
-                <AdminVipManager />
+                <AdminProfileButtonsManager />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
@@ -1470,6 +1489,14 @@ function ProfileScreen({
         toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
     };
 
+    const buttonKeys = ['level', 'vip', 'store', 'medal'] as const;
+    const buttonDefaults = {
+        level: { icon: Star },
+        vip: { icon: Crown },
+        store: { icon: Store },
+        medal: { icon: Medal },
+    };
+
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
              <div className="w-full flex items-center justify-between">
@@ -1506,28 +1533,21 @@ function ProfileScreen({
                 </div>
 
                 <div className="grid grid-cols-4 gap-4 mt-6">
-                    <button onClick={() => onNavigate('level')} className="flex flex-col items-center justify-center gap-2 bg-black/20 p-2 rounded-2xl aspect-square transition-colors hover:bg-primary/10">
-                        <Star className="w-8 h-8 text-primary" />
-                        <span className="text-xs font-semibold">المستوى</span>
-                    </button>
-                     <button className="flex flex-col items-center justify-center gap-2 bg-black/20 p-2 rounded-2xl aspect-square transition-colors hover:bg-primary/10">
-                        <div className="w-8 h-8 flex items-center justify-center">
-                         {appStatus?.vipButtonImageUrl ? (
-                                <img src={appStatus.vipButtonImageUrl} alt="VIP" className="w-full h-full object-cover rounded-md" />
+                    {buttonKeys.map(key => (
+                         <button 
+                            key={key}
+                            onClick={() => key === 'level' && onNavigate('level')} 
+                            className="flex flex-col items-center justify-center bg-black/20 rounded-2xl aspect-square transition-colors hover:bg-primary/10 overflow-hidden"
+                         >
+                            {appStatus?.profileButtonImages?.[key] ? (
+                                <img src={appStatus.profileButtonImages[key]} alt={key} className="w-full h-full object-cover" />
                             ) : (
-                                <Crown className="w-8 h-8 text-primary"/>
+                                <div className="w-full h-full flex items-center justify-center">
+                                    {React.createElement(buttonDefaults[key].icon, { className: "w-8 h-8 text-primary" })}
+                                </div>
                             )}
-                        </div>
-                        <span className="text-xs font-semibold">VIP</span>
-                    </button>
-                     <button className="flex flex-col items-center justify-center gap-2 bg-black/20 p-2 rounded-2xl aspect-square transition-colors hover:bg-primary/10">
-                        <Store className="w-8 h-8 text-primary" />
-                        <span className="text-xs font-semibold">المتجر</span>
-                    </button>
-                     <button className="flex flex-col items-center justify-center gap-2 bg-black/20 p-2 rounded-2xl aspect-square transition-colors hover:bg-primary/10">
-                        <Medal className="w-8 h-8 text-primary" />
-                        <span className="text-xs font-semibold">ميدالية</span>
-                    </button>
+                        </button>
+                    ))}
                 </div>
             </div>
 

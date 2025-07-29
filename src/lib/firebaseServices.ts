@@ -81,6 +81,8 @@ export interface UserBetData {
   userId: string;
   roundId: number;
   bets: Record<string, number>;
+  status?: 'placed' | 'cashed_out';
+  gameId?: string;
   createdAt: Timestamp;
 }
 
@@ -115,7 +117,12 @@ export interface GameInfo {
 
 export interface AppStatusData {
     isMaintenanceMode: boolean;
-    vipButtonImageUrl?: string;
+    profileButtonImages?: {
+        level?: string;
+        vip?: string;
+        store?: string;
+        medal?: string;
+    };
     updatedAt: Timestamp | Date;
 }
 
@@ -627,23 +634,29 @@ export const gameServices = {
     return querySnapshot.docs.map(doc => doc.data() as GameHistoryData);
   },
 
-  async saveUserBets(betData: Omit<UserBetData, 'createdAt'>): Promise<void> {
-    const betRef = doc(db, COLLECTIONS.USER_BETS, `${betData.userId}_${betData.roundId}`);
+  async saveUserBets(betData: Omit<UserBetData, 'createdAt'|'status'>): Promise<void> {
+    const betRef = doc(db, COLLECTIONS.USER_BETS, `${betData.gameId}_${betData.userId}_${betData.roundId}`);
     await setDoc(betRef, {
       ...betData,
+      status: 'placed',
       createdAt: serverTimestamp()
     }, { merge: true });
   },
 
-  async getUserBets(userId: string, roundId: number): Promise<UserBetData | null> {
-    const betRef = doc(db, COLLECTIONS.USER_BETS, `${userId}_${roundId}`);
+  async updateUserBetStatus(gameId: string, userId: string, roundId: number, status: 'cashed_out'): Promise<void> {
+    const betRef = doc(db, COLLECTIONS.USER_BETS, `${gameId}_${userId}_${roundId}`);
+    await updateDoc(betRef, { status });
+  },
+
+  async getUserBets(gameId: string, userId: string, roundId: number): Promise<UserBetData | null> {
+    const betRef = doc(db, COLLECTIONS.USER_BETS, `${gameId}_${userId}_${roundId}`);
     const betSnap = await getDoc(betRef);
     return betSnap.exists() ? betSnap.data() as UserBetData : null;
   },
 
-  async getAllBetsForRound(roundId: number): Promise<UserBetData[]> {
+  async getAllBetsForRound(gameId: string, roundId: number): Promise<UserBetData[]> {
       const betsRef = collection(db, COLLECTIONS.USER_BETS);
-      const q = query(betsRef, where('roundId', '==', roundId));
+      const q = query(betsRef, where('roundId', '==', roundId), where('gameId', '==', gameId));
       const querySnapshot = await getDocs(q);
       return querySnapshot.docs.map(doc => doc.data() as UserBetData);
   },
@@ -840,15 +853,18 @@ export const appStatusServices = {
         }
     },
 
-    async setVipButtonImage(imageUrl: string): Promise<void> {
+    async setProfileButtonImage(buttonKey: string, imageUrl: string): Promise<void> {
         try {
             const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+            const updatePath = `profileButtonImages.${buttonKey}`;
             await setDoc(statusRef, {
-                vipButtonImageUrl: imageUrl,
+                profileButtonImages: {
+                    [buttonKey]: imageUrl
+                },
                 updatedAt: serverTimestamp()
             }, { merge: true });
         } catch (error) {
-            console.error('Error setting VIP button image:', error);
+            console.error(`Error setting ${buttonKey} button image:`, error);
             throw error;
         }
     },
@@ -861,11 +877,11 @@ export const appStatusServices = {
                 callback(data);
             } else {
                 // If the document doesn't exist, assume defaults
-                callback({ isMaintenanceMode: false, updatedAt: new Date() });
+                callback({ isMaintenanceMode: false, profileButtonImages: {}, updatedAt: new Date() });
             }
         }, (error) => {
             console.error('Error listening to app status changes:', error);
-            callback({ isMaintenanceMode: false, updatedAt: new Date() }, error); // Default on error
+            callback({ isMaintenanceMode: false, profileButtonImages: {}, updatedAt: new Date() }, error); // Default on error
         });
     }
 };
