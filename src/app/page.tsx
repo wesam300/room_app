@@ -711,7 +711,7 @@ function RoomScreen({
                         })}
                     </div>
 
-                    <div className="relative flex items-center gap-2">
+                    <div className="relative flex items-end gap-2">
                         <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                             <Input
                                 placeholder="اكتب رسالتك..."
@@ -720,7 +720,7 @@ function RoomScreen({
                                 className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
                                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                             />
-                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                             <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
                                 <Send className="w-5 h-5" />
                             </Button>
                         </div>
@@ -1008,7 +1008,7 @@ function VipScreen({ onBack }: { onBack: () => void }) {
             <div className="flex-1 grid grid-cols-3 gap-4">
                 {vipLevels.map((key, index) => (
                     <div key={key} className="flex flex-col items-center gap-2">
-                        <button className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full h-32 transition-colors hover:bg-primary/10 overflow-hidden">
+                        <button className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full h-20 transition-colors hover:bg-primary/10 overflow-hidden">
                             {appStatus?.vipLevelImages?.[key] ? (
                                 <img src={appStatus.vipLevelImages[key]} alt={`VIP ${index + 1}`} className="w-full h-full object-cover" />
                             ) : (
