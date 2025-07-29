@@ -709,26 +709,24 @@ function RoomScreen({
                           )
                         })}
                     </div>
-                    <div className="flex items-end justify-between gap-2">
-                        <div className="flex flex-col-reverse items-center gap-2">
-                             <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="bg-black/40 rounded-full h-14 w-14"
-                                onClick={() => handleOpenGiftSheet(null)}
-                            >
-                                <Gift className="w-7 h-7 text-primary" />
-                            </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="bg-black/40 rounded-full h-14 w-14"
-                                onClick={() => setGameSelectionSheetOpen(true)}
-                            >
-                                <Gamepad2 className="w-7 h-7 text-primary" />
-                            </Button>
-                        </div>
-                         <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                    <div className="flex items-end gap-2">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full h-12 w-12"
+                            onClick={() => setGameSelectionSheetOpen(true)}
+                        >
+                            <Gamepad2 className="w-6 h-6 text-primary" />
+                        </Button>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="bg-black/40 rounded-full h-12 w-12"
+                            onClick={() => handleOpenGiftSheet(null)}
+                        >
+                            <Gift className="w-6 h-6 text-primary" />
+                        </Button>
+                        <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                             <Input
                                 placeholder="اكتب رسالتك..."
                                 value={chatInput}
