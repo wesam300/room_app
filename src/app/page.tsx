@@ -62,7 +62,7 @@ const DAILY_REWARD_AMOUNT = 10000000;
 const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 1, name: 'VIP 1', price: 15000000, features: ['الحصول على شارة VIP 1 بجانب اسمك في الدردشة والمايك.'], gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
     { level: 2, name: 'VIP 2', price: 30000000, features: ['شارة بجانب الاسم في الدردشة والبروفايل', 'مكافآت يومية'], gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
-    { level: 3, name: 'VIP 3', price: 60000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
+    { level: 3, name: 'VIP 3', price: 60000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة'], gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
     { level: 4, name: 'VIP 4', price: 100000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
     { level: 5, name: 'VIP 5', price: 200000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
     { level: 6, name: 'VIP 6', price: 400000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
