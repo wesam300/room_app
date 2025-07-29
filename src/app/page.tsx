@@ -316,6 +316,7 @@ function RoomScreen({
     const { toast } = useToast();
     const [activeGame, setActiveGame] = useState<string | null>(null);
     const [isGameSelectionSheetOpen, setGameSelectionSheetOpen] = useState(false);
+    const { games } = useGames();
      
     const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
     const isOwner = user.profile.userId === room.ownerId;
@@ -657,7 +658,12 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                             <div className="relative h-full w-full">
-                                <CrashGame user={user.profile} balance={user.balance} onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} />
+                                <CrashGame 
+                                    user={user.profile} 
+                                    balance={user.balance} 
+                                    onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} 
+                                    gameInfo={games.find(g => g.id === 'crash') || null}
+                                />
                                 <Button
                                     variant="ghost"
                                     size="icon"
@@ -1049,29 +1055,42 @@ function AdminGiftManager() {
 function AdminGameManager() {
     const { games } = useGames();
     const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const iconFileInputRef = useRef<HTMLInputElement>(null);
+    const bgFileInputRef = useRef<HTMLInputElement>(null);
     const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+    const [uploadType, setUploadType] = useState<'icon' | 'background' | null>(null);
 
-    const handleEditClick = (gameId: string) => {
+    const handleEditClick = (gameId: string, type: 'icon' | 'background') => {
         setSelectedGameId(gameId);
-        fileInputRef.current?.click();
+        setUploadType(type);
+        if (type === 'icon') {
+            iconFileInputRef.current?.click();
+        } else {
+            bgFileInputRef.current?.click();
+        }
     };
 
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file && selectedGameId) {
+        if (file && selectedGameId && uploadType) {
             const reader = new FileReader();
             reader.onloadend = async () => {
                 const newImageBase64 = reader.result as string;
                 try {
-                    await gameMetaServices.updateGameImage(selectedGameId, newImageBase64);
-                    toast({ title: "تم تحديث صورة اللعبة بنجاح!", duration: 2000 });
+                    if (uploadType === 'icon') {
+                        await gameMetaServices.updateGameImage(selectedGameId, newImageBase64);
+                        toast({ title: "تم تحديث أيقونة اللعبة بنجاح!", duration: 2000 });
+                    } else {
+                        await gameMetaServices.updateGameBackgroundImage(selectedGameId, newImageBase64);
+                        toast({ title: "تم تحديث خلفية اللعبة بنجاح!", duration: 2000 });
+                    }
                 } catch (error) {
-                    console.error("Failed to update game image:", error);
+                    console.error(`Failed to update game ${uploadType}:`, error);
                     toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
                 } finally {
                     setSelectedGameId(null);
-                    if(fileInputRef.current) fileInputRef.current.value = "";
+                    setUploadType(null);
+                    if(event.target) event.target.value = "";
                 }
             };
             reader.readAsDataURL(file);
@@ -1083,24 +1102,35 @@ function AdminGameManager() {
             <h4 className="font-semibold">إدارة صور الألعاب</h4>
             <input
                 type="file"
-                ref={fileInputRef}
+                ref={iconFileInputRef}
                 onChange={handleImageChange}
                 accept="image/*"
                 className="hidden"
             />
-            <div className="flex gap-2">
+            <input
+                type="file"
+                ref={bgFileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+            />
+            <div className="flex gap-4">
                 {games.map(game => (
-                    <button
-                        key={game.id}
-                        onClick={() => handleEditClick(game.id)}
-                        className="relative flex flex-col items-center justify-center gap-2 p-2 rounded-lg bg-black/30 cursor-pointer transition-all border-2 border-transparent hover:border-primary group"
-                    >
-                        <img src={game.image} alt={game.name} className="w-12 h-12 object-cover rounded-md" />
-                        <span className="text-xs text-muted-foreground">{game.name}</span>
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                           <Edit className="w-6 h-6 text-white"/>
+                    <div key={game.id} className="flex flex-col items-center gap-2 p-2 rounded-lg bg-black/30">
+                        <div className="relative group">
+                            <img src={game.image} alt={game.name} className="w-12 h-12 object-cover rounded-md" />
+                            <button
+                                onClick={() => handleEditClick(game.id, 'icon')}
+                                className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md"
+                            >
+                               <Edit className="w-5 h-5 text-white"/>
+                            </button>
                         </div>
-                    </button>
+                        <span className="text-xs text-muted-foreground">{game.name}</span>
+                         <Button variant="outline" size="sm" onClick={() => handleEditClick(game.id, 'background')}>
+                            تغيير الخلفية
+                        </Button>
+                    </div>
                 ))}
             </div>
         </div>

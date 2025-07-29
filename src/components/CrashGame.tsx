@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Rocket, Coins, Wallet } from 'lucide-react';
-import type { UserProfile as IUserProfile } from '@/lib/firebaseServices';
+import type { UserProfile as IUserProfile, GameInfo } from '@/lib/firebaseServices';
 import { useToast } from '@/hooks/use-toast';
 
 // --- Types ---
@@ -17,6 +17,7 @@ interface CrashGameProps {
   user: UserProfile;
   balance: number;
   onBalanceChange: (updater: (prev: number) => number) => void;
+  gameInfo: GameInfo | null;
 }
 
 interface HistoryItem {
@@ -40,7 +41,7 @@ function formatNumber(num: number): string {
     return num.toLocaleString();
 }
 
-export default function CrashGame({ user, balance, onBalanceChange }: CrashGameProps) {
+export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: CrashGameProps) {
   const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
   const [gameState, setGameState] = useState(GAME_STATE.BETTING);
   const [multiplier, setMultiplier] = useState(1.00);
@@ -190,6 +191,10 @@ export default function CrashGame({ user, balance, onBalanceChange }: CrashGameP
 
   const buttonState = getButtonState();
 
+  const backgroundStyle = gameInfo?.backgroundImage
+    ? { backgroundImage: `url(${gameInfo.backgroundImage})` }
+    : {};
+
   return (
     <div className="flex flex-col h-full bg-[#0d122e] text-white p-4 font-sans" dir="rtl">
       {/* History Bar */}
@@ -202,46 +207,50 @@ export default function CrashGame({ user, balance, onBalanceChange }: CrashGameP
       </div>
 
       {/* Game Display */}
-      <div className="flex-1 bg-black/30 rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-        
-        {gameState === GAME_STATE.BETTING && (
-          <div className="text-center">
-            <p className="text-gray-400 text-lg">تبدأ في</p>
-            <p className="text-6xl font-bold">{countdown}s</p>
-          </div>
-        )}
-        
-        <AnimatePresence>
-            {gameState === GAME_STATE.IN_PROGRESS && (
-               <motion.div
+      <div 
+        className="flex-1 bg-black/30 rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden bg-cover bg-center"
+        style={backgroundStyle}
+      >
+        <div className="absolute inset-0 bg-black/50 z-0"></div>
+        <div className="relative z-10">
+            {gameState === GAME_STATE.BETTING && (
+              <div className="text-center">
+                <p className="text-gray-400 text-lg">تبدأ في</p>
+                <p className="text-6xl font-bold">{countdown}s</p>
+              </div>
+            )}
+            
+            <AnimatePresence>
+                {gameState === GAME_STATE.IN_PROGRESS && (
+                   <motion.div
+                    className="text-center"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                   >
+                    <p className="text-7xl font-bold text-green-400">{multiplier.toFixed(2)}x</p>
+                    <motion.div
+                        initial={{ y: 50, x: -50, rotate: 45 }}
+                        animate={{ y: -100, x: 100, rotate: 0 }}
+                        transition={{ duration: 10, ease: 'linear' }}
+                    >
+                        <Rocket className="w-16 h-16 mx-auto mt-4 text-white" />
+                    </motion.div>
+                  </motion.div>
+                )}
+            </AnimatePresence>
+            
+            {gameState === GAME_STATE.CRASHED && (
+              <motion.div
                 className="text-center"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-               >
-                <p className="text-7xl font-bold text-green-400">{multiplier.toFixed(2)}x</p>
-                <motion.div
-                    initial={{ y: 50, x: -50, rotate: 45 }}
-                    animate={{ y: -100, x: 100, rotate: 0 }}
-                    transition={{ duration: 10, ease: 'linear' }}
-                >
-                    <Rocket className="w-16 h-16 mx-auto mt-4 text-white" />
-                </motion.div>
+                initial={{ scale: 1, opacity: 0.8 }}
+                animate={{ scale: 1.2, opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <p className="text-7xl font-bold text-red-500">انفجرت!</p>
+                <p className="text-4xl font-bold text-red-400 mt-2">@{multiplier.toFixed(2)}x</p>
               </motion.div>
             )}
-        </AnimatePresence>
-        
-        {gameState === GAME_STATE.CRASHED && (
-          <motion.div
-            className="text-center"
-            initial={{ scale: 1, opacity: 0.8 }}
-            animate={{ scale: 1.2, opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <p className="text-7xl font-bold text-red-500">انفجرت!</p>
-            <p className="text-4xl font-bold text-red-400 mt-2">@{multiplier.toFixed(2)}x</p>
-          </motion.div>
-        )}
+        </div>
       </div>
 
       {/* Controls */}

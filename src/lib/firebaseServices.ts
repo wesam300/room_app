@@ -109,6 +109,7 @@ export interface GameInfo {
     id: string;
     name: string;
     image: string;
+    backgroundImage?: string;
 }
 
 
@@ -762,8 +763,8 @@ export const gameMetaServices = {
     async initializeGames() {
         try {
             const DEFAULT_GAMES: GameInfo[] = [
-                { id: 'fruity_fortune', name: 'فواكه الحظ', image: 'https://placehold.co/150x150/ff9800/ffffff.png' },
-                { id: 'crash', name: 'كراش', image: 'https://placehold.co/150x150/f44336/ffffff.png' },
+                { id: 'fruity_fortune', name: 'فواكه الحظ', image: 'https://placehold.co/150x150/ff9800/ffffff.png', backgroundImage: '' },
+                { id: 'crash', name: 'كراش', image: 'https://placehold.co/150x150/f44336/ffffff.png', backgroundImage: '' },
             ];
 
             const batch = writeBatch(db);
@@ -775,11 +776,17 @@ export const gameMetaServices = {
                 if (!docSnap.exists()) {
                     batch.set(docRef, game);
                     itemsAdded++;
+                } else {
+                    const existingData = docSnap.data();
+                    if (!('backgroundImage' in existingData)) {
+                        batch.update(docRef, { backgroundImage: '' });
+                        itemsAdded++;
+                    }
                 }
             }
 
             if (itemsAdded > 0) {
-                console.log(`Adding ${itemsAdded} new default games to Firestore...`);
+                console.log(`Adding/updating ${itemsAdded} default games to Firestore...`);
                 await batch.commit();
             }
         } catch (error) {
@@ -802,5 +809,10 @@ export const gameMetaServices = {
     async updateGameImage(gameId: string, imageUrl: string): Promise<void> {
         const gameRef = doc(db, COLLECTIONS.GAMES, gameId);
         await updateDoc(gameRef, { image: imageUrl });
+    },
+
+    async updateGameBackgroundImage(gameId: string, imageUrl: string): Promise<void> {
+        const gameRef = doc(db, COLLECTIONS.GAMES, gameId);
+        await updateDoc(gameRef, { backgroundImage: imageUrl });
     },
 };
