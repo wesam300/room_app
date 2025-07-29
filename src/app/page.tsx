@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
+import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
 import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo } from "@/lib/firebaseServices";
 
@@ -466,10 +467,8 @@ function RoomScreen({
     };
 
     const handleSelectGame = (gameId: string) => {
-        if (gameId === 'fruity_fortune') {
+        if (gameId === 'fruity_fortune' || gameId === 'crash') {
             setActiveGame(gameId);
-        } else {
-            toast({ title: "قريباً!", description: "لعبة كراش ستكون متاحة قريباً.", duration: 2000 });
         }
     };
 
@@ -649,6 +648,27 @@ function RoomScreen({
                            </div>
                         </motion.div>
                     )}
+                    {activeGame === 'crash' && (
+                        <motion.div
+                            className="absolute inset-x-0 bottom-0 top-[10%] bg-background z-20 rounded-t-2xl overflow-hidden"
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        >
+                            <div className="relative h-full w-full">
+                                <CrashGame user={user.profile} balance={user.balance} onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute top-4 right-4 bg-black/50 rounded-full text-white hover:bg-black/70 z-30"
+                                    onClick={() => setActiveGame(null)}
+                                >
+                                    <X className="w-6 h-6" />
+                                </Button>
+                            </div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
 
                  <div className="flex-shrink-0 px-4 pb-4">
@@ -684,7 +704,7 @@ function RoomScreen({
                         })}
                     </div>
                     <div className="flex items-end justify-between gap-2">
-                         <div className="flex-1 flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                             <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
                                 <Input
                                     placeholder="اكتب رسالتك..."
@@ -708,15 +728,17 @@ function RoomScreen({
                         </div>
                         
                          <div className="relative">
-                             <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="bg-black/40 rounded-full h-14 w-14"
-                                onClick={() => setGameSelectionSheetOpen(true)}
-                            >
-                                <Gamepad2 className="w-7 h-7 text-primary" />
-                            </Button>
-                        </div>
+                            <div className="absolute -top-16 right-0 mb-20">
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="bg-black/40 rounded-full h-14 w-14"
+                                    onClick={() => setGameSelectionSheetOpen(true)}
+                                >
+                                    <Gamepad2 className="w-7 h-7 text-primary" />
+                                </Button>
+                            </div>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -2010,4 +2032,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
