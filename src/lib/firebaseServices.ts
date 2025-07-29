@@ -115,7 +115,8 @@ export interface GameInfo {
 
 export interface AppStatusData {
     isMaintenanceMode: boolean;
-    updatedAt: Timestamp;
+    vipButtonImageUrl?: string;
+    updatedAt: Timestamp | Date;
 }
 
 
@@ -839,19 +840,32 @@ export const appStatusServices = {
         }
     },
 
-    onMaintenanceStatusChange(callback: (isMaintenance: boolean, error?: Error) => void): () => void {
+    async setVipButtonImage(imageUrl: string): Promise<void> {
+        try {
+            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+            await setDoc(statusRef, {
+                vipButtonImageUrl: imageUrl,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error('Error setting VIP button image:', error);
+            throw error;
+        }
+    },
+
+    onAppStatusChange(callback: (status: AppStatusData, error?: Error) => void): () => void {
         const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
         return onSnapshot(statusRef, (doc) => {
             if (doc.exists()) {
                 const data = doc.data() as AppStatusData;
-                callback(data.isMaintenanceMode || false);
+                callback(data);
             } else {
-                // If the document doesn't exist, assume not in maintenance mode
-                callback(false);
+                // If the document doesn't exist, assume defaults
+                callback({ isMaintenanceMode: false, updatedAt: new Date() });
             }
         }, (error) => {
-            console.error('Error listening to maintenance status changes:', error);
-            callback(false, error); // Default to false on error
+            console.error('Error listening to app status changes:', error);
+            callback({ isMaintenanceMode: false, updatedAt: new Date() }, error); // Default on error
         });
     }
 };

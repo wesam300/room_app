@@ -15,7 +15,7 @@ import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusC
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames, useMaintenanceStatus } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames, useAppStatus } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
@@ -710,29 +710,29 @@ function RoomScreen({
                         })}
                     </div>
 
-                    <div className="relative">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 bottom-16 bg-black/40 rounded-full h-12 w-12"
-                            onClick={() => setGameSelectionSheetOpen(true)}
-                        >
-                            <Gamepad2 className="w-6 h-6 text-primary" />
-                        </Button>
-                        <div className="flex items-end gap-2">
-                            <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
-                                <Input
-                                    placeholder="اكتب رسالتك..."
-                                    value={chatInput}
-                                    onChange={(e) => setChatInput(e.target.value)}
-                                    className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                                />
-                                <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
-                                    <Send className="w-5 h-5" />
-                                </Button>
-                            </div>
-                            <Button
+                    <div className="relative flex items-end gap-2">
+                        <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                            <Input
+                                placeholder="اكتب رسالتك..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            />
+                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                                <Send className="w-5 h-5" />
+                            </Button>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                           <Button
+                                variant="ghost"
+                                size="icon"
+                                className="bg-black/40 rounded-full h-12 w-12"
+                                onClick={() => setGameSelectionSheetOpen(true)}
+                            >
+                                <Gamepad2 className="w-6 h-6 text-primary" />
+                            </Button>
+                             <Button
                                 variant="ghost"
                                 size="icon"
                                 className="bg-black/40 rounded-full h-12 w-12"
@@ -1137,6 +1137,62 @@ function AdminGameManager() {
     )
 }
 
+function AdminVipManager() {
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { appStatus } = useAppStatus();
+
+    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const newImageBase64 = reader.result as string;
+                try {
+                    await appStatusServices.setVipButtonImage(newImageBase64);
+                    toast({ title: "تم تحديث صورة زر VIP بنجاح!", duration: 2000 });
+                } catch (error) {
+                    console.error("Failed to update VIP button image:", error);
+                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+                } finally {
+                    if(fileInputRef.current) fileInputRef.current.value = "";
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <h4 className="font-semibold">إدارة زر VIP</h4>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+            />
+            <div className="flex items-center gap-4">
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative group"
+                >
+                    <Avatar className="w-20 h-20 rounded-md">
+                        <AvatarImage src={appStatus?.vipButtonImageUrl ?? undefined} />
+                        <AvatarFallback>VIP</AvatarFallback>
+                    </Avatar>
+                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                       <Edit className="w-6 h-6 text-white"/>
+                    </div>
+                </button>
+                <div className="text-sm text-muted-foreground">
+                    انقر على الصورة لتغييرها.
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 function AdminPanel() {
     const { toast } = useToast();
@@ -1353,6 +1409,8 @@ function AdminPanel() {
                 <hr className="border-primary/20"/>
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
+                <AdminVipManager />
+                <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
                     <div className="grid grid-cols-2 gap-2">
@@ -1405,6 +1463,7 @@ function ProfileScreen({
 }) {
     const { toast } = useToast();
     const isAdmin = ADMIN_USER_IDS.includes(user.profile.userId);
+    const { appStatus } = useAppStatus();
 
     const handleCopyId = () => {
         const idToCopy = user.profile.displayId || user.profile.userId;
@@ -1462,14 +1521,28 @@ function ProfileScreen({
                         </div>
                     </button>
                 </div>
-                <button onClick={() => onNavigate('level')} className="bg-gradient-to-r from-purple-600 to-blue-500 rounded-2xl p-3 flex items-center justify-between w-full max-w-[calc(352px+1rem)] h-16 shadow-md text-white">
-                    <div className="flex items-center justify-center w-12 h-12 bg-white/20 rounded-full border-2 border-white/50">
-                        <Star className="w-6 h-6 text-white"/>
-                    </div>
-                    <div className="text-right flex-1 mr-4">
-                        <p className="font-bold">المستوى</p>
-                    </div>
-                </button>
+                <div className="grid grid-cols-2 gap-4 w-full max-w-[calc(352px+1rem)]">
+                    <button onClick={() => onNavigate('level')} className="bg-gradient-to-r from-purple-600 to-blue-500 rounded-2xl p-3 flex items-center justify-between w-full h-16 shadow-md text-white">
+                        <div className="flex items-center justify-center w-12 h-12 bg-white/20 rounded-full border-2 border-white/50">
+                            <Star className="w-6 h-6 text-white"/>
+                        </div>
+                        <div className="text-right flex-1 mr-4">
+                            <p className="font-bold">المستوى</p>
+                        </div>
+                    </button>
+                    <button className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-3 flex items-center justify-between w-full h-16 shadow-md text-white">
+                       <div className="flex items-center justify-center w-12 h-12 bg-white/20 rounded-full border-2 border-white/50">
+                            {appStatus?.vipButtonImageUrl ? (
+                                <img src={appStatus.vipButtonImageUrl} alt="VIP" className="w-full h-full object-cover rounded-full" />
+                            ) : (
+                                <Crown className="w-6 h-6 text-white"/>
+                            )}
+                        </div>
+                        <div className="text-right flex-1 mr-4">
+                            <p className="font-bold">VIP</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             {isAdmin && <AdminPanel />}
@@ -1923,7 +1996,7 @@ function MaintenanceScreen() {
 export default function HomePage() {
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
-  const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceStatus();
+  const { appStatus, loading: appStatusLoading } = useAppStatus();
   
   const [userId, setUserId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
@@ -2029,7 +2102,7 @@ export default function HomePage() {
   };
 
 
-  if (loading || maintenanceLoading) {
+  if (loading || appStatusLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
@@ -2043,7 +2116,7 @@ export default function HomePage() {
 
   // Allow admins to bypass maintenance mode.
   const isAdmin = userData && ADMIN_USER_IDS.includes(userData.profile.userId);
-  if (isMaintenanceMode && !isAdmin) {
+  if (appStatus?.isMaintenanceMode && !isAdmin) {
     return <MaintenanceScreen />;
   }
 

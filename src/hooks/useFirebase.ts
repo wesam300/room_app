@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, gameMetaServices, appStatusServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem, GameInfo } from '@/lib/firebaseServices';
+import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, gameMetaServices, appStatusServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem, GameInfo, AppStatusData } from '@/lib/firebaseServices';
 
 // Hook for user data
 export const useUser = (userId: string | null) => {
@@ -321,26 +321,26 @@ export const useGames = () => {
 };
 
 // Hook for app maintenance status
-export const useMaintenanceStatus = () => {
-    const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+export const useAppStatus = () => {
+    const [appStatus, setAppStatus] = useState<AppStatusData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         setLoading(true);
         setError(null);
-        const unsubscribe = appStatusServices.onMaintenanceStatusChange((status, err) => {
+        const unsubscribe = appStatusServices.onAppStatusChange((status, err) => {
             if (err) {
-                console.error("Error in maintenance status listener:", err);
+                console.error("Error in app status listener:", err);
                 setError("Failed to load app status.");
-                setIsMaintenanceMode(false); // Default to not in maintenance on error
+                setAppStatus({ isMaintenanceMode: false, updatedAt: new Date() });
             } else {
-                setIsMaintenanceMode(status);
+                setAppStatus(status);
             }
             setLoading(false);
         });
         return () => unsubscribe();
     }, []);
 
-    return { isMaintenanceMode, loading, error };
+    return { appStatus, loading, error };
 };
