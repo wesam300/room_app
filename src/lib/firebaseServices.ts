@@ -123,6 +123,9 @@ export interface AppStatusData {
         store?: string;
         medal?: string;
     };
+    vipLevelImages?: {
+        [key: string]: string; // e.g. { 'vip1': 'url', 'vip2': 'url' }
+    };
     updatedAt: Timestamp | Date;
 }
 
@@ -856,7 +859,6 @@ export const appStatusServices = {
     async setProfileButtonImage(buttonKey: string, imageUrl: string): Promise<void> {
         try {
             const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
-            const updatePath = `profileButtonImages.${buttonKey}`;
             await setDoc(statusRef, {
                 profileButtonImages: {
                     [buttonKey]: imageUrl
@@ -869,6 +871,21 @@ export const appStatusServices = {
         }
     },
 
+    async setVipLevelImage(vipLevelKey: string, imageUrl: string): Promise<void> {
+        try {
+            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+            await setDoc(statusRef, {
+                vipLevelImages: {
+                    [vipLevelKey]: imageUrl
+                },
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error(`Error setting ${vipLevelKey} image:`, error);
+            throw error;
+        }
+    },
+
     onAppStatusChange(callback: (status: AppStatusData, error?: Error) => void): () => void {
         const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
         return onSnapshot(statusRef, (doc) => {
@@ -877,11 +894,11 @@ export const appStatusServices = {
                 callback(data);
             } else {
                 // If the document doesn't exist, assume defaults
-                callback({ isMaintenanceMode: false, profileButtonImages: {}, updatedAt: new Date() });
+                callback({ isMaintenanceMode: false, updatedAt: new Date() });
             }
         }, (error) => {
             console.error('Error listening to app status changes:', error);
-            callback({ isMaintenanceMode: false, profileButtonImages: {}, updatedAt: new Date() }, error); // Default on error
+            callback({ isMaintenanceMode: false, updatedAt: new Date() }, error); // Default on error
         });
     }
 };

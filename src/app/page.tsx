@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, Gem } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -991,6 +991,40 @@ function LevelScreen({ onBack, user }: { onBack: () => void, user: UserData }) {
     );
 }
 
+function VipScreen({ onBack }: { onBack: () => void }) {
+    const { appStatus } = useAppStatus();
+    const vipLevels = Array.from({ length: 9 }, (_, i) => `vip${i + 1}`);
+
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                 <Button variant="ghost" size="icon" onClick={onBack}>
+                    <ChevronLeft className="w-6 h-6" />
+                </Button>
+                <h2 className="text-xl font-bold">VIP Levels</h2>
+                <div></div>
+            </header>
+
+            <div className="flex-1 grid grid-cols-3 gap-4">
+                {vipLevels.map((key, index) => (
+                    <div key={key} className="flex flex-col items-center gap-2">
+                        <button className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full aspect-square transition-colors hover:bg-primary/10 overflow-hidden">
+                            {appStatus?.vipLevelImages?.[key] ? (
+                                <img src={appStatus.vipLevelImages[key]} alt={`VIP ${index + 1}`} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <Gem className="w-10 h-10 text-primary/50" />
+                                </div>
+                            )}
+                        </button>
+                        <span className="text-sm text-muted-foreground font-semibold">VIP {index + 1}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function AdminGiftManager() {
     const { gifts } = useGifts();
     const { toast } = useToast();
@@ -1203,7 +1237,7 @@ function AdminProfileButtonsManager() {
                                <Edit className="w-6 h-6 text-white"/>
                             </div>
                         </button>
-                        <span className="text-sm text-muted-foreground">{buttonDefaults[key].name}</span>
+                        <span className="text-xs text-muted-foreground">{buttonDefaults[key].name}</span>
                     </div>
                 ))}
             </div>
@@ -1211,7 +1245,72 @@ function AdminProfileButtonsManager() {
     );
 }
 
+function AdminVipLevelsManager() {
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { appStatus } = useAppStatus();
+    const [selectedVipLevelKey, setSelectedVipLevelKey] = useState<string | null>(null);
 
+    const vipLevels = Array.from({ length: 9 }, (_, i) => `vip${i + 1}`);
+
+    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file && selectedVipLevelKey) {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const newImageBase64 = reader.result as string;
+                try {
+                    await appStatusServices.setVipLevelImage(selectedVipLevelKey, newImageBase64);
+                    toast({ title: `تم تحديث صورة ${selectedVipLevelKey.toUpperCase()} بنجاح!`, duration: 2000 });
+                } catch (error) {
+                    console.error("Failed to update VIP level image:", error);
+                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+                } finally {
+                    if(fileInputRef.current) fileInputRef.current.value = "";
+                    setSelectedVipLevelKey(null);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <h4 className="font-semibold">إدارة صور مستويات VIP</h4>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/*"
+                className="hidden"
+            />
+            <div className="grid grid-cols-4 gap-4">
+                {vipLevels.map(key => (
+                    <div key={key} className="flex flex-col items-center gap-2">
+                        <button
+                            onClick={() => {
+                                setSelectedVipLevelKey(key);
+                                fileInputRef.current?.click();
+                            }}
+                            className="relative group w-16 h-16"
+                        >
+                            <Avatar className="w-full h-full rounded-md">
+                                <AvatarImage src={appStatus?.vipLevelImages?.[key] ?? undefined} className="object-cover" />
+                                <AvatarFallback className="bg-primary/20 rounded-md">
+                                    <Gem className="w-8 h-8 text-primary/50" />
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                               <Edit className="w-6 h-6 text-white"/>
+                            </div>
+                        </button>
+                        <span className="text-xs text-muted-foreground">{key.toUpperCase()}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 function AdminPanel() {
     const { toast } = useToast();
@@ -1430,6 +1529,8 @@ function AdminPanel() {
                 <hr className="border-primary/20"/>
                 <AdminProfileButtonsManager />
                 <hr className="border-primary/20"/>
+                <AdminVipLevelsManager />
+                <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
                     <div className="grid grid-cols-2 gap-2">
@@ -1477,7 +1578,7 @@ function ProfileScreen({
 }: { 
     user: UserData, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    onNavigate: (view: 'coins' | 'silver' | 'level') => void,
+    onNavigate: (view: 'coins' | 'silver' | 'level' | 'vipLevels') => void,
     onLogout: () => void,
 }) {
     const { toast } = useToast();
@@ -1492,10 +1593,10 @@ function ProfileScreen({
 
     const buttonKeys = ['level', 'vip', 'store', 'medal'] as const;
     const buttonDefaults = {
-        level: { name: 'المستوى', icon: Star },
-        vip: { name: 'VIP', icon: Crown },
-        store: { name: 'المتجر', icon: Store },
-        medal: { name: 'ميدالية', icon: Medal },
+        level: { name: 'المستوى', icon: Star, action: () => onNavigate('level') },
+        vip: { name: 'VIP', icon: Crown, action: () => onNavigate('vipLevels') },
+        store: { name: 'المتجر', icon: Store, action: () => {} },
+        medal: { name: 'ميدالية', icon: Medal, action: () => {} },
     };
 
     return (
@@ -1540,10 +1641,10 @@ function ProfileScreen({
                 </div>
 
                 <div className="grid grid-cols-4 gap-4 mt-6">
-                    {buttonKeys.map(key => (
+                     {buttonKeys.map(key => (
                         <div key={key} className="flex flex-col items-center gap-1.5">
                              <button 
-                                onClick={() => key === 'level' && onNavigate('level')} 
+                                onClick={buttonDefaults[key].action} 
                                 className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full aspect-square transition-colors hover:bg-primary/10 overflow-hidden"
                              >
                                 {appStatus?.profileButtonImages?.[key] ? (
@@ -1773,7 +1874,7 @@ function MainApp({
     onLogout: () => void,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
-    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level'>('profile');
+    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level' | 'vipLevels'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
     const [canClaim, setCanClaim] = useState(false);
@@ -1941,12 +2042,20 @@ function MainApp({
                     return <SilverScreen onBack={() => setProfileView('profile')} silverBalance={user.silverBalance} onConvert={handleConvertSilver} />;
                 case 'level':
                     return <LevelScreen onBack={() => setProfileView('profile')} user={user} />;
+                case 'vipLevels':
+                    return <VipScreen onBack={() => setProfileView('profile')} />;
                 default:
                     return (
                         <ProfileScreen 
                             user={user} 
                             onUserUpdate={handleUserUpdate}
-                            onNavigate={setProfileView}
+                            onNavigate={(view) => {
+                                if (view === 'vipLevels') {
+                                    setProfileView('vipLevels');
+                                } else {
+                                    setProfileView(view);
+                                }
+                            }}
                             onLogout={onLogout}
                         />
                     );
