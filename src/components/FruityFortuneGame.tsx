@@ -25,7 +25,7 @@ interface TopWinner {
   payout: number;
 }
 
-const BET_AMOUNTS = [100000, 500000, 1000000, 5000000, 10000000];
+const BET_AMOUNTS = [1000, 100000, 500000, 1000000, 5000000, 10000000];
 const ROUND_DURATION = 20; // seconds
 const SPIN_DURATION = 4; // seconds
 const TOTAL_DURATION = ROUND_DURATION + SPIN_DURATION;
@@ -652,3 +652,5 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     </div>
   );
 }
+
+    
