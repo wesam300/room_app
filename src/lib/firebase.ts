@@ -45,6 +45,7 @@ export const COLLECTIONS = {
   GAME_SETTINGS: 'game_settings',
   GIFTS: 'gifts',
   GAMES: 'games',
+  APP_STATUS: 'app_status',
 } as const;
 
 export default app;

@@ -11,16 +11,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames } from "@/hooks/useFirebase";
+import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames, useMaintenanceStatus } from "@/hooks/useFirebase";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -711,10 +711,10 @@ function RoomScreen({
                     </div>
 
                     <div className="relative">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="absolute left-1 bottom-16 bg-black/40 rounded-full h-12 w-12"
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 bottom-16 bg-black/40 rounded-full h-12 w-12"
                             onClick={() => setGameSelectionSheetOpen(true)}
                         >
                             <Gamepad2 className="w-6 h-6 text-primary" />
@@ -732,9 +732,9 @@ function RoomScreen({
                                     <Send className="w-5 h-5" />
                                 </Button>
                             </div>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
+                            <Button
+                                variant="ghost"
+                                size="icon"
                                 className="bg-black/40 rounded-full h-12 w-12"
                                 onClick={() => handleOpenGiftSheet(null)}
                             >
@@ -1259,7 +1259,17 @@ function AdminPanel() {
             console.error("Admin set difficulty failed:", error);
             toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث صعوبة اللعبة.", duration: 2000 });
         }
-    }
+    };
+
+    const handleMaintenanceMode = async (enable: boolean) => {
+        try {
+            await appStatusServices.setMaintenanceMode(enable);
+            toast({ title: "تم تحديث حالة التطبيق", description: `وضع الصيانة الآن ${enable ? 'مفعل' : 'متوقف'}.`, duration: 2000 });
+        } catch (error) {
+            console.error("Admin set maintenance mode failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث حالة التطبيق.", duration: 2000 });
+        }
+    };
 
 
     return (
@@ -1366,6 +1376,14 @@ function AdminPanel() {
                          <Button onClick={() => handleSetDifficulty('fruity_fortune', 'hard')} variant="outline">صعب</Button>
                          <Button onClick={() => handleSetDifficulty('fruity_fortune', 'very_hard')} variant="outline">صعب جدا</Button>
                          <Button onClick={() => handleSetDifficulty('fruity_fortune', 'impossible')} variant="destructive" className="col-span-2">لا أحد يفوز</Button>
+                    </div>
+                </div>
+                <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">إدارة حالة التطبيق</h4>
+                    <div className="flex gap-2">
+                        <Button onClick={() => handleMaintenanceMode(true)} variant="destructive" className="w-full">تفعيل وضع الصيانة</Button>
+                        <Button onClick={() => handleMaintenanceMode(false)} className="w-full bg-green-600 hover:bg-green-700">إيقاف وضع الصيانة</Button>
                     </div>
                 </div>
             </div>
@@ -1889,9 +1907,23 @@ function MainApp({
     );
 }
 
+function MaintenanceScreen() {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4 text-center">
+            <Wrench className="w-20 h-20 text-primary mb-6 animate-spin" style={{ animationDuration: '3s' }}/>
+            <h1 className="text-3xl font-bold mb-4">التطبيق قيد الصيانة</h1>
+            <p className="text-lg text-muted-foreground">
+                نحن نعمل حاليًا على تحسين تجربتك. سنعود قريبًا!
+            </p>
+        </div>
+    );
+}
+
+
 export default function HomePage() {
   const [nameInput, setNameInput] = useState("");
   const { toast } = useToast();
+  const { isMaintenanceMode, loading: maintenanceLoading } = useMaintenanceStatus();
   
   const [userId, setUserId] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
@@ -1997,7 +2029,7 @@ export default function HomePage() {
   };
 
 
-  if (loading) {
+  if (loading || maintenanceLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
             <h1 className="text-2xl font-bold">...جاري التحميل</h1>
@@ -2007,6 +2039,10 @@ export default function HomePage() {
             <p className="text-gray-400 mt-4 text-sm">إذا استمر التحميل، جرب تحديث الصفحة</p>
         </div>
     );
+  }
+
+  if (isMaintenanceMode) {
+    return <MaintenanceScreen />;
   }
 
   if (userData?.isBanned) {

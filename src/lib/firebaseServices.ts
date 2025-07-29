@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -110,6 +111,11 @@ export interface GameInfo {
     name: string;
     image: string;
     backgroundImage?: string;
+}
+
+export interface AppStatusData {
+    isMaintenanceMode: boolean;
+    updatedAt: Timestamp;
 }
 
 
@@ -816,4 +822,36 @@ export const gameMetaServices = {
         const gameRef = doc(db, COLLECTIONS.GAMES, gameId);
         await updateDoc(gameRef, { backgroundImage: imageUrl });
     },
+};
+
+// App Status Services
+export const appStatusServices = {
+    async setMaintenanceMode(status: boolean): Promise<void> {
+        try {
+            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+            await setDoc(statusRef, {
+                isMaintenanceMode: status,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error('Error setting maintenance mode:', error);
+            throw error;
+        }
+    },
+
+    onMaintenanceStatusChange(callback: (isMaintenance: boolean, error?: Error) => void): () => void {
+        const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+        return onSnapshot(statusRef, (doc) => {
+            if (doc.exists()) {
+                const data = doc.data() as AppStatusData;
+                callback(data.isMaintenanceMode || false);
+            } else {
+                // If the document doesn't exist, assume not in maintenance mode
+                callback(false);
+            }
+        }, (error) => {
+            console.error('Error listening to maintenance status changes:', error);
+            callback(false, error); // Default to false on error
+        });
+    }
 };
