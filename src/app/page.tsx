@@ -21,7 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -154,9 +154,8 @@ function GiftSheet({
                                     "relative aspect-square flex flex-col items-center p-0 rounded-lg bg-cover bg-center cursor-pointer transition-all border-2 overflow-hidden bg-black/30",
                                     selectedGift?.id === gift.id ? "border-primary" : "border-transparent hover:border-primary/50"
                                 )}
-                                style={{ backgroundImage: `url(${gift.image})` }}
-                                data-ai-hint="gift present"
                             >
+                                <img src={gift.image} data-ai-hint="gift present" alt={gift.name} className="w-full h-full object-cover"/>
                                 <div className="absolute inset-0 bg-black/20"></div>
                                 <div className="absolute bottom-0 left-0 right-0 w-full text-center py-1 bg-gradient-to-t from-black/80 to-transparent">
                                     <span className="text-xs font-bold text-white drop-shadow-md">{formatNumber(gift.price)}</span>
@@ -229,6 +228,7 @@ function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean,
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -236,12 +236,14 @@ function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean,
             setName(room.name);
             setDescription(room.description);
             setImagePreview(room.image);
+            setImageFile(null);
         }
     }, [open, room]);
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
+            setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreview(reader.result as string);
@@ -250,12 +252,22 @@ function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean,
         }
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (room && name.trim()) {
+            let imageUrl = room.image;
+            if (imageFile) {
+                try {
+                    imageUrl = await uploadImageAndGetUrl(imageFile, `room_images/${room.id}`);
+                } catch (error) {
+                    console.error("Error uploading room image:", error);
+                    alert("Failed to upload new image. Please try again.");
+                    return;
+                }
+            }
             onUpdate({
                 name: name.trim(),
                 description: description.trim(),
-                image: imagePreview ?? room.image,
+                image: imageUrl,
             });
             onOpenChange(false);
         }
@@ -751,7 +763,8 @@ function RoomScreen({
 
 function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile, onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, children: React.ReactNode }) {
     const [name, setName] = useState(user.name);
-    const [image, setImage] = useState<string | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
@@ -759,23 +772,36 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
     useEffect(() => {
         if (isOpen) {
             setName(user.name);
-            setImage(user.image);
+            setImagePreview(user.image);
+            setImageFile(null);
         }
     }, [isOpen, user.name, user.image]);
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
+            setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setImage(reader.result as string);
+                setImagePreview(reader.result as string);
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSave = () => {
-        const updatedUser = { name, image: image || user.image };
+    const handleSave = async () => {
+        let imageUrl = user.image;
+        if (imageFile) {
+            try {
+                imageUrl = await uploadImageAndGetUrl(imageFile, `profile_images/${user.userId}`);
+            } catch (error) {
+                console.error("Error uploading profile image:", error);
+                toast({ variant: "destructive", title: "فشل رفع الصورة", duration: 2000 });
+                return;
+            }
+        }
+
+        const updatedUser = { name, image: imageUrl };
         onUserUpdate(updatedUser);
         toast({ title: "تم تحديث الملف الشخصي!", duration: 2000 });
         setIsOpen(false);
@@ -795,7 +821,7 @@ function EditProfileDialog({ user, onUserUpdate, children }: { user: UserProfile
                             onClick={() => fileInputRef.current?.click()}
                         >
                             <Avatar className="w-24 h-24">
-                                <AvatarImage src={image ?? undefined} />
+                                <AvatarImage src={imagePreview ?? undefined} />
                                 <AvatarFallback><User className="w-8 h-8" /></AvatarFallback>
                             </Avatar>
                             <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
@@ -992,8 +1018,17 @@ function LevelScreen({ onBack, user }: { onBack: () => void, user: UserData }) {
 }
 
 function VipScreen({ onBack }: { onBack: () => void }) {
-    const { appStatus } = useAppStatus();
-    const vipLevels = Array.from({ length: 9 }, (_, i) => `vip${i + 1}`);
+    const vipLevelDesigns = [
+        { name: 'VIP 1', gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
+        { name: 'VIP 2', gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
+        { name: 'VIP 3', gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
+        { name: 'VIP 4', gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
+        { name: 'VIP 5', gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
+        { name: 'VIP 6', gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
+        { name: 'VIP 7', gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
+        { name: 'VIP 8', gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
+        { name: 'VIP 9', gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
+    ];
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
@@ -1006,19 +1041,17 @@ function VipScreen({ onBack }: { onBack: () => void }) {
             </header>
 
             <div className="flex-1 grid grid-cols-3 gap-4">
-                {vipLevels.map((key, index) => (
-                    <div key={key} className="flex flex-col items-center gap-2">
-                        <button className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full h-16 transition-colors hover:bg-primary/10 overflow-hidden">
-                            {appStatus?.vipLevelImages?.[key] ? (
-                                <img src={appStatus.vipLevelImages[key]} alt={`VIP ${index + 1}`} className="w-full h-full object-cover" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                    <Gem className="w-10 h-10 text-primary/50" />
-                                </div>
-                            )}
-                        </button>
-                        <span className="text-sm text-muted-foreground font-semibold">VIP {index + 1}</span>
-                    </div>
+                {vipLevelDesigns.map((design, index) => (
+                    <button key={index} className={cn(
+                        "relative flex flex-col items-center justify-center bg-gradient-to-br rounded-2xl w-full aspect-square transition-colors hover:scale-105 overflow-hidden shadow-lg",
+                        design.gradient
+                    )}>
+                        <div className="absolute inset-0 bg-black/10"></div>
+                        <div className={cn("z-10 text-center", design.textColor)}>
+                            <p className="font-black text-2xl tracking-tighter" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>VIP</p>
+                            <p className="font-bold text-4xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>{index + 1}</p>
+                        </div>
+                    </button>
                 ))}
             </div>
         </div>
@@ -1039,22 +1072,17 @@ function AdminGiftManager() {
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file && selectedGiftId) {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const newImageBase64 = reader.result as string;
-                try {
-                    await giftServices.updateGiftImage(selectedGiftId, newImageBase64);
-                    toast({ title: "تم تحديث صورة الهدية بنجاح!", duration: 2000 });
-                } catch (error) {
-                    console.error("Failed to update gift image:", error);
-                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
-                } finally {
-                    setSelectedGiftId(null);
-                    // Reset file input
-                    if(fileInputRef.current) fileInputRef.current.value = "";
-                }
-            };
-            reader.readAsDataURL(file);
+            try {
+                const imageUrl = await uploadImageAndGetUrl(file, `gift_images/${selectedGiftId}`);
+                await giftServices.updateGiftImage(selectedGiftId, imageUrl);
+                toast({ title: "تم تحديث صورة الهدية بنجاح!", duration: 2000 });
+            } catch (error) {
+                console.error("Failed to update gift image:", error);
+                toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+            } finally {
+                setSelectedGiftId(null);
+                if(fileInputRef.current) fileInputRef.current.value = "";
+            }
         }
     };
 
@@ -1108,27 +1136,23 @@ function AdminGameManager() {
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file && selectedGameId && uploadType) {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const newImageBase64 = reader.result as string;
-                try {
-                    if (uploadType === 'icon') {
-                        await gameMetaServices.updateGameImage(selectedGameId, newImageBase64);
-                        toast({ title: "تم تحديث أيقونة اللعبة بنجاح!", duration: 2000 });
-                    } else {
-                        await gameMetaServices.updateGameBackgroundImage(selectedGameId, newImageBase64);
-                        toast({ title: "تم تحديث خلفية اللعبة بنجاح!", duration: 2000 });
-                    }
-                } catch (error) {
-                    console.error(`Failed to update game ${uploadType}:`, error);
-                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
-                } finally {
-                    setSelectedGameId(null);
-                    setUploadType(null);
-                    if(event.target) event.target.value = "";
+            try {
+                const imageUrl = await uploadImageAndGetUrl(file, `game_assets/${selectedGameId}_${uploadType}`);
+                if (uploadType === 'icon') {
+                    await gameMetaServices.updateGameImage(selectedGameId, imageUrl);
+                    toast({ title: "تم تحديث أيقونة اللعبة بنجاح!", duration: 2000 });
+                } else {
+                    await gameMetaServices.updateGameBackgroundImage(selectedGameId, imageUrl);
+                    toast({ title: "تم تحديث خلفية اللعبة بنجاح!", duration: 2000 });
                 }
-            };
-            reader.readAsDataURL(file);
+            } catch (error) {
+                console.error(`Failed to update game ${uploadType}:`, error);
+                toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+            } finally {
+                setSelectedGameId(null);
+                setUploadType(null);
+                if(event.target) event.target.value = "";
+            }
         }
     };
 
@@ -1189,21 +1213,17 @@ function AdminProfileButtonsManager() {
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file && selectedButtonKey) {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const newImageBase64 = reader.result as string;
-                try {
-                    await appStatusServices.setProfileButtonImage(selectedButtonKey, newImageBase64);
-                    toast({ title: `تم تحديث صورة زر ${buttonDefaults[selectedButtonKey as keyof typeof buttonDefaults].name} بنجاح!`, duration: 2000 });
-                } catch (error) {
-                    console.error("Failed to update profile button image:", error);
-                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
-                } finally {
-                    if(fileInputRef.current) fileInputRef.current.value = "";
-                    setSelectedButtonKey(null);
-                }
-            };
-            reader.readAsDataURL(file);
+            try {
+                const imageUrl = await uploadImageAndGetUrl(file, `profile_buttons/${selectedButtonKey}`);
+                await appStatusServices.setProfileButtonImage(selectedButtonKey, imageUrl);
+                toast({ title: `تم تحديث صورة زر ${buttonDefaults[selectedButtonKey as keyof typeof buttonDefaults].name} بنجاح!`, duration: 2000 });
+            } catch (error) {
+                console.error("Failed to update profile button image:", error);
+                toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+            } finally {
+                if(fileInputRef.current) fileInputRef.current.value = "";
+                setSelectedButtonKey(null);
+            }
         }
     };
 
@@ -1237,73 +1257,6 @@ function AdminProfileButtonsManager() {
                                <Edit className="w-6 h-6 text-white"/>
                             </div>
                         </button>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-function AdminVipLevelsManager() {
-    const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const { appStatus } = useAppStatus();
-    const [selectedVipLevelKey, setSelectedVipLevelKey] = useState<string | null>(null);
-
-    const vipLevels = Array.from({ length: 9 }, (_, i) => `vip${i + 1}`);
-
-    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file && selectedVipLevelKey) {
-            const reader = new FileReader();
-            reader.onloadend = async () => {
-                const newImageBase64 = reader.result as string;
-                try {
-                    await appStatusServices.setVipLevelImage(selectedVipLevelKey, newImageBase64);
-                    toast({ title: `تم تحديث صورة ${selectedVipLevelKey.toUpperCase()} بنجاح!`, duration: 2000 });
-                } catch (error) {
-                    console.error("Failed to update VIP level image:", error);
-                    toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
-                } finally {
-                    if(fileInputRef.current) fileInputRef.current.value = "";
-                    setSelectedVipLevelKey(null);
-                }
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    return (
-        <div className="space-y-2">
-            <h4 className="font-semibold">إدارة صور مستويات VIP</h4>
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/*"
-                className="hidden"
-            />
-            <div className="grid grid-cols-4 gap-4">
-                {vipLevels.map(key => (
-                    <div key={key} className="flex flex-col items-center gap-2">
-                        <button
-                            onClick={() => {
-                                setSelectedVipLevelKey(key);
-                                fileInputRef.current?.click();
-                            }}
-                            className="relative group w-16 h-16"
-                        >
-                            <Avatar className="w-full h-full rounded-md">
-                                <AvatarImage src={appStatus?.vipLevelImages?.[key] ?? undefined} className="object-cover" />
-                                <AvatarFallback className="bg-primary/20 rounded-md">
-                                    <Gem className="w-8 h-8 text-primary/50" />
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
-                               <Edit className="w-6 h-6 text-white"/>
-                            </div>
-                        </button>
-                        <span className="text-xs text-muted-foreground">{key.toUpperCase()}</span>
                     </div>
                 ))}
             </div>
@@ -1528,8 +1481,6 @@ function AdminPanel() {
                 <hr className="border-primary/20"/>
                 <AdminProfileButtonsManager />
                 <hr className="border-primary/20"/>
-                <AdminVipLevelsManager />
-                <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
                     <div className="grid grid-cols-2 gap-2">
@@ -1668,15 +1619,17 @@ function ProfileScreen({
     );
 }
 
-function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean, onOpenChange: (open: boolean) => void, onCreateRoom: (name: string, description: string, image: string) => void }) {
+function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean, onOpenChange: (open: boolean) => void, onCreateRoom: (name: string, description: string, imageFile: File | null) => void }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
+            setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreview(reader.result as string);
@@ -1686,13 +1639,13 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
     };
 
     const handleSubmit = () => {
-        const finalImage = imagePreview ?? 'https://placehold.co/150x150/673ab7/ffffff.png';
         if (name.trim()) {
-            onCreateRoom(name.trim(), description.trim(), finalImage);
+            onCreateRoom(name.trim(), description.trim(), imageFile);
             // Reset state
             setName('');
             setDescription('');
             setImagePreview(null);
+            setImageFile(null);
             onOpenChange(false);
         }
     };
@@ -1745,19 +1698,30 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (room: Room) => void, onCreateRoom: (newRoom: Omit<Room, 'id' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'createdAt' | 'updatedAt'>) => void, user: UserProfile }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (room: Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
     const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
 
-    const handleCreateRoom = async (name: string, description: string, image: string) => {
-        const newRoomData = {
-            name,
-            description,
-            ownerId: user.userId,
-            image,
-        };
+    const handleCreateRoom = async (name: string, description: string, imageFile: File | null) => {
         try {
+            let imageUrl = 'https://placehold.co/150x150/673ab7/ffffff.png';
+            if (imageFile) {
+                // The room ID isn't known yet, so we'll upload to a temp-like path, or let the service handle it
+                // For simplicity, we can pass the file and let the service create the ID and then name the file.
+                // This requires a change in the service layer.
+                // Or, generate a temp client-side ID for the image path.
+                const tempId = `temp_${Date.now()}`;
+                imageUrl = await uploadImageAndGetUrl(imageFile, `room_images/${tempId}`);
+            }
+
+            const newRoomData = {
+                name,
+                description,
+                ownerId: user.userId,
+                image: imageUrl,
+            };
+
             await onCreateRoom(newRoomData);
             toast({ title: "تم إنشاء الغرفة بنجاح!", duration: 2000 });
         } catch (error) {
@@ -1993,7 +1957,7 @@ function MainApp({
         }
     };
     
-    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'userCount'| 'micSlots' | 'isRoomMuted' | 'createdAt' | 'updatedAt'>) => {
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' >) => {
         try {
             await createRoom(roomData);
         } catch(e) {
@@ -2145,7 +2109,7 @@ export default function HomePage() {
     gameMetaServices.initializeGames();
   }, []);
 
-  const handleCreateProfile = async (name: string) => {
+  const handleCreateProfile = async (name: string, imageFile: File | null) => {
     if (!name.trim()) {
        toast({
           variant: "destructive",
@@ -2157,9 +2121,21 @@ export default function HomePage() {
     }
 
     const newUserId = String(Math.floor(100000 + Math.random() * 900000));
+    let imageUrl = `https://placehold.co/128x128.png`;
+    
+    if (imageFile) {
+        try {
+            imageUrl = await uploadImageAndGetUrl(imageFile, `profile_images/${newUserId}`);
+        } catch (uploadError) {
+            console.error("Error uploading profile image during creation:", uploadError);
+            toast({ variant: "destructive", title: "فشل رفع الصورة", duration: 2000 });
+            // continue with placeholder
+        }
+    }
+
     const newUserProfile: UserProfile = { 
       name: name.trim(), 
-      image: `https://placehold.co/128x128.png`,
+      image: imageUrl,
       userId: newUserId,
       displayId: newUserId,
     };
@@ -2256,53 +2232,78 @@ export default function HomePage() {
   }
 
   if (!userData) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
-            <div className="w-full max-w-sm text-center">
-                <h1 className="text-2xl font-bold mb-4">إنشاء ملف شخصي</h1>
-                <p className="text-gray-300 mb-8">أكمل ملفك الشخصي للمتابعة</p>
-                
-                <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-primary">
-                    <AvatarImage src="https://placehold.co/128x128.png" />
-                    <AvatarFallback><Camera/></AvatarFallback>
-                </Avatar>
-                <p className="text-sm text-muted-foreground mb-4">سيتم استخدام صورة افتراضية.</p>
+    const CreateProfileScreen = () => {
+        const [nameInput, setNameInput] = useState("");
+        const [imagePreview, setImagePreview] = useState<string | null>("https://placehold.co/128x128.png");
+        const [imageFile, setImageFile] = useState<File | null>(null);
+        const fileInputRef = useRef<HTMLInputElement>(null);
 
-                <div className="space-y-4 text-right">
-                     <Input 
-                        placeholder="أدخل اسمك..."
-                        value={nameInput}
-                        onChange={(e) => setNameInput(e.target.value)}
-                        className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400"
-                        onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile(nameInput)}
-                    />
+        const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+            const file = event.target.files?.[0];
+            if (file) {
+                setImageFile(file);
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setImagePreview(reader.result as string);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
+                <div className="w-full max-w-sm text-center">
+                    <h1 className="text-2xl font-bold mb-4">إنشاء ملف شخصي</h1>
+                    <p className="text-gray-300 mb-8">أكمل ملفك الشخصي للمتابعة</p>
+                    
+                    <button className="relative group mx-auto mb-4" onClick={() => fileInputRef.current?.click()}>
+                        <Avatar className="w-24 h-24 border-4 border-primary">
+                            <AvatarImage src={imagePreview ?? undefined} />
+                            <AvatarFallback><Camera/></AvatarFallback>
+                        </Avatar>
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Camera className="w-8 h-8 text-white" />
+                        </div>
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+
+                    <div className="space-y-4 text-right">
+                         <Input 
+                            placeholder="أدخل اسمك..."
+                            value={nameInput}
+                            onChange={(e) => setNameInput(e.target.value)}
+                            className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 text-center"
+                            onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile(nameInput, imageFile)}
+                        />
+                    </div>
+
+                    <Button 
+                        onClick={() => handleCreateProfile(nameInput, imageFile)} 
+                        size="lg" 
+                        className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
+                        disabled={!nameInput.trim()}
+                    >
+                        حفظ ومتابعة
+                    </Button>
+                    
+                    {error && (
+                        <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
+                    )}
+                    
+                    <p className="text-gray-400 mt-4 text-xs">
+                        اضغط Enter أو انقر على الزر لحفظ الملف الشخصي
+                    </p>
                 </div>
-
-                <Button 
-                    onClick={() => handleCreateProfile(nameInput)} 
-                    size="lg" 
-                    className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
-                    disabled={!nameInput.trim()}
-                >
-                    حفظ ومتابعة
-                </Button>
-                
-                {error && (
-                    <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
-                )}
-                
-                <p className="text-gray-400 mt-4 text-xs">
-                    اضغط Enter أو انقر على الزر لحفظ الملف الشخصي
-                </p>
+                 <div className="text-center text-xs text-gray-300 pt-8">
+                    <p>من خلال الاستمرار، فإنك توافق على</p>
+                    <p>
+                        <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
+                    </p>
+                </div>
             </div>
-             <div className="text-center text-xs text-gray-300 pt-8">
-                <p>من خلال الاستمرار، فإنك توافق على</p>
-                <p>
-                    <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
-                </p>
-            </div>
-        </div>
-    );
+        );
+    }
+    return <CreateProfileScreen />;
   }
 
   return <MainApp 

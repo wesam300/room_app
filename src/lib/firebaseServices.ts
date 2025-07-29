@@ -21,7 +21,17 @@ import {
   addDoc,
   runTransaction
 } from 'firebase/firestore';
-import { db, COLLECTIONS } from './firebase';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage, COLLECTIONS } from './firebase';
+
+// Helper function for image uploads
+export const uploadImageAndGetUrl = async (imageFile: File, path: string): Promise<string> => {
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadBytes(storageRef, imageFile);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
+};
+
 
 // Types
 export interface UserProfile {
@@ -122,9 +132,6 @@ export interface AppStatusData {
         vip?: string;
         store?: string;
         medal?: string;
-    };
-    vipLevelImages?: {
-        [key: string]: string; // e.g. { 'vip1': 'url', 'vip2': 'url' }
     };
     updatedAt: Timestamp | Date;
 }
@@ -487,6 +494,7 @@ export const roomServices = {
       let newRoomId: string;
       let roomRef;
       let roomExists = true;
+      let finalRoomData = { ...roomData };
 
       do {
         newRoomId = String(Math.floor(100000 + Math.random() * 900000));
@@ -494,9 +502,17 @@ export const roomServices = {
         const docSnap = await getDoc(roomRef);
         roomExists = docSnap.exists();
       } while (roomExists);
+
+      // If the image URL is a temporary one from the client, re-upload it with the final room ID
+      if (roomData.image.includes('temp_')) {
+        const response = await fetch(roomData.image);
+        const blob = await response.blob();
+        const file = new File([blob], "room_image.png", { type: blob.type });
+        finalRoomData.image = await uploadImageAndGetUrl(file, `room_images/${newRoomId}`);
+      }
       
       const newRoom: Omit<RoomData, 'createdAt' | 'updatedAt'> = {
-          ...roomData,
+          ...finalRoomData,
           id: newRoomId,
           userCount: 0,
           micSlots: INITIAL_MIC_SLOTS,
@@ -637,11 +653,10 @@ export const gameServices = {
     return querySnapshot.docs.map(doc => doc.data() as GameHistoryData);
   },
 
-  async saveUserBets(betData: Omit<UserBetData, 'createdAt'|'status'>): Promise<void> {
+  async saveUserBets(betData: Omit<UserBetData, 'createdAt'>): Promise<void> {
     const betRef = doc(db, COLLECTIONS.USER_BETS, `${betData.gameId}_${betData.userId}_${betData.roundId}`);
     await setDoc(betRef, {
       ...betData,
-      status: 'placed',
       createdAt: serverTimestamp()
     }, { merge: true });
   },
@@ -867,21 +882,6 @@ export const appStatusServices = {
             }, { merge: true });
         } catch (error) {
             console.error(`Error setting ${buttonKey} button image:`, error);
-            throw error;
-        }
-    },
-
-    async setVipLevelImage(vipLevelKey: string, imageUrl: string): Promise<void> {
-        try {
-            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
-            await setDoc(statusRef, {
-                vipLevelImages: {
-                    [vipLevelKey]: imageUrl
-                },
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-        } catch (error) {
-            console.error(`Error setting ${vipLevelKey} image:`, error);
             throw error;
         }
     },
