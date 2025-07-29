@@ -246,7 +246,6 @@ export default function RoomMic({
                                 <Medal className="w-3 h-3" />
                            </div>
                        )}
-                       {userData?.vipLevel && userData.vipLevel > 0 && <VipBadge level={userData.vipLevel} />}
                        <span className="text-xs text-muted-foreground truncate max-w-16">
                          {slot.user ? slot.user.name : `no.${index + 1}`}
                        </span>
