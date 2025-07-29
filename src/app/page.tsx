@@ -677,8 +677,8 @@ function RoomScreen({
                     )}
                 </AnimatePresence>
 
-                 <div className="flex-shrink-0 px-4 pb-4">
-                     <div 
+                <div className="flex-shrink-0 px-4 pb-4">
+                    <div 
                         ref={chatContainerRef}
                         className="h-32 overflow-y-auto pr-2 space-y-3 mb-2"
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
@@ -709,33 +709,36 @@ function RoomScreen({
                           )
                         })}
                     </div>
-                    <div className="flex items-end gap-2">
+
+                    <div className="relative">
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="bg-black/40 rounded-full h-12 w-12"
+                            className="absolute left-1 bottom-16 bg-black/40 rounded-full h-12 w-12"
                             onClick={() => setGameSelectionSheetOpen(true)}
                         >
                             <Gamepad2 className="w-6 h-6 text-primary" />
                         </Button>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="bg-black/40 rounded-full h-12 w-12"
-                            onClick={() => handleOpenGiftSheet(null)}
-                        >
-                            <Gift className="w-6 h-6 text-primary" />
-                        </Button>
-                        <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
-                            <Input
-                                placeholder="اكتب رسالتك..."
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
-                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                            />
-                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
-                                <Send className="w-5 h-5" />
+                        <div className="flex items-end gap-2">
+                            <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                                <Input
+                                    placeholder="اكتب رسالتك..."
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                                />
+                                <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                                    <Send className="w-5 h-5" />
+                                </Button>
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="bg-black/40 rounded-full h-12 w-12"
+                                onClick={() => handleOpenGiftSheet(null)}
+                            >
+                                <Gift className="w-6 h-6 text-primary" />
                             </Button>
                         </div>
                     </div>
