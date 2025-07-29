@@ -46,7 +46,7 @@ interface Supporter {
 
 
 // --- Constants ---
-const ADMIN_USER_IDS = ['368473', '607162'];
+const ADMIN_USER_IDS = ['368473', '607162', '749234'];
 const DAILY_REWARD_AMOUNT = 10000000;
 
 
