@@ -25,7 +25,7 @@ interface HistoryItem {
 }
 
 // --- Constants ---
-const BET_AMOUNTS = [10000, 20000, 50000, 100000];
+const BET_AMOUNTS = [100000, 1000000, 5000000, 10000000, 30000000, 50000000, 100000000];
 const GAME_STATE = {
   BETTING: 'betting',
   IN_PROGRESS: 'in_progress',
@@ -35,8 +35,8 @@ const COUNTDOWN_SECONDS = 5;
 const CRASH_DELAY_SECONDS = 3;
 
 function formatNumber(num: number): string {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}m`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}m`;
+    if (num >= 1000) return `${(num / 1000).toFixed(0)}k`;
     return num.toLocaleString();
 }
 
@@ -261,9 +261,10 @@ export default function CrashGame({ user, balance, onBalanceChange }: CrashGameP
           {BET_AMOUNTS.map((amount) => (
             <Button
               key={amount}
+              size="sm"
               variant={betAmount === amount ? 'default' : 'secondary'}
               className={cn(
-                "bg-gray-700/50 text-white hover:bg-gray-600",
+                "bg-gray-700/50 text-white hover:bg-gray-600 text-xs",
                 betAmount === amount && "bg-blue-600 hover:bg-blue-700"
               )}
               onClick={() => setBetAmount(amount)}
