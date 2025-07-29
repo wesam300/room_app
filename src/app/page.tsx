@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData } from "@/lib/firebaseServices";
 
 // --- Types ---
 interface UserProfile {
@@ -2041,7 +2041,9 @@ export default function HomePage() {
     );
   }
 
-  if (isMaintenanceMode) {
+  // Allow admins to bypass maintenance mode.
+  const isAdmin = userData && ADMIN_USER_IDS.includes(userData.profile.userId);
+  if (isMaintenanceMode && !isAdmin) {
     return <MaintenanceScreen />;
   }
 
