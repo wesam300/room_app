@@ -63,7 +63,7 @@ const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 1, name: 'VIP 1', price: 15000000, features: ['الحصول على شارة VIP 1 بجانب اسمك في الدردشة والمايك.'], gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
     { level: 2, name: 'VIP 2', price: 30000000, features: ['شارة بجانب الاسم في الدردشة والبروفايل', 'مكافآت يومية'], gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
     { level: 3, name: 'VIP 3', price: 60000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة'], gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
-    { level: 4, name: 'VIP 4', price: 100000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
+    { level: 4, name: 'VIP 4', price: 100000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة ملونة'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
     { level: 5, name: 'VIP 5', price: 200000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
     { level: 6, name: 'VIP 6', price: 400000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
     { level: 7, name: 'VIP 7', price: 700000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
@@ -733,6 +733,7 @@ function RoomScreen({
                     >
                         {chatMessages.map(msg => {
                           const chatUserData = roomUsersData.get(msg.user.userId);
+                          const isVip4Plus = chatUserData?.vipLevel && chatUserData.vipLevel >= 4;
                           return (msg && msg.user && msg.user.name) && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
@@ -750,7 +751,11 @@ function RoomScreen({
                                             </div>
                                        )}
                                     </div>
-                                    <div className="bg-primary/20 p-2 rounded-lg rounded-tl-none">
+                                    <div className={cn("p-2 rounded-lg rounded-tl-none",
+                                        isVip4Plus 
+                                            ? "bg-gradient-to-br from-amber-500/30 to-yellow-600/30 border border-amber-400" 
+                                            : "bg-primary/20"
+                                    )}>
                                         <p className="text-sm text-foreground">{msg.text}</p>
                                     </div>
                                 </div>
@@ -1053,7 +1058,7 @@ function LevelScreen({ onBack, user }: { onBack: () => void, user: UserData }) {
     );
 }
 
-function VipScreen({ onBack, onSelectVipLevel }: { onBack: () => void, onSelectVipLevel: (level: VipLevel) => void }) {
+function VipScreen({ onBack, onSelectVipLevel }: { onBack: () => void, onSelectVipLevel: (VipLevel) => void }) {
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <header className="flex items-center justify-between mb-4">
@@ -1844,7 +1849,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (room: Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const { toast } = useToast();
     const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
