@@ -710,21 +710,8 @@ function RoomScreen({
                         })}
                     </div>
                     <div className="flex items-end justify-between gap-2">
-                         <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
-                            <Input
-                                placeholder="اكتب رسالتك..."
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
-                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                            />
-                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
-                                <Send className="w-5 h-5" />
-                            </Button>
-                        </div>
-
-                         <div className="flex flex-col-reverse items-center gap-2">
-                            <Button 
+                        <div className="flex flex-col-reverse items-center gap-2">
+                             <Button 
                                 variant="ghost" 
                                 size="icon" 
                                 className="bg-black/40 rounded-full h-14 w-14"
@@ -740,7 +727,19 @@ function RoomScreen({
                             >
                                 <Gamepad2 className="w-7 h-7 text-primary" />
                             </Button>
-                         </div>
+                        </div>
+                         <div className="flex-1 flex items-center gap-2 bg-black/40 border border-primary/50 rounded-full p-1 pr-3">
+                            <Input
+                                placeholder="اكتب رسالتك..."
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                className="flex-grow bg-transparent border-none text-white placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0 h-10"
+                                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                            />
+                            <Button size="icon" className="rounded-full bg-primary/80 hover:bg-primary h-10 w-10" onClick={handleSendMessage}>
+                                <Send className="w-5 h-5" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1193,6 +1192,11 @@ function AdminPanel() {
             return;
         }
         try {
+            const isTaken = await userServices.isDisplayIdTaken(newDisplayId.trim());
+            if (isTaken) {
+                toast({ variant: "destructive", title: "معرف مستخدم", description: "هذا المعرف مستخدم بالفعل.", duration: 2000 });
+                return;
+            }
             await userServices.changeUserDisplayId(targetUserId.trim(), newDisplayId.trim());
             toast({ title: "تم تغيير معرف العرض بنجاح!", duration: 2000});
             setTargetUserId("");
@@ -1246,9 +1250,9 @@ function AdminPanel() {
         }
     };
     
-    const handleSetDifficulty = async (level: DifficultyLevel) => {
+    const handleSetDifficulty = async (gameId: string, level: DifficultyLevel) => {
         try {
-            await gameServices.setGameDifficulty('crash', level);
+            await gameServices.setGameDifficulty(gameId, level);
             toast({ title: "تم تحديث نسبة الفوز", description: `تم ضبط الصعوبة على: ${level}`, duration: 2000 });
         } catch (error) {
             console.error("Admin set difficulty failed:", error);
@@ -1341,13 +1345,26 @@ function AdminPanel() {
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
                     <div className="grid grid-cols-2 gap-2">
-                         <Button onClick={() => handleSetDifficulty('very_easy')} variant="outline">سهل جدا</Button>
-                         <Button onClick={() => handleSetDifficulty('easy')} variant="outline">سهل</Button>
-                         <Button onClick={() => handleSetDifficulty('medium')} variant="outline">متوسط</Button>
-                         <Button onClick={() => handleSetDifficulty('medium_hard')} variant="outline">اكثر من المتوسط</Button>
-                         <Button onClick={() => handleSetDifficulty('hard')} variant="outline">صعب</Button>
-                         <Button onClick={() => handleSetDifficulty('very_hard')} variant="outline">صعب جدا</Button>
-                         <Button onClick={() => handleSetDifficulty('impossible')} variant="destructive" className="col-span-2">لا أحد يفوز</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'very_easy')} variant="outline">سهل جدا</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'easy')} variant="outline">سهل</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'medium')} variant="outline">متوسط</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'medium_hard')} variant="outline">اكثر من المتوسط</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'hard')} variant="outline">صعب</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'very_hard')} variant="outline">صعب جدا</Button>
+                         <Button onClick={() => handleSetDifficulty('crash', 'impossible')} variant="destructive" className="col-span-2">لا أحد يفوز</Button>
+                    </div>
+                </div>
+                <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة الفواكه</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'very_easy')} variant="outline">سهل جدا</Button>
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'easy')} variant="outline">سهل</Button>
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'medium')} variant="outline">متوسط</Button>
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'medium_hard')} variant="outline">اكثر من المتوسط</Button>
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'hard')} variant="outline">صعب</Button>
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'very_hard')} variant="outline">صعب جدا</Button>
+                         <Button onClick={() => handleSetDifficulty('fruity_fortune', 'impossible')} variant="destructive" className="col-span-2">لا أحد يفوز</Button>
                     </div>
                 </div>
             </div>

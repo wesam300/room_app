@@ -45,28 +45,76 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
     'orange', 'cherry', 'watermelon', 'pear', 'strawberry', 'apple', 'grapes', 'lemon'
 ];
 
-// --- Cached Calculations for Deterministic Results ---
-// This avoids re-calculating the entire history on every render.
-const deterministicWinnerCache = new Map<number, { winner: FruitKey }>();
 
-function getWinnerForRound(roundId: number): { winner: FruitKey } {
-    if (deterministicWinnerCache.has(roundId)) {
-        return deterministicWinnerCache.get(roundId)!;
-    }
-
+const getWinnerForRound = (roundId: number, difficulty: DifficultyLevel, allRoundBets: UserBetData[]): { winner: FruitKey } => {
     const pseudoRandom = (seedOffset = 0) => {
         const x = Math.sin(roundId + seedOffset) * 10000;
         return x - Math.floor(x);
     };
 
-    // Simple pseudo-random selection based on roundId
-    const winnerIndex = Math.floor(pseudoRandom() * FRUIT_KEYS.length);
-    const winner = FRUIT_KEYS[winnerIndex];
-    
-    const result = { winner };
-    deterministicWinnerCache.set(roundId, result);
-    return result;
-}
+    // Calculate total bet amount on each fruit
+    const totalBetsPerFruit: Record<FruitKey, number> = FRUIT_KEYS.reduce((acc, key) => ({ ...acc, [key]: 0 }), {} as Record<FruitKey, number>);
+    for (const betData of allRoundBets) {
+        for (const fruit in betData.bets) {
+            totalBetsPerFruit[fruit as FruitKey] += betData.bets[fruit as FruitKey];
+        }
+    }
+
+    const sortedFruitsByBet = FRUIT_KEYS.sort((a, b) => totalBetsPerFruit[a] - totalBetsPerFruit[b]);
+
+    const getBiasedWinner = (favorMostBet: boolean): FruitKey => {
+        // favorMostBet = true for easy, false for hard
+        const targetFruits = favorMostBet ? sortedFruitsByBet.slice().reverse() : sortedFruitsByBet;
+        
+        // If no one bet, just pick a random fruit
+        const totalBets = Object.values(totalBetsPerFruit).reduce((a, b) => a + b, 0);
+        if (totalBets === 0) {
+            return FRUIT_KEYS[Math.floor(pseudoRandom() * FRUIT_KEYS.length)];
+        }
+        
+        // Find fruits that have bets on them
+        const betOnFruits = targetFruits.filter(fruit => totalBetsPerFruit[fruit] > 0);
+        
+        // If there are fruits with bets, pick from them based on bias
+        if (betOnFruits.length > 0) {
+            // Give a high chance (e.g., 70%) to pick the most/least bet-on fruit
+            if (pseudoRandom() < 0.7) {
+                return betOnFruits[0];
+            }
+            // Otherwise, pick another one that has bets on it
+            return betOnFruits[Math.floor(pseudoRandom() * betOnFruits.length)];
+        }
+        
+        // If no fruits with bets are found (edge case), pick from the list of all fruits
+        return targetFruits[0];
+    };
+
+
+    switch (difficulty) {
+        case 'very_easy':
+        case 'easy':
+            return { winner: getBiasedWinner(true) };
+        case 'hard':
+        case 'very_hard':
+            return { winner: getBiasedWinner(false) };
+        case 'impossible':
+            // Choose a fruit with zero bets on it, if possible.
+            const noBetFruits = FRUIT_KEYS.filter(f => totalBetsPerFruit[f] === 0);
+            if (noBetFruits.length > 0) {
+                return { winner: noBetFruits[Math.floor(pseudoRandom() * noBetFruits.length)] };
+            }
+            // If all fruits have bets, choose the one with the lowest bet.
+            return { winner: sortedFruitsByBet[0] };
+        case 'medium_hard':
+            // 50/50 chance to be medium or hard
+            return pseudoRandom() < 0.5 ? getWinnerForRound(roundId, 'medium', allRoundBets) : { winner: getBiasedWinner(false) };
+        case 'medium':
+        default:
+             // Default pseudo-random selection based on roundId
+            const winnerIndex = Math.floor(pseudoRandom() * FRUIT_KEYS.length);
+            return { winner: FRUIT_KEYS[winnerIndex] };
+    }
+};
 
 
 function formatNumber(num: number) {
@@ -164,7 +212,8 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
-  
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
+
   const { toast } = useToast();
   const { saveGameHistory, saveUserBets, getUserBets } = useGameHistory();
 
@@ -172,6 +221,11 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   
   const gridRef = useRef<HTMLDivElement>(null);
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = gameServices.onDifficultyChange('fruity_fortune', setDifficulty);
+    return () => unsubscribe();
+  }, []);
 
   // Load state from Firebase on initial mount
   useEffect(() => {
@@ -216,7 +270,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   // The main game loop, driven by a simple interval
   const calculateAndShowResults = useCallback(async (currentRoundId: number) => {
       const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
-      const { winner: finalWinner } = getWinnerForRound(currentRoundId);
+      const { winner: finalWinner } = getWinnerForRound(currentRoundId, difficulty, allRoundBets);
       const allUsers = await userServices.getAllUsers();
       const userMap = new Map<string, UserData>(
         allUsers.filter(u => u && u.profile).map(u => [u.profile.userId, u])
@@ -250,7 +304,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
       setWinnerScreenInfo({ fruit: finalWinner, payout: myPayout, topWinners: allWinners.slice(0, 3) });
       setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
 
-  }, [bets, onBalanceChange]);
+  }, [bets, onBalanceChange, difficulty]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -297,7 +351,8 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
                 
                 // We need to calculate the winner just before spinning starts
                 (async () => {
-                    const { winner } = getWinnerForRound(currentRoundId);
+                    const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
+                    const { winner } = getWinnerForRound(currentRoundId, difficulty, allRoundBets);
                     
                     // 1. Generate animation sequence
                     const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -347,7 +402,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, previousWinner]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, previousWinner, difficulty]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
