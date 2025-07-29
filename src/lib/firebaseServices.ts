@@ -48,6 +48,8 @@ export interface UserData {
   lastClaimTimestamp: number | null;
   level: number;
   totalSupportGiven: number;
+  vipLevel?: number;
+  vipExpiry?: Timestamp | null;
   isBanned?: boolean;
   isOfficial?: boolean;
   createdAt?: Timestamp;
@@ -204,6 +206,7 @@ export const userServices = {
            level: userData.level || 0,
            totalSupportGiven: userData.totalSupportGiven || 0,
            isOfficial: userData.isOfficial || false,
+           vipLevel: userData.vipLevel || 0,
            createdAt: serverTimestamp(),
            updatedAt: serverTimestamp(),
          });
@@ -229,6 +232,7 @@ export const userServices = {
         data.level = data.level ?? 0;
         data.totalSupportGiven = data.totalSupportGiven ?? 0;
         data.isOfficial = data.isOfficial ?? false;
+        data.vipLevel = data.vipLevel ?? 0;
         return data;
       }
       return null;
@@ -236,6 +240,16 @@ export const userServices = {
       console.error('Error getting user from Firestore:', error);
       throw error;
     }
+  },
+  
+  async getUserByDisplayId(displayId: string): Promise<UserData | null> {
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where('profile.displayId', '==', displayId), limit(1));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        return querySnapshot.docs[0].data() as UserData;
+    }
+    return null;
   },
 
   async getMultipleUsers(userIds: string[]): Promise<UserData[]> {
@@ -355,6 +369,50 @@ export const userServices = {
     });
   },
 
+  async purchaseVip(userId: string, vipLevel: number, cost: number): Promise<void> {
+    await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, COLLECTIONS.USERS, userId);
+        const userDoc = await transaction.get(userRef);
+
+        if (!userDoc.exists()) throw new Error("User not found.");
+        
+        const userData = userDoc.data() as UserData;
+        if (userData.balance < cost) throw new Error("رصيد غير كافٍ.");
+        if (userData.vipLevel && userData.vipLevel >= vipLevel) throw new Error("أنت بالفعل تمتلك هذا المستوى أو أعلى.");
+
+        transaction.update(userRef, {
+            balance: increment(-cost),
+            vipLevel: vipLevel,
+            updatedAt: serverTimestamp()
+        });
+    });
+  },
+
+  async giftVip(senderId: string, recipientDisplayId: string, vipLevel: number, cost: number): Promise<void> {
+      await runTransaction(db, async (transaction) => {
+        const senderRef = doc(db, COLLECTIONS.USERS, senderId);
+        const senderDoc = await transaction.get(senderRef);
+
+        if (!senderDoc.exists() || senderDoc.data().balance < cost) {
+            throw new Error("رصيد غير كافٍ.");
+        }
+
+        const recipientData = await this.getUserByDisplayId(recipientDisplayId);
+        if (!recipientData) {
+            throw new Error("المستخدم المُهدى إليه غير موجود.");
+        }
+        const recipientRef = doc(db, COLLECTIONS.USERS, recipientData.profile.userId);
+
+        if (recipientData.vipLevel && recipientData.vipLevel >= vipLevel) {
+            throw new Error("المستخدم المُهدى إليه يمتلك هذا المستوى أو أعلى بالفعل.");
+        }
+
+        // Deduct from sender, give to recipient
+        transaction.update(senderRef, { balance: increment(-cost) });
+        transaction.update(recipientRef, { vipLevel: vipLevel, updatedAt: serverTimestamp() });
+      });
+  },
+
   async updateUserSilverBalance(userId: string, amount: number): Promise<void> {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
@@ -433,6 +491,7 @@ export const userServices = {
             data.level = data.level ?? 0;
             data.totalSupportGiven = data.totalSupportGiven ?? 0;
             data.isOfficial = data.isOfficial ?? false;
+            data.vipLevel = data.vipLevel ?? 0;
             callback(data);
         } else {
             callback(null);
@@ -464,6 +523,7 @@ export const userServices = {
             user.level = user.level ?? 0;
             user.totalSupportGiven = user.totalSupportGiven ?? 0;
             user.isOfficial = user.isOfficial ?? false;
+            user.vipLevel = user.vipLevel ?? 0;
           }
           callback([user]); // Callback with each user update individually
         }, (error) => {

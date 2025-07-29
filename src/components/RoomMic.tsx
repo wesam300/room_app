@@ -35,6 +35,30 @@ interface RoomMicProps {
     onOpenGiftDialog: (recipient: UserProfile | null) => void;
 }
 
+const VipBadge = ({ level }: { level: number }) => {
+    const vipLevelDesigns = [
+        { name: 'VIP 1', gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
+        { name: 'VIP 2', gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
+        { name: 'VIP 3', gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
+        { name: 'VIP 4', gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
+        { name: 'VIP 5', gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
+        { name: 'VIP 6', gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
+        { name: 'VIP 7', gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
+        { name: 'VIP 8', gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
+        { name: 'VIP 9', gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
+    ];
+
+    if (level < 1 || level > vipLevelDesigns.length) return null;
+    const design = vipLevelDesigns[level - 1];
+
+    return (
+        <div className={cn("px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-br", design.gradient, design.textColor)}>
+             <span>VIP</span>
+             <span>{level}</span>
+        </div>
+    );
+};
+
 export default function RoomMic({
     slot,
     userData,
@@ -109,13 +133,15 @@ export default function RoomMic({
                         </div>
                      )}
                    </div>
-
-                   {levelInfo && (
-                        <div className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                            <Star className="w-4 h-4 text-yellow-400" />
-                            <span>المستوى {levelInfo.level}</span>
-                        </div>
-                   )}
+                   <div className="flex items-center gap-2">
+                        {userData.vipLevel && userData.vipLevel > 0 && <VipBadge level={userData.vipLevel} />}
+                        {levelInfo && (
+                                <div className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                                    <Star className="w-4 h-4 text-yellow-400" />
+                                    <span>المستوى {levelInfo.level}</span>
+                                </div>
+                        )}
+                   </div>
 
                    <button onClick={() => handleCopyUserId(slot.user!)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
                        <span>ID: {slot.user.displayId || slot.user.userId}</span>
@@ -214,13 +240,13 @@ export default function RoomMic({
                             <Mic className="w-7 h-7 text-primary" />
                         )}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center justify-center gap-1">
                        {userData?.isOfficial && (
                            <div className="flex items-center gap-1 text-yellow-500 text-xs">
                                 <Medal className="w-3 h-3" />
-                                <span>رسمي</span>
                            </div>
                        )}
+                       {userData?.vipLevel && userData.vipLevel > 0 && <VipBadge level={userData.vipLevel} />}
                        <span className="text-xs text-muted-foreground truncate max-w-16">
                          {slot.user ? slot.user.name : `no.${index + 1}`}
                        </span>
@@ -233,4 +259,3 @@ export default function RoomMic({
         </Popover>
     )
 }
-

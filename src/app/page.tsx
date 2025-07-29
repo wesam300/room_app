@@ -46,10 +46,30 @@ interface Supporter {
     totalGiftValue: number;
 }
 
+interface VipLevel {
+    level: number;
+    name: string;
+    price: number;
+    features: string[];
+    gradient: string;
+    textColor: string;
+}
+
 
 // --- Constants ---
 const ADMIN_USER_IDS = ['368473', '607162', '749234'];
 const DAILY_REWARD_AMOUNT = 10000000;
+const VIP_LEVELS_DATA: VipLevel[] = [
+    { level: 1, name: 'VIP 1', price: 15000000, features: ['الحصول على شارة VIP 1 بجانب اسمك في الدردشة والمايك.'], gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
+    { level: 2, name: 'VIP 2', price: 30000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
+    { level: 3, name: 'VIP 3', price: 60000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
+    { level: 4, name: 'VIP 4', price: 100000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
+    { level: 5, name: 'VIP 5', price: 200000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
+    { level: 6, name: 'VIP 6', price: 400000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
+    { level: 7, name: 'VIP 7', price: 700000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
+    { level: 8, name: 'VIP 8', price: 1000000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
+    { level: 9, name: 'VIP 9', price: 1500000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
+];
 
 
 function formatNumber(num: number): string {
@@ -486,6 +506,17 @@ function RoomScreen({
         }
     };
 
+    const VipBadge = ({ level }: { level: number }) => {
+        const design = VIP_LEVELS_DATA.find(d => d.level === level);
+        if (!design) return null;
+
+        return (
+            <div className={cn("px-1.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-br", design.gradient, design.textColor)}>
+                <span>VIP{level}</span>
+            </div>
+        );
+    };
+
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
@@ -707,6 +738,7 @@ function RoomScreen({
                                 <div className="flex flex-col items-start">
                                     <div className="flex items-center gap-2">
                                        <span className="text-sm text-muted-foreground">{msg.user.name}</span>
+                                       {chatUserData?.vipLevel && chatUserData.vipLevel > 0 && <VipBadge level={chatUserData.vipLevel} />}
                                        {chatUserData?.isOfficial && (
                                             <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded-full text-xs font-bold">
                                                 <Medal className="w-3 h-3" />
@@ -1017,19 +1049,7 @@ function LevelScreen({ onBack, user }: { onBack: () => void, user: UserData }) {
     );
 }
 
-function VipScreen({ onBack }: { onBack: () => void }) {
-    const vipLevelDesigns = [
-        { name: 'VIP 1', gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
-        { name: 'VIP 2', gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
-        { name: 'VIP 3', gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
-        { name: 'VIP 4', gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
-        { name: 'VIP 5', gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
-        { name: 'VIP 6', gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
-        { name: 'VIP 7', gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
-        { name: 'VIP 8', gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
-        { name: 'VIP 9', gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
-    ];
-
+function VipScreen({ onBack, onSelectVipLevel }: { onBack: () => void, onSelectVipLevel: (level: VipLevel) => void }) {
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <header className="flex items-center justify-between mb-4">
@@ -1041,20 +1061,142 @@ function VipScreen({ onBack }: { onBack: () => void }) {
             </header>
 
             <div className="flex-1 grid grid-cols-3 gap-4">
-                {vipLevelDesigns.map((design, index) => (
-                    <button key={index} className={cn(
-                        "relative flex flex-col items-center justify-center bg-gradient-to-br rounded-2xl w-full aspect-square transition-colors hover:scale-105 overflow-hidden shadow-lg",
-                        design.gradient
-                    )}>
+                {VIP_LEVELS_DATA.map((design) => (
+                    <button 
+                        key={design.level} 
+                        onClick={() => onSelectVipLevel(design)}
+                        className={cn(
+                            "relative flex flex-col items-center justify-center bg-gradient-to-br rounded-2xl w-full aspect-square transition-colors hover:scale-105 overflow-hidden shadow-lg",
+                            design.gradient
+                        )}
+                    >
                         <div className="absolute inset-0 bg-black/10"></div>
                         <div className={cn("z-10 text-center", design.textColor)}>
                             <p className="font-black text-2xl tracking-tighter" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>VIP</p>
-                            <p className="font-bold text-4xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>{index + 1}</p>
+                            <p className="font-bold text-4xl" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>{design.level}</p>
                         </div>
                     </button>
                 ))}
             </div>
         </div>
+    );
+}
+
+function VipGiftingDialog({ open, onOpenChange, onGift }: { open: boolean; onOpenChange: (open: boolean) => void; onGift: (recipientId: string) => void; }) {
+    const [recipientId, setRecipientId] = useState("");
+
+    const handleGift = () => {
+        if (recipientId.trim()) {
+            onGift(recipientId.trim());
+            setRecipientId("");
+            onOpenChange(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="text-right">إهداء VIP</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 text-right space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                        أدخل ID المستخدم الذي تود إهداءه مستوى VIP.
+                    </p>
+                    <Input
+                        placeholder="ID المستخدم"
+                        value={recipientId}
+                        onChange={(e) => setRecipientId(e.target.value)}
+                        className="text-left"
+                    />
+                </div>
+                <Button onClick={handleGift}>إهداء</Button>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+function VipDetailsSheet({
+    isOpen,
+    onOpenChange,
+    vipLevel,
+    user,
+    onPurchase,
+    onGift,
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    vipLevel: VipLevel | null;
+    user: UserData;
+    onPurchase: (vipLevel: VipLevel) => void;
+    onGift: (vipLevel: VipLevel, recipientId: string) => void;
+}) {
+    const [isGifting, setIsGifting] = useState(false);
+
+    if (!vipLevel) return null;
+
+    const hasVip = user.vipLevel && user.vipLevel >= vipLevel.level;
+    const canAfford = user.balance >= vipLevel.price;
+
+    return (
+        <>
+            <VipGiftingDialog 
+                open={isGifting}
+                onOpenChange={setIsGifting}
+                onGift={(recipientId) => onGift(vipLevel, recipientId)}
+            />
+            <Sheet open={isOpen} onOpenChange={onOpenChange}>
+                <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto flex flex-col p-0">
+                    <SheetHeader className="p-4 text-center">
+                        <div 
+                            className={cn(
+                                "mx-auto w-40 py-2 rounded-lg text-center my-2 bg-gradient-to-br",
+                                vipLevel.gradient,
+                                vipLevel.textColor
+                            )}
+                        >
+                             <p className="font-black text-2xl tracking-tighter" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.4)' }}>{vipLevel.name}</p>
+                        </div>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto p-4 text-right">
+                        <h3 className="font-bold text-lg mb-2">المميزات:</h3>
+                        <ul className="space-y-2 list-disc list-inside">
+                            {vipLevel.features.map((feature, index) => (
+                                <li key={index} className="text-muted-foreground">{feature}</li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div className="p-4 border-t border-primary/20 mt-auto shrink-0">
+                         <div className="flex items-center justify-between mb-4">
+                            <span className="font-semibold text-lg">السعر:</span>
+                            <div className="flex items-center gap-2">
+                                <span className="font-bold text-2xl text-yellow-400">{formatNumber(vipLevel.price)}</span>
+                                <Gem className="w-6 h-6 text-yellow-400" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <Button 
+                                size="lg" 
+                                className="bg-green-600 hover:bg-green-700" 
+                                onClick={() => onPurchase(vipLevel)}
+                                disabled={hasVip || !canAfford}
+                            >
+                                {hasVip ? 'تمتلكه بالفعل' : (canAfford ? 'شراء' : 'رصيد غير كافٍ')}
+                            </Button>
+                            <Button 
+                                size="lg" 
+                                variant="outline"
+                                onClick={() => setIsGifting(true)}
+                                disabled={!canAfford}
+                            >
+                                إهداء لصديق
+                            </Button>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+        </>
     );
 }
 
@@ -1844,6 +1986,7 @@ function MainApp({
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
     const { createRoom } = useRooms();
     const { toast } = useToast();
+    const [selectedVipLevel, setSelectedVipLevel] = useState<VipLevel | null>(null);
 
     useEffect(() => {
         if (currentRoom) {
@@ -1971,6 +2114,27 @@ function MainApp({
         }
     }
 
+    const handlePurchaseVip = async (vipLevel: VipLevel) => {
+        try {
+            await userServices.purchaseVip(user.profile.userId, vipLevel.level, vipLevel.price);
+            toast({ title: "🎉 تهانينا!", description: `لقد حصلت على ${vipLevel.name} بنجاح.` });
+            setSelectedVipLevel(null);
+        } catch(error) {
+            console.error("Error purchasing VIP:", error);
+            toast({ variant: "destructive", title: "فشل الشراء", description: (error as Error).message });
+        }
+    };
+
+    const handleGiftVip = async (vipLevel: VipLevel, recipientId: string) => {
+        try {
+            await userServices.giftVip(user.profile.userId, recipientId, vipLevel.level, vipLevel.price);
+            toast({ title: "تم الإهداء بنجاح!", description: `لقد أهديت ${vipLevel.name} إلى المستخدم ${recipientId}.` });
+        } catch(error) {
+            console.error("Error gifting VIP:", error);
+            toast({ variant: "destructive", title: "فشل الإهداء", description: (error as Error).message });
+        }
+    };
+
     const renderContent = () => {
         if (isJoiningRoom) {
              return (
@@ -2006,19 +2170,13 @@ function MainApp({
                 case 'level':
                     return <LevelScreen onBack={() => setProfileView('profile')} user={user} />;
                 case 'vipLevels':
-                    return <VipScreen onBack={() => setProfileView('profile')} />;
+                    return <VipScreen onBack={() => setProfileView('profile')} onSelectVipLevel={setSelectedVipLevel} />;
                 default:
                     return (
                         <ProfileScreen 
                             user={user} 
                             onUserUpdate={handleUserUpdate}
-                            onNavigate={(view) => {
-                                if (view === 'vipLevels') {
-                                    setProfileView('vipLevels');
-                                } else {
-                                    setProfileView(view);
-                                }
-                            }}
+                            onNavigate={(view) => setProfileView(view)}
                             onLogout={onLogout}
                         />
                     );
@@ -2030,6 +2188,14 @@ function MainApp({
 
     return (
         <div className="h-screen flex flex-col">
+            <VipDetailsSheet 
+                isOpen={!!selectedVipLevel}
+                onOpenChange={(open) => !open && setSelectedVipLevel(null)}
+                vipLevel={selectedVipLevel}
+                user={user}
+                onPurchase={handlePurchaseVip}
+                onGift={handleGiftVip}
+            />
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
             </main>
@@ -2149,6 +2315,7 @@ export default function HomePage() {
         lastClaimTimestamp: null,
         level: 0,
         totalSupportGiven: 0,
+        vipLevel: 0,
         isBanned: false,
         isOfficial: false,
     };
