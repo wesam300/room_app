@@ -1008,7 +1008,7 @@ function VipScreen({ onBack }: { onBack: () => void }) {
             <div className="flex-1 grid grid-cols-3 gap-4">
                 {vipLevels.map((key, index) => (
                     <div key={key} className="flex flex-col items-center gap-2">
-                        <button className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full aspect-square transition-colors hover:bg-primary/10 overflow-hidden">
+                        <button className="flex flex-col items-center justify-center bg-black/20 rounded-2xl w-full h-32 transition-colors hover:bg-primary/10 overflow-hidden">
                             {appStatus?.vipLevelImages?.[key] ? (
                                 <img src={appStatus.vipLevelImages[key]} alt={`VIP ${index + 1}`} className="w-full h-full object-cover" />
                             ) : (
