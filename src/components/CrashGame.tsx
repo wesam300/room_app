@@ -26,15 +26,19 @@ interface HistoryItem {
   color: string;
 }
 
-// --- Constants ---
-const BET_AMOUNTS = [100000, 1000000, 5000000, 10000000, 30000000, 50000000, 100000000];
+// --- Constants for Game Cycle ---
+const BETTING_DURATION = 10000; // 10 seconds
+const FLIGHT_DURATION = 7000;  // 7 seconds
+const COOLDOWN_DURATION = 3000; // 3 seconds
+const TOTAL_CYCLE_DURATION = BETTING_DURATION + FLIGHT_DURATION + COOLDOWN_DURATION;
+
 const GAME_STATE = {
   BETTING: 'betting',
   IN_PROGRESS: 'in_progress',
   CRASHED: 'crashed',
 };
-const COUNTDOWN_SECONDS = 5;
-const CRASH_DELAY_SECONDS = 3;
+const BET_AMOUNTS = [100000, 1000000, 5000000, 10000000, 30000000, 50000000, 100000000];
+
 
 function formatNumber(num: number): string {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1).replace('.0', '')}m`;
@@ -42,115 +46,131 @@ function formatNumber(num: number): string {
     return num.toLocaleString();
 }
 
-const getCrashPoint = (difficulty: DifficultyLevel): number => {
-    const r = Math.random(); // 0 to 1
+// Deterministic crash point calculation based on a seed (roundId)
+const getCrashPoint = (seed: number, difficulty: DifficultyLevel): number => {
+    const pseudoRandom = (offset = 0) => {
+      let x = Math.sin(seed + offset) * 10000;
+      return x - Math.floor(x);
+    };
+    
+    const r = pseudoRandom();
 
     switch (difficulty) {
         case 'very_easy':
-            // High multipliers are common (e.g., 3x - 15x)
             return 3 + r * 12;
         case 'easy':
-            // Good multipliers (e.g., 2x - 10x)
             return 2 + r * 8;
         case 'medium':
-            // Balanced, wide range (e.g., 1.1x - 8x, with occasional highs)
-            // Creates a curve where low multipliers are more common
-            return 1 / (1 - r * 0.95); 
+            return 1 / (1 - r * 0.95);
         case 'medium_hard':
-             // Mostly lower multipliers (e.g., 1x - 4x)
             return 1 + Math.pow(r, 2) * 3;
         case 'hard':
-            // Very likely to crash early (e.g., 1x - 2.5x)
             return 1 + Math.pow(r, 3) * 1.5;
         case 'very_hard':
-            // Almost always crashes very early (e.g., 1x - 1.5x)
             return 1 + Math.pow(r, 4) * 0.5;
         case 'impossible':
-            // Always crashes at the very beginning
             return 1.00;
         default:
             return 1 / (1 - r * 0.9);
     }
 };
 
-
 export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: CrashGameProps) {
   const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
-  const [gameState, setGameState] = useState(GAME_STATE.BETTING);
-  const [multiplier, setMultiplier] = useState(1.00);
-  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  
+  // States related to the current user's interaction
   const [playerBet, setPlayerBet] = useState<number | null>(null);
   const [hasCashedOut, setHasCashedOut] = useState(false);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
+  const [currentRoundId, setCurrentRoundId] = useState(0);
+
+  // States derived from the game loop
+  const [gameState, setGameState] = useState(GAME_STATE.BETTING);
+  const [countdown, setCountdown] = useState(10);
+  const [multiplier, setMultiplier] = useState(1.00);
 
   const { toast } = useToast();
-  const crashPointRef = useRef(1.00);
-  const multiplierIntervalRef = useRef<NodeJS.Timeout>();
+  const animationFrameRef = useRef<number>();
+  const lastHistoryUpdateRoundIdRef = useRef<number>(0);
+
 
   useEffect(() => {
     if (!gameInfo) return;
     const unsubscribe = gameServices.onDifficultyChange(gameInfo.id, setDifficulty);
     return () => unsubscribe();
   }, [gameInfo]);
-
-  const resetGame = () => {
-    setGameState(GAME_STATE.BETTING);
-    setMultiplier(1.00);
-    setCountdown(COUNTDOWN_SECONDS);
-    setPlayerBet(null);
-    setHasCashedOut(false);
-  };
   
-  // Game Loop Controller
-  useEffect(() => {
-    let countdownTimer: NodeJS.Timeout;
+  // The main game loop, driven by requestAnimationFrame for smooth UI updates
+  const gameLoop = useCallback(() => {
+    const now = Date.now();
+    const roundId = Math.floor(now / TOTAL_CYCLE_DURATION);
+    const timeInCycle = now % TOTAL_CYCLE_DURATION;
+    
+    // --- Round Management ---
+    if (roundId !== currentRoundId) {
+        setCurrentRoundId(roundId);
+        setPlayerBet(null);
+        setHasCashedOut(false);
+    }
+    
+    // --- Determine Game State and Multiplier ---
+    const crashPoint = getCrashPoint(roundId, difficulty);
+    let currentGameState = GAME_STATE.BETTING;
+    let currentMultiplier = 1.00;
+    let currentCountdown = 0;
 
-    if (gameState === GAME_STATE.BETTING) {
-      countdownTimer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(countdownTimer);
-            setGameState(GAME_STATE.IN_PROGRESS);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else if (gameState === GAME_STATE.IN_PROGRESS) {
-        const randomCrashPoint = getCrashPoint(difficulty);
-        crashPointRef.current = Math.max(1.01, randomCrashPoint);
+    if (timeInCycle < BETTING_DURATION) {
+        // --- BETTING PHASE ---
+        currentGameState = GAME_STATE.BETTING;
+        currentCountdown = Math.ceil((BETTING_DURATION - timeInCycle) / 1000);
 
-        multiplierIntervalRef.current = setInterval(() => {
-            setMultiplier(prevMultiplier => {
-                const newMultiplier = prevMultiplier + 0.01 + (prevMultiplier - 1) * 0.01; // Accelerates slightly
-                if (newMultiplier >= crashPointRef.current) {
-                    clearInterval(multiplierIntervalRef.current);
-                    setGameState(GAME_STATE.CRASHED);
-                    return crashPointRef.current;
-                }
-                return newMultiplier;
-            });
-        }, 50); // Update multiplier every 50ms
-    } else if (gameState === GAME_STATE.CRASHED) {
-      const finalMultiplier = crashPointRef.current;
-      const newHistoryItem: HistoryItem = {
-        multiplier: finalMultiplier,
-        color: finalMultiplier < 2 ? 'text-red-400' : 'text-green-400',
-      };
-      setHistory(prev => [newHistoryItem, ...prev.slice(0, 4)]);
+    } else if (timeInCycle < BETTING_DURATION + FLIGHT_DURATION) {
+        // --- IN_PROGRESS (FLIGHT) PHASE ---
+        currentGameState = GAME_STATE.IN_PROGRESS;
+        const flightTime = timeInCycle - BETTING_DURATION;
+        const progress = flightTime / FLIGHT_DURATION;
+        
+        // Exponential growth for multiplier
+        currentMultiplier = 1 + progress * (crashPoint - 1) * progress;
 
-      const crashTimer = setTimeout(() => {
-        resetGame();
-      }, CRASH_DELAY_SECONDS * 1000);
-      return () => clearTimeout(crashTimer);
+        if (currentMultiplier >= crashPoint) {
+            currentGameState = GAME_STATE.CRASHED;
+            currentMultiplier = crashPoint;
+        }
+
+    } else {
+        // --- CRASHED (COOLDOWN) PHASE ---
+        currentGameState = GAME_STATE.CRASHED;
+        currentMultiplier = crashPoint;
     }
 
+    setGameState(currentGameState);
+    setMultiplier(currentMultiplier);
+    setCountdown(currentCountdown);
+    
+    // --- Update History ---
+    if (currentGameState === GAME_STATE.CRASHED && roundId > lastHistoryUpdateRoundIdRef.current) {
+        const finalMultiplier = getCrashPoint(roundId - 1, difficulty);
+        const newHistoryItem: HistoryItem = {
+          multiplier: finalMultiplier,
+          color: finalMultiplier < 2 ? 'text-red-400' : 'text-green-400',
+        };
+        setHistory(prev => [newHistoryItem, ...prev.slice(0, 4)]);
+        lastHistoryUpdateRoundIdRef.current = roundId;
+    }
+
+    animationFrameRef.current = requestAnimationFrame(gameLoop);
+  }, [currentRoundId, difficulty]);
+
+  useEffect(() => {
+    animationFrameRef.current = requestAnimationFrame(gameLoop);
     return () => {
-      clearInterval(countdownTimer);
-      clearInterval(multiplierIntervalRef.current);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
-  }, [gameState, difficulty]);
+  }, [gameLoop]);
 
 
   const handlePlaceBet = () => {
@@ -219,10 +239,10 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
     }
     if (gameState === GAME_STATE.CRASHED) {
         return {
-            text: 'الجولة انتهت',
+            text: `الجولة انتهت @ ${multiplier.toFixed(2)}x`,
             onClick: () => {},
             disabled: true,
-            className: 'bg-gray-500'
+            className: 'bg-red-600'
         };
     }
     return { text: '', onClick: () => {}, disabled: true, className: '' };
@@ -316,7 +336,7 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
                 betAmount === amount && "bg-blue-600 hover:bg-blue-700"
               )}
               onClick={() => setBetAmount(amount)}
-              disabled={gameState !== GAME_STATE.BETTING}
+              disabled={gameState !== GAME_STATE.BETTING || !!playerBet}
             >
               {formatNumber(amount)}
             </Button>
