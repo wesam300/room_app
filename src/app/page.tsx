@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +22,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices } from "@/lib/firebaseServices";
+import { INITIAL_INVITATION_CODES } from '@/lib/invitationCodes';
+
 
 // --- Types ---
 interface UserProfile {
@@ -1541,6 +1543,16 @@ function AdminPanel() {
         }
     };
 
+    const handleGenerateCodes = async () => {
+        try {
+            const newCodes = await invitationCodeServices.generateInvitationCodes(10);
+            console.log("New Invitation Codes:", newCodes);
+            toast({ title: "تم إنشاء 10 أكواد جديدة", description: "تفقد الكونسول لرؤية الأكواد.", duration: 2000 });
+        } catch (error) {
+            console.error("Admin generate codes failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء إنشاء الأكواد.", duration: 2000 });
+        }
+    };
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
@@ -1617,6 +1629,11 @@ function AdminPanel() {
                         className="text-left"
                     />
                     <Button onClick={handleBanRoom} variant="destructive" className="w-full">حظر الغرفة</Button>
+                </div>
+                <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">إدارة أكواد الدعوة</h4>
+                    <Button onClick={handleGenerateCodes} className="w-full">إنشاء أكواد دعوة جديدة</Button>
                 </div>
                 <hr className="border-primary/20"/>
                 <AdminGiftManager />
@@ -2268,12 +2285,23 @@ export default function HomePage() {
   });
 
   const { userData, loading, error, setUserData } = useUser(userId);
+  const [view, setView] = useState<'invitation' | 'profile' | 'app'>('app');
+  const [invitationCode, setInvitationCode] = useState('');
 
-  // Initialize gifts and games in Firestore if they don't exist
+  // Initialize data on first load
   useEffect(() => {
     giftServices.initializeGifts();
     gameMetaServices.initializeGames();
+    invitationCodeServices.initializeCodes(INITIAL_INVITATION_CODES);
   }, []);
+
+  useEffect(() => {
+    if (!loading && !userData) {
+      setView('invitation');
+    } else {
+      setView('app');
+    }
+  }, [loading, userData]);
 
   const handleCreateProfile = async (name: string, imageFile: File | null) => {
     if (!name.trim()) {
@@ -2287,15 +2315,29 @@ export default function HomePage() {
     }
 
     const newUserId = String(Math.floor(100000 + Math.random() * 900000));
+    const isAdmin = ADMIN_USER_IDS.includes(newUserId);
+
+    // Skip invitation code check for admins
+    if (!isAdmin) {
+        const isCodeValid = await invitationCodeServices.isInvitationCodeValid(invitationCode);
+        if (!isCodeValid) {
+            toast({
+                variant: "destructive",
+                title: "كود دعوة غير صالح",
+                description: "يرجى إدخال كود صحيح للمتابعة.",
+                duration: 2000
+            });
+            return;
+        }
+    }
+
     let imageUrl = `https://placehold.co/128x128.png`;
-    
     if (imageFile) {
         try {
             imageUrl = await uploadImageAndGetUrl(imageFile, `profile_images/${newUserId}`);
         } catch (uploadError) {
             console.error("Error uploading profile image during creation:", uploadError);
             toast({ variant: "destructive", title: "فشل رفع الصورة", duration: 2000 });
-            // continue with placeholder
         }
     }
 
@@ -2306,7 +2348,7 @@ export default function HomePage() {
       displayId: newUserId,
     };
     
-    const initialBalance = ADMIN_USER_IDS.includes(newUserId) ? 1000000000 : 0;
+    const initialBalance = isAdmin ? 1000000000 : 0;
 
     const newUserRecord: UserData = {
         profile: newUserProfile,
@@ -2321,10 +2363,10 @@ export default function HomePage() {
     };
 
     try {
-      // Save to Firebase first to ensure existence
       await userServices.saveUser(newUserRecord);
-      
-      // Then update local state and storage
+      if (!isAdmin) {
+        await invitationCodeServices.markInvitationCodeAsUsed(invitationCode, newUserId);
+      }
       setUserId(newUserId);
       setUserData(newUserRecord);
 
@@ -2368,6 +2410,19 @@ export default function HomePage() {
     }
   };
 
+  const handleProceedToProfileCreation = async () => {
+    const isValid = await invitationCodeServices.isInvitationCodeValid(invitationCode);
+    if (isValid) {
+        setView('profile');
+    } else {
+        toast({
+            variant: "destructive",
+            title: "كود دعوة غير صالح",
+            description: "الكود الذي أدخلته غير صحيح أو مستخدم بالفعل.",
+            duration: 2000
+        });
+    }
+  };
 
   if (loading || appStatusLoading) {
     return (
@@ -2381,9 +2436,8 @@ export default function HomePage() {
     );
   }
 
-  // Allow admins to bypass maintenance mode.
-  const isAdmin = userData && ADMIN_USER_IDS.includes(userData.profile.userId);
-  if (appStatus?.isMaintenanceMode && !isAdmin) {
+  const isAdminUser = userData && ADMIN_USER_IDS.includes(userData.profile.userId);
+  if (appStatus?.isMaintenanceMode && !isAdminUser) {
     return <MaintenanceScreen />;
   }
 
@@ -2399,78 +2453,112 @@ export default function HomePage() {
   }
 
   if (!userData) {
-    const CreateProfileScreen = () => {
-        const [nameInput, setNameInput] = useState("");
-        const [imagePreview, setImagePreview] = useState<string | null>("https://placehold.co/128x128.png");
-        const [imageFile, setImageFile] = useState<File | null>(null);
-        const fileInputRef = useRef<HTMLInputElement>(null);
-
-        const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-            const file = event.target.files?.[0];
-            if (file) {
-                setImageFile(file);
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    setImagePreview(reader.result as string);
-                };
-                reader.readAsDataURL(file);
-            }
-        };
-
+    if (view === 'invitation') {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
                 <div className="w-full max-w-sm text-center">
-                    <h1 className="text-2xl font-bold mb-4">إنشاء ملف شخصي</h1>
-                    <p className="text-gray-300 mb-8">أكمل ملفك الشخصي للمتابعة</p>
+                    <KeyRound className="w-16 h-16 mx-auto mb-4 text-primary" />
+                    <h1 className="text-2xl font-bold mb-2">كود الدعوة مطلوب</h1>
+                    <p className="text-gray-300 mb-8">يرجى إدخال كود دعوة صالح للمتابعة.</p>
                     
-                    <button className="relative group mx-auto mb-4" onClick={() => fileInputRef.current?.click()}>
-                        <Avatar className="w-24 h-24 border-4 border-primary">
-                            <AvatarImage src={imagePreview ?? undefined} />
-                            <AvatarFallback><Camera/></AvatarFallback>
-                        </Avatar>
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Camera className="w-8 h-8 text-white" />
-                        </div>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
-
                     <div className="space-y-4 text-right">
                          <Input 
-                            placeholder="أدخل اسمك..."
-                            value={nameInput}
-                            onChange={(e) => setNameInput(e.target.value)}
+                            placeholder="أدخل كود الدعوة..."
+                            value={invitationCode}
+                            onChange={(e) => setInvitationCode(e.target.value)}
                             className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 text-center"
-                            onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile(nameInput, imageFile)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleProceedToProfileCreation()}
                         />
                     </div>
-
                     <Button 
-                        onClick={() => handleCreateProfile(nameInput, imageFile)} 
+                        onClick={handleProceedToProfileCreation} 
                         size="lg" 
                         className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
-                        disabled={!nameInput.trim()}
+                        disabled={!invitationCode.trim()}
                     >
-                        حفظ ومتابعة
+                        متابعة
                     </Button>
-                    
-                    {error && (
-                        <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
-                    )}
-                    
-                    <p className="text-gray-400 mt-4 text-xs">
-                        اضغط Enter أو انقر على الزر لحفظ الملف الشخصي
-                    </p>
-                </div>
-                 <div className="text-center text-xs text-gray-300 pt-8">
-                    <p>من خلال الاستمرار، فإنك توافق على</p>
-                    <p>
-                        <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
-                    </p>
                 </div>
             </div>
         );
     }
-    return <CreateProfileScreen />;
+
+    if (view === 'profile') {
+        const CreateProfileScreen = () => {
+            const [nameInput, setNameInput] = useState("");
+            const [imagePreview, setImagePreview] = useState<string | null>("https://placehold.co/128x128.png");
+            const [imageFile, setImageFile] = useState<File | null>(null);
+            const fileInputRef = useRef<HTMLInputElement>(null);
+    
+            const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                    setImageFile(file);
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        setImagePreview(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+    
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen bg-background text-white p-4">
+                    <div className="w-full max-w-sm text-center">
+                        <h1 className="text-2xl font-bold mb-4">إنشاء ملف شخصي</h1>
+                        <p className="text-gray-300 mb-8">أكمل ملفك الشخصي للمتابعة</p>
+                        
+                        <button className="relative group mx-auto mb-4" onClick={() => fileInputRef.current?.click()}>
+                            <Avatar className="w-24 h-24 border-4 border-primary">
+                                <AvatarImage src={imagePreview ?? undefined} />
+                                <AvatarFallback><Camera/></AvatarFallback>
+                            </Avatar>
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Camera className="w-8 h-8 text-white" />
+                            </div>
+                        </button>
+                        <input type="file" ref={fileInputRef} onChange={handleImageChange} accept="image/*" className="hidden" />
+    
+                        <div className="space-y-4 text-right">
+                             <Input 
+                                placeholder="أدخل اسمك..."
+                                value={nameInput}
+                                onChange={(e) => setNameInput(e.target.value)}
+                                className="bg-gray-700 border-gray-600 text-white placeholder:text-gray-400 text-center"
+                                onKeyPress={(e) => e.key === 'Enter' && handleCreateProfile(nameInput, imageFile)}
+                            />
+                        </div>
+    
+                        <Button 
+                            onClick={() => handleCreateProfile(nameInput, imageFile)} 
+                            size="lg" 
+                            className="w-full mt-8 bg-primary hover:bg-primary/90 text-primary-foreground"
+                            disabled={!nameInput.trim()}
+                        >
+                            حفظ ومتابعة
+                        </Button>
+                        
+                        {error && (
+                            <p className="text-red-400 mt-4 text-sm">تحذير: لا يمكن الاتصال بـ Firebase. سيتم حفظ البيانات محلياً.</p>
+                        )}
+                        
+                        <p className="text-gray-400 mt-4 text-xs">
+                            اضغط Enter أو انقر على الزر لحفظ الملف الشخصي
+                        </p>
+                    </div>
+                     <div className="text-center text-xs text-gray-300 pt-8">
+                        <p>من خلال الاستمرار، فإنك توافق على</p>
+                        <p>
+                            <Link href="#" className="underline">شروط الخدمة</Link> و <Link href="#" className="underline">سياسة الخصوصية</Link>
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+        return <CreateProfileScreen />;
+    }
+
+    return null; // Should not be reached if logic is correct
   }
 
   return <MainApp 

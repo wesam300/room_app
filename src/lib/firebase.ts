@@ -1,4 +1,5 @@
 
+
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, limit } from 'firebase/firestore';
@@ -46,6 +47,7 @@ export const COLLECTIONS = {
   GIFTS: 'gifts',
   GAMES: 'games',
   APP_STATUS: 'app_status',
+  INVITATION_CODES: 'invitation_codes',
 } as const;
 
 export default app;

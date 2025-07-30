@@ -11,7 +11,7 @@
         },
         {
           "fieldPath": "createdAt",
-          "order": "DESCENDING"
+          "order": "ASCENDING"
         }
       ]
     },
@@ -26,6 +26,20 @@
         {
           "fieldPath": "totalGiftValue",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "invitation_codes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
         }
       ]
     }

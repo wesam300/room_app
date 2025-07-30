@@ -140,6 +140,14 @@ export interface AppStatusData {
     updatedAt: Timestamp | Date;
 }
 
+export interface InvitationCodeData {
+    code: string;
+    status: 'available' | 'used';
+    usedBy?: string;
+    createdAt: Timestamp;
+    usedAt?: Timestamp;
+}
+
 
 // --- Leveling System ---
 const calculatedThresholds: number[] = [0]; // Level 0 has 0 XP
@@ -747,16 +755,20 @@ export const chatServices = {
     });
   },
 
-  onRoomMessagesChange(roomId: string, callback: (messages: ChatMessageData[]) => void, onError: (error: Error) => void) {
+  onRoomMessagesChange(roomId: string, joinTimestamp: Timestamp, callback: (messages: ChatMessageData[]) => void, onError: (error: Error) => void) {
+    if (!joinTimestamp) {
+      onError(new Error("Join timestamp is not provided."));
+      return;
+    }
     const messagesRef = collection(db, COLLECTIONS.CHAT_MESSAGES);
     const q = query(
       messagesRef,
       where('roomId', '==', roomId),
-      orderBy('createdAt', 'desc'),
-      limit(50)
+      where('createdAt', '>=', joinTimestamp),
+      orderBy('createdAt', 'asc')
     );
     return onSnapshot(q, (querySnapshot) => {
-      const messages = querySnapshot.docs.map(doc => doc.data() as ChatMessageData).reverse();
+      const messages = querySnapshot.docs.map(doc => doc.data() as ChatMessageData);
       callback(messages);
     }, (error) => {
       console.error("Message listener error:", error);
@@ -1030,4 +1042,86 @@ export const appStatusServices = {
             callback({ isMaintenanceMode: false, updatedAt: new Date() }, error); // Default on error
         });
     }
+};
+
+// Invitation Code Services
+export const invitationCodeServices = {
+    async initializeCodes(codes: string[]): Promise<void> {
+        const batch = writeBatch(db);
+        const codesRef = collection(db, COLLECTIONS.INVITATION_CODES);
+        let codesAdded = 0;
+        
+        for (const code of codes) {
+            const docRef = doc(codesRef, code);
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) {
+                batch.set(docRef, {
+                    code,
+                    status: 'available',
+                    createdAt: serverTimestamp(),
+                });
+                codesAdded++;
+            }
+        }
+        
+        if (codesAdded > 0) {
+            console.log(`Initializing ${codesAdded} new invitation codes...`);
+            await batch.commit();
+        }
+    },
+    
+    async isInvitationCodeValid(code: string): Promise<boolean> {
+        try {
+            const codeRef = doc(db, COLLECTIONS.INVITATION_CODES, code);
+            const docSnap = await getDoc(codeRef);
+            if (docSnap.exists() && docSnap.data().status === 'available') {
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error validating invitation code:', error);
+            return false;
+        }
+    },
+
+    async markInvitationCodeAsUsed(code: string, userId: string): Promise<void> {
+        try {
+            const codeRef = doc(db, COLLECTIONS.INVITATION_CODES, code);
+            await updateDoc(codeRef, {
+                status: 'used',
+                usedBy: userId,
+                usedAt: serverTimestamp(),
+            });
+        } catch (error) {
+            console.error('Error marking invitation code as used:', error);
+            throw error;
+        }
+    },
+
+    async generateInvitationCodes(count: number): Promise<string[]> {
+        const batch = writeBatch(db);
+        const newCodes: string[] = [];
+        const codesRef = collection(db, COLLECTIONS.INVITATION_CODES);
+
+        for (let i = 0; i < count; i++) {
+            let code: string;
+            let docSnap;
+            do {
+                // Generate a random 12-character alphanumeric code
+                code = Math.random().toString(36).substring(2, 14).toUpperCase();
+                docSnap = await getDoc(doc(codesRef, code));
+            } while (docSnap.exists());
+            
+            newCodes.push(code);
+            const newCodeRef = doc(codesRef, code);
+            batch.set(newCodeRef, {
+                code,
+                status: 'available',
+                createdAt: serverTimestamp(),
+            });
+        }
+        
+        await batch.commit();
+        return newCodes;
+    },
 };
