@@ -1434,11 +1434,6 @@ function AdminPanel() {
             return;
         }
         try {
-            const isTaken = await userServices.isDisplayIdTaken(newDisplayId.trim());
-            if (isTaken) {
-                toast({ variant: "destructive", title: "معرف مستخدم", description: "هذا المعرف مستخدم بالفعل.", duration: 2000 });
-                return;
-            }
             await userServices.changeUserDisplayId(targetUserId.trim(), newDisplayId.trim());
             toast({ title: "تم تغيير معرف العرض بنجاح!", duration: 2000});
             setTargetUserId("");

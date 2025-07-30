@@ -309,16 +309,6 @@ export const userServices = {
     return !querySnapshot.empty;
   },
 
-  async findUniqueDisplayId(length: number): Promise<string> {
-    let newId = '';
-    let isTaken = true;
-    while(isTaken) {
-        newId = String(Math.floor(Math.random() * (Math.pow(10, length) - 1)) + Math.pow(10, length - 1));
-        isTaken = await this.isDisplayIdTaken(newId);
-    }
-    return newId;
-  },
-
   async changeUserDisplayId(userId: string, newDisplayId: string): Promise<void> {
     const isTaken = await this.isDisplayIdTaken(newDisplayId);
     if (isTaken) {
@@ -397,15 +387,6 @@ export const userServices = {
             updatedAt: serverTimestamp()
         };
         
-        // Special ID features based on VIP level
-        if (vipLevel === 7) {
-            updates['profile.displayId'] = await this.findUniqueDisplayId(5);
-        } else if (vipLevel === 8) {
-            updates['profile.displayId'] = await this.findUniqueDisplayId(4);
-            // Note: Gifting a second ID would require another UI flow and transaction logic.
-        }
-
-
         transaction.update(userRef, updates);
     });
   },
