@@ -65,7 +65,7 @@ const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 3, name: 'VIP 3', price: 60000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة'], gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
     { level: 4, name: 'VIP 4', price: 100000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة ملونة'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
     { level: 5, name: 'VIP 5', price: 200000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة بلون مختلف', 'ايدي مميز لمدة اسبوع'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
-    { level: 6, name: 'VIP 6', price: 400000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
+    { level: 6, name: 'VIP 6', price: 400000000, features: ['شارة VIP 6', 'مكافآت يومية مضاعفة', 'دعم فني فوري', 'فقاعة دردشة حصرية', 'ID مميز سداسي مع إمكانية إهدائه', 'زيادة طفيفة في نسبة الربح بالألعاب'], gradient: 'from-purple-500 via-purple-700 to-violet-900', textColor: 'text-white' },
     { level: 7, name: 'VIP 7', price: 700000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
     { level: 8, name: 'VIP 8', price: 1000000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
     { level: 9, name: 'VIP 9', price: 1500000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
@@ -370,7 +370,7 @@ function RoomScreen({
     // --- Data fetching for all active users (on mics and in chat) ---
     const userIdsOnMics = usersOnMics.map(u => u.userId);
     const userIdsInChat = chatMessages.map(msg => msg.user.userId);
-    const allUserIdsInRoom = [...new Set([...userIdsOnMics, ...userIdsInChat])];
+    const allUserIdsInRoom = [...new Set([...userIdsOnMics, userIdsInChat.filter(id => id), user.profile.userId].flat())];
     const { users: roomUsersData } = useRoomUsers(allUserIdsInRoom);
 
     useEffect(() => {
@@ -393,67 +393,21 @@ function RoomScreen({
             toast({ variant: "destructive", title: "خطأ", description: "لم يتم تحديث الغرفة. حاول مرة أخرى.", duration: 2000});
         }
     };
-
-    const handleAscend = (index: number) => {
-        if ((room.micSlots || []).some(slot => slot.user?.userId === user.profile.userId)) {
-            toast({ variant: "destructive", description: "أنت بالفعل على مايك آخر.", duration: 2000 });
-            return;
-        }
-
-        const newSlots = [...(room.micSlots || [])];
-        const targetSlot = newSlots[index];
-
-        if (targetSlot.user) {
-            toast({ variant: "destructive", description: "هذا المايك مشغول.", duration: 2000 });
-            return;
-        }
-        if (targetSlot.isLocked) {
-            toast({ variant: "destructive", description: "هذا المايك مقفل.", duration: 2000 });
-            return;
-        }
-
-        newSlots[index] = { ...newSlots[index], user: user.profile, isMuted: false };
-        handleUpdateRoomData({ micSlots: newSlots });
-    }
-
-    const handleDescend = (indexToDescend: number) => {
-        const newSlots = [...(room.micSlots || [])];
-        if (newSlots[indexToDescend].user) {
-            newSlots[indexToDescend] = { user: null, isMuted: false, isLocked: newSlots[indexToDescend].isLocked };
-            handleUpdateRoomData({ micSlots: newSlots });
-        }
-    }
     
-    const handleToggleMute = (index: number) => {
-        if (myMicIndex !== -1) {
-            const newSlots = [...(room.micSlots || [])];
-            const currentSlot = newSlots[myMicIndex];
-            if (currentSlot) {
-                newSlots[myMicIndex] = { ...currentSlot, isMuted: !currentSlot.isMuted };
-                handleUpdateRoomData({ micSlots: newSlots });
-            }
-        }
-    };
-    
-    const handleAdminMute = (index: number) => {
-        if(isOwner) {
-            const newSlots = [...(room.micSlots || [])];
-            const currentSlot = newSlots[index];
-            if (currentSlot.user) {
-                newSlots[index] = { ...currentSlot, isMuted: !currentSlot.isMuted };
-                handleUpdateRoomData({ micSlots: newSlots });
-            }
-        }
-    }
+    const handleMicAction = useCallback(async (action: 'ascend' | 'descend' | 'toggle_mute' | 'admin_mute' | 'toggle_lock', index: number) => {
+      try {
+        await roomServices.updateMicSlot(room.id, user.profile, action, index);
+      } catch (error) {
+        console.error("Failed to update mic state:", error);
+        toast({
+          variant: "destructive",
+          title: "حدث خطأ",
+          description: "فشل تحديث حالة المايك. يرجى المحاولة مرة أخرى.",
+          duration: 2000
+        });
+      }
+    }, [room.id, user.profile, toast]);
 
-
-    const handleToggleLock = (index: number) => {
-        if (isOwner) {
-            const newSlots = [...(room.micSlots || [])];
-            newSlots[index] = { ...newSlots[index], isLocked: !newSlots[index].isLocked };
-            handleUpdateRoomData({ micSlots: newSlots });
-        }
-    }
     
     const handleSendMessage = () => {
         if (chatInput.trim() === "") return;
@@ -511,6 +465,7 @@ function RoomScreen({
     };
 
     const VipBadge = ({ level }: { level: number }) => {
+        if (level === 0) return null;
         const design = VIP_LEVELS_DATA.find(d => d.level === level);
         if (!design) return null;
 
@@ -663,11 +618,11 @@ function RoomScreen({
                                     index={index}
                                     isOwner={isOwner}
                                     currentUser={user.profile}
-                                    onAscend={handleAscend}
-                                    onDescend={handleDescend}
-                                    onToggleLock={handleToggleLock}
-                                    onToggleMute={handleToggleMute}
-                                    onAdminMute={handleAdminMute}
+                                    onAscend={() => handleMicAction('ascend', index)}
+                                    onDescend={() => handleMicAction('descend', index)}
+                                    onToggleLock={() => handleMicAction('toggle_lock', index)}
+                                    onToggleMute={() => handleMicAction('toggle_mute', index)}
+                                    onAdminMute={() => handleMicAction('admin_mute', index)}
                                     onOpenGiftDialog={handleOpenGiftSheet}
                                 />
                             );
@@ -732,9 +687,9 @@ function RoomScreen({
                         style={{ maskImage: 'linear-gradient(to top, black 80%, transparent 100%)' }}
                     >
                         {chatMessages.map(msg => {
-                          const chatUserData = roomUsersData.get(msg.user.userId);
-                          const isVip4 = chatUserData?.vipLevel === 4;
-                          const isVip5Plus = chatUserData?.vipLevel && chatUserData.vipLevel >= 5;
+                          const chatUserData = msg.user ? roomUsersData.get(msg.user.userId) : null;
+                          const vipLevel = chatUserData?.vipLevel ?? 0;
+                          
                           return (msg && msg.user && msg.user.name) && (
                             <div key={msg.id} className="flex items-start gap-2.5">
                                 <Avatar className="w-8 h-8">
@@ -744,7 +699,7 @@ function RoomScreen({
                                 <div className="flex flex-col items-start">
                                     <div className="flex items-center gap-2">
                                        <span className="text-sm text-muted-foreground">{msg.user.name}</span>
-                                       {chatUserData?.vipLevel && chatUserData.vipLevel > 0 && <VipBadge level={chatUserData.vipLevel} />}
+                                       {vipLevel > 0 && <VipBadge level={vipLevel} />}
                                        {chatUserData?.isOfficial && (
                                             <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-1.5 py-0.5 rounded-full text-xs font-bold">
                                                 <Medal className="w-3 h-3" />
@@ -753,9 +708,11 @@ function RoomScreen({
                                        )}
                                     </div>
                                     <div className={cn("p-2 rounded-lg rounded-tl-none",
-                                        isVip5Plus 
+                                        vipLevel >= 6
+                                            ? "bg-gradient-to-br from-purple-500/30 via-purple-700/30 to-violet-900/30 border border-purple-400"
+                                        : vipLevel === 5 
                                             ? "bg-gradient-to-br from-pink-500/30 to-fuchsia-600/30 border border-fuchsia-400"
-                                        : isVip4 
+                                        : vipLevel === 4 
                                             ? "bg-gradient-to-br from-amber-500/30 to-yellow-600/30 border border-amber-400" 
                                             : "bg-primary/20"
                                     )}>
@@ -2077,9 +2034,7 @@ function MainApp({
             try {
                 const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
                 if(myCurrentMicIndex !== -1) {
-                    const newSlots = [...(currentRoom.micSlots || [])];
-                    newSlots[myCurrentMicIndex] = { user: null, isMuted: false, isLocked: newSlots[myCurrentMicIndex].isLocked };
-                    await roomServices.updateRoomData(currentRoom.id, { micSlots: newSlots });
+                    await roomServices.updateMicSlot(currentRoom.id, user.profile, 'descend', myCurrentMicIndex);
                 }
                 await roomServices.leaveRoom(currentRoom.id, user.profile.userId);
             } catch (error) {
@@ -2112,7 +2067,7 @@ function MainApp({
         }
     };
     
-    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' >) => {
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' >) => {
         try {
             await createRoom(roomData);
         } catch(e) {
