@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames, useAppStatus } from "@/hooks/useFirebase";
+import { useVoiceChat } from "@/hooks/useVoiceChat";
 import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
@@ -352,6 +353,7 @@ function RoomScreen({
     const { games } = useGames();
      
     const myMicIndex = (room.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
+    const isMuted = myMicIndex !== -1 ? room.micSlots[myMicIndex].isMuted : true;
     const isOwner = user.profile.userId === room.ownerId;
      
     const { messages: chatMessages, sendMessage: sendChatMessage } = useChatMessages(room.id);
@@ -372,6 +374,14 @@ function RoomScreen({
     const userIdsInChat = chatMessages.map(msg => msg.user.userId);
     const allUserIdsInRoom = [...new Set([...userIdsOnMics, userIdsInChat.filter(id => id), user.profile.userId].flat())];
     const { users: roomUsersData } = useRoomUsers(allUserIdsInRoom);
+    
+    // --- Voice Chat Hook ---
+    useVoiceChat(
+        myMicIndex !== -1 ? room.id : null,
+        user.profile.userId,
+        isMuted
+    );
+
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -402,7 +412,7 @@ function RoomScreen({
         toast({
           variant: "destructive",
           title: "حدث خطأ",
-          description: "فشل تحديث حالة المايك. يرجى المحاولة مرة أخرى.",
+          description: (error as Error).message || "فشل تحديث حالة المايك. يرجى المحاولة مرة أخرى.",
           duration: 2000
         });
       }
@@ -2447,5 +2457,3 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
-
-    
