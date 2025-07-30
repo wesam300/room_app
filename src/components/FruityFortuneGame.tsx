@@ -221,7 +221,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('hard');
   const { userData } = useUser(user.userId);
 
   const { toast } = useToast();
@@ -665,5 +665,3 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
     </div>
   );
 }
-
-    

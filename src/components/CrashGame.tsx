@@ -77,7 +77,7 @@ const getCrashPoint = (seed: number, difficulty: DifficultyLevel): number => {
 
 export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: CrashGameProps) {
   const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
-  const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
+  const [difficulty, setDifficulty] = useState<DifficultyLevel>('hard');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   
   // States related to the current user's interaction

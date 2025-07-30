@@ -828,12 +828,12 @@ export const gameServices = {
             const data = doc.data() as GameSettingsData;
             callback(data.difficulty);
         } else {
-            // Default to medium if not set
-            callback('medium');
+            // Default to hard if not set
+            callback('hard');
         }
     }, (error) => {
         console.error('Error listening to difficulty changes:', error);
-        callback('medium'); // Default on error
+        callback('hard'); // Default on error
     });
   }
 };
@@ -1031,5 +1031,3 @@ export const appStatusServices = {
         });
     }
 };
-
-    
