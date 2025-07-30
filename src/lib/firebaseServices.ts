@@ -755,20 +755,16 @@ export const chatServices = {
     });
   },
 
-  onRoomMessagesChange(roomId: string, joinTimestamp: Timestamp, callback: (messages: ChatMessageData[]) => void, onError: (error: Error) => void) {
-    if (!joinTimestamp) {
-      onError(new Error("Join timestamp is not provided."));
-      return;
-    }
+  onRoomMessagesChange(roomId: string, callback: (messages: ChatMessageData[]) => void, onError: (error: Error) => void) {
     const messagesRef = collection(db, COLLECTIONS.CHAT_MESSAGES);
     const q = query(
       messagesRef,
       where('roomId', '==', roomId),
-      where('createdAt', '>=', joinTimestamp),
-      orderBy('createdAt', 'asc')
+      orderBy('createdAt', 'desc'),
+      limit(50) 
     );
     return onSnapshot(q, (querySnapshot) => {
-      const messages = querySnapshot.docs.map(doc => doc.data() as ChatMessageData);
+      const messages = querySnapshot.docs.map(doc => doc.data() as ChatMessageData).reverse();
       callback(messages);
     }, (error) => {
       console.error("Message listener error:", error);

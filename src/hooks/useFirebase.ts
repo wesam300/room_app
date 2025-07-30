@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, gameMetaServices, appStatusServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem, GameInfo, AppStatusData } from '@/lib/firebaseServices';
 import { Timestamp } from 'firebase/firestore';
+import { useVoiceChat } from './useVoiceChat';
 
 // Hook for user data
 export const useUser = (userId: string | null) => {
@@ -122,7 +123,6 @@ export const useChatMessages = (roomId: string | null) => {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const joinTimestampRef = useRef<Timestamp | null>(null);
 
   useEffect(() => {
     if (!roomId) {
@@ -130,14 +130,10 @@ export const useChatMessages = (roomId: string | null) => {
       setLoading(false);
       return;
     }
-
-    if (joinTimestampRef.current === null) {
-      joinTimestampRef.current = Timestamp.now();
-    }
     
     setLoading(true);
     setError(null);
-    const unsubscribe = chatServices.onRoomMessagesChange(roomId, joinTimestampRef.current, (messagesData) => {
+    const unsubscribe = chatServices.onRoomMessagesChange(roomId, (messagesData) => {
       setMessages(messagesData);
       setLoading(false);
     }, (err) => {
@@ -147,7 +143,6 @@ export const useChatMessages = (roomId: string | null) => {
     });
     return () => {
       unsubscribe();
-      joinTimestampRef.current = null; // Reset timestamp when leaving room
     }
   }, [roomId]);
 
@@ -361,3 +356,5 @@ export const useAppStatus = () => {
 
     return { appStatus, loading, error };
 };
+
+export { useVoiceChat };
