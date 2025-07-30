@@ -397,7 +397,7 @@ function RoomScreen({
               variant: 'destructive',
               title: 'صلاحية المايكروفون مرفوضة',
               description: 'يرجى تفعيل صلاحية المايكروفون في المتصفح لاستخدام الدردشة الصوتية.',
-              duration: 5000,
+              duration: 2000,
             });
           }
         };
@@ -2117,21 +2117,21 @@ function MainApp({
     const handlePurchaseVip = async (vipLevel: VipLevel) => {
         try {
             await userServices.purchaseVip(user.profile.userId, vipLevel.level, vipLevel.price);
-            toast({ title: "🎉 تهانينا!", description: `لقد حصلت على ${vipLevel.name} بنجاح.` });
+            toast({ title: "🎉 تهانينا!", description: `لقد حصلت على ${vipLevel.name} بنجاح.`, duration: 2000 });
             setSelectedVipLevel(null);
         } catch(error) {
             console.error("Error purchasing VIP:", error);
-            toast({ variant: "destructive", title: "فشل الشراء", description: (error as Error).message });
+            toast({ variant: "destructive", title: "فشل الشراء", description: (error as Error).message, duration: 2000 });
         }
     };
 
     const handleGiftVip = async (vipLevel: VipLevel, recipientId: string) => {
         try {
             await userServices.giftVip(user.profile.userId, recipientId, vipLevel.level, vipLevel.price);
-            toast({ title: "تم الإهداء بنجاح!", description: `لقد أهديت ${vipLevel.name} إلى المستخدم ${recipientId}.` });
+            toast({ title: "تم الإهداء بنجاح!", description: `لقد أهديت ${vipLevel.name} إلى المستخدم ${recipientId}.`, duration: 2000 });
         } catch(error) {
             console.error("Error gifting VIP:", error);
-            toast({ variant: "destructive", title: "فشل الإهداء", description: (error as Error).message });
+            toast({ variant: "destructive", title: "فشل الإهداء", description: (error as Error).message, duration: 2000 });
         }
     };
 

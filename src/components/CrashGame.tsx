@@ -178,20 +178,20 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
 
   const handlePlaceBet = () => {
     if (gameState !== GAME_STATE.BETTING) {
-        toast({ variant: 'destructive', title: 'لا يمكنك المراهنة الآن' });
+        toast({ variant: 'destructive', title: 'لا يمكنك المراهنة الآن', duration: 2000 });
         return;
     }
     if (balance < betAmount) {
-        toast({ variant: 'destructive', title: 'رصيد غير كافٍ' });
+        toast({ variant: 'destructive', title: 'رصيد غير كافٍ', duration: 2000 });
         return;
     }
     if (playerBet) {
-        toast({ variant: 'destructive', title: 'لقد وضعت رهانًا بالفعل' });
+        toast({ variant: 'destructive', title: 'لقد وضعت رهانًا بالفعل', duration: 2000 });
         return;
     }
     onBalanceChange(prev => prev - betAmount);
     setPlayerBet(betAmount);
-    toast({ title: 'تم وضع الرهان', description: `لقد راهنت بـ ${formatNumber(betAmount)}` });
+    toast({ title: 'تم وضع الرهان', description: `لقد راهنت بـ ${formatNumber(betAmount)}`, duration: 2000 });
   };
 
   const handleCashOut = () => {
@@ -203,7 +203,8 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
     setHasCashedOut(true);
     toast({
         title: '🎉 تم سحب الأرباح!',
-        description: `لقد ربحت ${formatNumber(winnings)} عند ${multiplier.toFixed(2)}x`
+        description: `لقد ربحت ${formatNumber(winnings)} عند ${multiplier.toFixed(2)}x`,
+        duration: 2000
     });
   };
 

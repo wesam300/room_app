@@ -314,7 +314,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
       
       setPreviousWinner(finalWinner);
       setWinnerScreenInfo({ fruit: finalWinner, payout: myPayout, topWinners: allWinners.slice(0, 3) });
-      setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
+      setTimeout(() => setWinnerScreenInfo(null), 2000); // Show winner screen for 5s
 
   }, [bets, onBalanceChange, difficulty, userData]);
 
