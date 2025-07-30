@@ -57,7 +57,7 @@ interface VipLevel {
 
 
 // --- Constants ---
-const ADMIN_USER_IDS = ['368473', '607162', '749234'];
+const ADMIN_USER_IDS = ['368473', '607162', '749234', '11196492'];
 const DAILY_REWARD_AMOUNT = 10000000;
 const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 1, name: 'VIP 1', price: 15000000, features: ['الحصول على شارة VIP 1 بجانب اسمك في الدردشة والمايك.'], gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
