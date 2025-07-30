@@ -1,4 +1,5 @@
 
+
 import { 
   collection, 
   doc, 
@@ -634,50 +635,56 @@ export const roomServices = {
 
     async updateMicSlot(roomId: string, user: UserProfile, action: 'ascend' | 'descend' | 'toggle_mute' | 'admin_mute' | 'toggle_lock', index: number): Promise<void> {
         const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-        const batch = writeBatch(db);
-
-        const roomSnap = await getDoc(roomRef);
-        if (!roomSnap.exists()) {
-            throw new Error("Room not found.");
-        }
         
-        const roomData = roomSnap.data() as RoomData;
-        const micSlots = roomData.micSlots || INITIAL_MIC_SLOTS.slice();
-        const slot = micSlots[index];
+        await runTransaction(db, async (transaction) => {
+            const roomSnap = await transaction.get(roomRef);
+            if (!roomSnap.exists()) {
+                throw new Error("Room not found.");
+            }
+            
+            const roomData = roomSnap.data() as RoomData;
+            const micSlots = roomData.micSlots || INITIAL_MIC_SLOTS.slice();
+            const slot = micSlots[index];
 
-        const isOwner = user.userId === roomData.ownerId;
-        const isCurrentUserOnMic = slot.user?.userId === user.userId;
+            const isOwner = user.userId === roomData.ownerId;
+            const isCurrentUserOnMic = slot.user?.userId === user.userId;
 
-        switch (action) {
-            case 'ascend':
-                if (!slot.user && !slot.isLocked) {
+            switch (action) {
+                case 'ascend':
+                    if (slot.user || slot.isLocked) return;
+
+                    // Check if user is already on another mic
+                    const userAlreadyOnMic = micSlots.some(s => s.user?.userId === user.userId);
+                    if (userAlreadyOnMic) {
+                        throw new Error("أنت موجود بالفعل على مايك آخر.");
+                    }
+
                     micSlots[index] = { ...slot, user: user, isMuted: false };
-                }
-                break;
-            case 'descend':
-                if (isCurrentUserOnMic || isOwner) {
-                    micSlots[index] = { ...slot, user: null };
-                }
-                break;
-            case 'toggle_mute':
-                if (isCurrentUserOnMic) {
-                    micSlots[index] = { ...slot, isMuted: !slot.isMuted };
-                }
-                break;
-            case 'admin_mute':
-                if (isOwner && slot.user) {
-                    micSlots[index] = { ...slot, isMuted: !slot.isMuted };
-                }
-                break;
-            case 'toggle_lock':
-                if (isOwner) {
-                    micSlots[index] = { ...slot, isLocked: !slot.isLocked };
-                }
-                break;
-        }
-
-        batch.update(roomRef, { micSlots: micSlots, updatedAt: serverTimestamp() });
-        await batch.commit();
+                    break;
+                case 'descend':
+                    if (isCurrentUserOnMic || isOwner) {
+                        micSlots[index] = { ...slot, user: null };
+                    }
+                    break;
+                case 'toggle_mute':
+                    if (isCurrentUserOnMic) {
+                        micSlots[index] = { ...slot, isMuted: !slot.isMuted };
+                    }
+                    break;
+                case 'admin_mute':
+                    if (isOwner && slot.user) {
+                        micSlots[index] = { ...slot, isMuted: !slot.isMuted };
+                    }
+                    break;
+                case 'toggle_lock':
+                    if (isOwner) {
+                        micSlots[index] = { ...slot, isLocked: !slot.isLocked };
+                    }
+                    break;
+            }
+            
+            transaction.update(roomRef, { micSlots: micSlots, updatedAt: serverTimestamp() });
+        });
     },
 
   async joinRoom(roomId: string, userId: string): Promise<void> {
