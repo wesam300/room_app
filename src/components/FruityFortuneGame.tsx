@@ -17,10 +17,14 @@ import { UserData, UserProfile as IUserProfile, gameServices, userServices, Diff
 
 
 // --- Types ---
-interface UserProfile extends IUserProfile {}
+export interface FruityFortuneGameProps {
+  user: IUserProfile;
+  balance: number;
+  onBalanceChange: (updater: (prev: number) => number) => void;
+}
 
 interface TopWinner {
-  user: UserProfile;
+  user: IUserProfile;
   betAmount: number;
   payout: number;
 }
@@ -46,7 +50,12 @@ const VISUAL_SPIN_ORDER: FruitKey[] = [
 ];
 
 
-const getWinnerForRound = (roundId: number, difficulty: DifficultyLevel, allRoundBets: UserBetData[]): { winner: FruitKey } => {
+const getWinnerForRound = (roundId: number, difficulty: DifficultyLevel, allRoundBets: UserBetData[], playerVipLevel: number = 0): { winner: FruitKey } => {
+    // VIP 7+ gets an easy win
+    if (playerVipLevel >= 7) {
+        difficulty = 'very_easy';
+    }
+
     const pseudoRandom = (seedOffset = 0) => {
         const x = Math.sin(roundId + seedOffset) * 10000;
         return x - Math.floor(x);
@@ -107,7 +116,7 @@ const getWinnerForRound = (roundId: number, difficulty: DifficultyLevel, allRoun
             return { winner: sortedFruitsByBet[0] };
         case 'medium_hard':
             // 50/50 chance to be medium or hard
-            return pseudoRandom() < 0.5 ? getWinnerForRound(roundId, 'medium', allRoundBets) : { winner: getBiasedWinner(false) };
+            return pseudoRandom() < 0.5 ? getWinnerForRound(roundId, 'medium', allRoundBets, playerVipLevel) : { winner: getBiasedWinner(false) };
         case 'medium':
         default:
              // Default pseudo-random selection based on roundId
@@ -199,7 +208,7 @@ const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
     )
   }
 
-export default function FruityFortuneGame({ user, balance, onBalanceChange }: { user: UserProfile, balance: number; onBalanceChange: (updater: (prev: number) => number) => void; }) {
+export default function FruityFortuneGame({ user, balance, onBalanceChange }: FruityFortuneGameProps) {
   const [isClient, setIsClient] = useState(false);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
@@ -213,6 +222,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   const [history, setHistory] = useState<FruitKey[]>([]);
   const [bets, setBets] = useState<Record<FruitKey, number>>({} as Record<FruitKey, number>);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
+  const { userData } = useUser(user.userId);
 
   const { toast } = useToast();
   const { saveGameHistory, saveUserBets, getUserBets } = useGameHistory();
@@ -243,7 +253,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     const loadGameHistory = async () => {
       try {
         // Load user bets for current round
-        const userBets = await getUserBets(user.userId, currentRoundId);
+        const userBets = await getUserBets('fruity_fortune', user.userId, currentRoundId);
         if (userBets) {
           setBets(userBets.bets);
         }
@@ -260,6 +270,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   useEffect(() => {
     if (isClient && Object.keys(bets).length > 0) {
       saveUserBets({
+        gameId: 'fruity_fortune',
         userId: user.userId,
         roundId: roundId,
         bets: bets
@@ -269,8 +280,9 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
   
   // The main game loop, driven by a simple interval
   const calculateAndShowResults = useCallback(async (currentRoundId: number) => {
-      const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
-      const { winner: finalWinner } = getWinnerForRound(currentRoundId, difficulty, allRoundBets);
+      const allRoundBets = await gameServices.getAllBetsForRound('fruity_fortune', currentRoundId);
+      const playerVipLevel = userData?.vipLevel ?? 0;
+      const { winner: finalWinner } = getWinnerForRound(currentRoundId, difficulty, allRoundBets, playerVipLevel);
       const allUsers = await userServices.getAllUsers();
       const userMap = new Map<string, UserData>(
         allUsers.filter(u => u && u.profile).map(u => [u.profile.userId, u])
@@ -304,7 +316,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
       setWinnerScreenInfo({ fruit: finalWinner, payout: myPayout, topWinners: allWinners.slice(0, 3) });
       setTimeout(() => setWinnerScreenInfo(null), 5000); // Show winner screen for 5s
 
-  }, [bets, onBalanceChange, difficulty]);
+  }, [bets, onBalanceChange, difficulty, userData]);
 
   useEffect(() => {
     if (!isClient) return;
@@ -351,8 +363,9 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
                 
                 // We need to calculate the winner just before spinning starts
                 (async () => {
-                    const allRoundBets = await gameServices.getAllBetsForRound(currentRoundId);
-                    const { winner } = getWinnerForRound(currentRoundId, difficulty, allRoundBets);
+                    const allRoundBets = await gameServices.getAllBetsForRound('fruity_fortune', currentRoundId);
+                    const playerVipLevel = userData?.vipLevel ?? 0;
+                    const { winner } = getWinnerForRound(currentRoundId, difficulty, allRoundBets, playerVipLevel);
                     
                     // 1. Generate animation sequence
                     const winnerIndex = VISUAL_SPIN_ORDER.indexOf(winner);
@@ -402,7 +415,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: { 
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, previousWinner, difficulty]);
+}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, previousWinner, difficulty, userData]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {

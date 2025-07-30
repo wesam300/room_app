@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { userServices, roomServices, chatServices, gameServices, supporterServices, giftServices, gameMetaServices, appStatusServices, UserData, RoomData, ChatMessageData, GameHistoryData, UserBetData, RoomSupporterData, GiftItem, GameInfo, AppStatusData } from '@/lib/firebaseServices';
 
@@ -40,8 +39,15 @@ export const useUser = (userId: string | null) => {
     // Listener for real-time updates from Firestore
     const unsubscribe = userServices.onUserChange(userId, (userFromFirebase) => {
       if (userFromFirebase) {
-        setUserData(userFromFirebase);
-        localStorage.setItem("userData", JSON.stringify(userFromFirebase));
+        // Special logic for VIP 7 ID update
+        if (userData && userFromFirebase.vipLevel === 7 && userFromFirebase.profile.displayId !== userData.profile.displayId) {
+             const updatedData = {...userFromFirebase};
+             setUserData(updatedData);
+             localStorage.setItem("userData", JSON.stringify(updatedData));
+        } else {
+            setUserData(userFromFirebase);
+            localStorage.setItem("userData", JSON.stringify(userFromFirebase));
+        }
       } else {
         // User document was deleted from Firestore
         setUserData(null);
@@ -187,9 +193,9 @@ export const useGameHistory = () => {
     }
   }, []);
 
-  const getUserBets = useCallback(async (userId: string, roundId: number) => {
+  const getUserBets = useCallback(async (gameId: string, userId: string, roundId: number) => {
     try {
-      return await gameServices.getUserBets(userId, roundId);
+      return await gameServices.getUserBets(gameId, userId, roundId);
     } catch (err) {
       console.error('Error getting user bets:', err);
       setError('Failed to get user bets');

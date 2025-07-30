@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   doc, 
@@ -23,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, COLLECTIONS } from './firebase';
+import { FruityFortuneGameProps } from '@/components/FruityFortuneGame'; // Assuming this is where it's defined
 
 // Helper function for image uploads
 export const uploadImageAndGetUrl = async (imageFile: File, path: string): Promise<string> => {
@@ -308,6 +308,16 @@ export const userServices = {
     return !querySnapshot.empty;
   },
 
+  async findUniqueDisplayId(length: number): Promise<string> {
+    let newId = '';
+    let isTaken = true;
+    while(isTaken) {
+        newId = String(Math.floor(Math.random() * (Math.pow(10, length) - 1)) + Math.pow(10, length - 1));
+        isTaken = await this.isDisplayIdTaken(newId);
+    }
+    return newId;
+  },
+
   async changeUserDisplayId(userId: string, newDisplayId: string): Promise<void> {
     const isTaken = await this.isDisplayIdTaken(newDisplayId);
     if (isTaken) {
@@ -380,11 +390,19 @@ export const userServices = {
         if (userData.balance < cost) throw new Error("رصيد غير كافٍ.");
         if (userData.vipLevel && userData.vipLevel >= vipLevel) throw new Error("أنت بالفعل تمتلك هذا المستوى أو أعلى.");
 
-        transaction.update(userRef, {
+        const updates: any = {
             balance: increment(-cost),
             vipLevel: vipLevel,
             updatedAt: serverTimestamp()
-        });
+        };
+        
+        // Special feature for VIP 7
+        if (vipLevel === 7) {
+            const newDisplayId = await this.findUniqueDisplayId(5);
+            updates['profile.displayId'] = newDisplayId;
+        }
+
+        transaction.update(userRef, updates);
     });
   },
 
@@ -617,6 +635,54 @@ export const roomServices = {
         updatedAt: serverTimestamp(),
     });
   },
+
+    async updateMicSlot(roomId: string, user: UserProfile, action: 'ascend' | 'descend' | 'toggle_mute' | 'admin_mute' | 'toggle_lock', index: number): Promise<void> {
+        const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+        const batch = writeBatch(db);
+
+        const roomSnap = await getDoc(roomRef);
+        if (!roomSnap.exists()) {
+            throw new Error("Room not found.");
+        }
+        
+        const roomData = roomSnap.data() as RoomData;
+        const micSlots = roomData.micSlots || INITIAL_MIC_SLOTS.slice();
+        const slot = micSlots[index];
+
+        const isOwner = user.userId === roomData.ownerId;
+        const isCurrentUserOnMic = slot.user?.userId === user.userId;
+
+        switch (action) {
+            case 'ascend':
+                if (!slot.user && !slot.isLocked) {
+                    micSlots[index] = { ...slot, user: user, isMuted: false };
+                }
+                break;
+            case 'descend':
+                if (isCurrentUserOnMic || isOwner) {
+                    micSlots[index] = { ...slot, user: null };
+                }
+                break;
+            case 'toggle_mute':
+                if (isCurrentUserOnMic) {
+                    micSlots[index] = { ...slot, isMuted: !slot.isMuted };
+                }
+                break;
+            case 'admin_mute':
+                if (isOwner && slot.user) {
+                    micSlots[index] = { ...slot, isMuted: !slot.isMuted };
+                }
+                break;
+            case 'toggle_lock':
+                if (isOwner) {
+                    micSlots[index] = { ...slot, isLocked: !slot.isLocked };
+                }
+                break;
+        }
+
+        batch.update(roomRef, { micSlots: micSlots, updatedAt: serverTimestamp() });
+        await batch.commit();
+    },
 
   async joinRoom(roomId: string, userId: string): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
