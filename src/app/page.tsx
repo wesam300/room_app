@@ -1422,6 +1422,7 @@ function AdminPanel() {
     const [amount, setAmount] = useState("");
     const [checkedUserBalance, setCheckedUserBalance] = useState<number | null>(null);
     const [targetRoomId, setTargetRoomId] = useState("");
+    const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
 
     const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
@@ -1543,14 +1544,23 @@ function AdminPanel() {
         }
     };
 
-    const handleGenerateCodes = async () => {
+    const handleGenerateCode = async () => {
         try {
-            const newCodes = await invitationCodeServices.generateInvitationCodes(10);
-            console.log("New Invitation Codes:", newCodes);
-            toast({ title: "تم إنشاء 10 أكواد جديدة", description: "تفقد الكونسول لرؤية الأكواد.", duration: 2000 });
+            const newCodes = await invitationCodeServices.generateInvitationCodes(1);
+            if (newCodes.length > 0) {
+                setGeneratedCode(newCodes[0]);
+                toast({ title: "تم إنشاء كود دعوة جديد", description: "يمكنك نسخه الآن من الأسفل.", duration: 2000 });
+            }
         } catch (error) {
-            console.error("Admin generate codes failed:", error);
-            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء إنشاء الأكواد.", duration: 2000 });
+            console.error("Admin generate code failed:", error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء إنشاء الكود.", duration: 2000 });
+        }
+    };
+
+    const handleCopyCode = () => {
+        if (generatedCode) {
+            navigator.clipboard.writeText(generatedCode);
+            toast({ title: "تم نسخ الكود بنجاح", duration: 2000 });
         }
     };
 
@@ -1633,7 +1643,15 @@ function AdminPanel() {
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">إدارة أكواد الدعوة</h4>
-                    <Button onClick={handleGenerateCodes} className="w-full">إنشاء أكواد دعوة جديدة</Button>
+                    <Button onClick={handleGenerateCode} className="w-full">إنشاء كود دعوة جديد</Button>
+                    {generatedCode && (
+                        <div className="mt-2 p-2 bg-background/50 rounded-md flex items-center justify-between">
+                            <span className="font-mono text-primary">{generatedCode}</span>
+                            <Button variant="ghost" size="icon" onClick={handleCopyCode}>
+                                <Copy className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
                 <hr className="border-primary/20"/>
                 <AdminGiftManager />
