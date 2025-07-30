@@ -56,11 +56,11 @@ export const useUser = (userId: string | null) => {
         setUserData(null);
         localStorage.removeItem("userData");
       }
-      if (loading) setLoading(false);
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [userId, loading, userData]);
+  }, [userId]);
 
   return { userData, loading, error, setUserData: updateUserData };
 };
@@ -96,14 +96,14 @@ export const useRooms = () => {
             setRooms(roomsData);
             setError(null);
           }
-          if (loading) setLoading(false);
+          setLoading(false);
         });
     }
 
     loadInitialAndListen();
 
     return () => unsubscribe();
-  }, [loading]);
+  }, []);
 
   const createRoom = useCallback(async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' >) => {
     try {
@@ -303,7 +303,7 @@ export const useRoomUsers = (userIds: string[]) => {
 
     return () => unsubscribe();
 
-  }, [JSON.stringify(userIds)]); // Deep compare the array of IDs
+  }, [userIds.join(',')]); // More stable dependency check for array
 
   return { users, loading, error };
 };

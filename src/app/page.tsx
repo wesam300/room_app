@@ -2026,21 +2026,20 @@ function MainApp({
     const [selectedVipLevel, setSelectedVipLevel] = useState<VipLevel | null>(null);
 
     useEffect(() => {
-        if (currentRoom) {
-            const unsubscribe = roomServices.onRoomsChange((rooms) => {
-                const updatedRoom = rooms.find(r => r.id === currentRoom.id);
-                if (updatedRoom) {
-                    setCurrentRoom(updatedRoom);
-                } else {
-                    // Room might have been deleted
-                    setView('roomsList');
-                    setCurrentRoom(null);
-                    toast({ variant: "destructive", title: "تم حذف الغرفة", description: "تم حذف الغرفة من قبل المشرف.", duration: 2000})
-                }
-            });
-            return () => unsubscribe();
-        }
-    }, [currentRoom?.id, toast]);
+        if (!currentRoom) return;
+        const unsubscribe = roomServices.onRoomsChange((rooms) => {
+            const updatedRoom = rooms.find(r => r.id === currentRoom.id);
+            if (updatedRoom) {
+                setCurrentRoom(updatedRoom);
+            } else {
+                // Room might have been deleted
+                setView('roomsList');
+                setCurrentRoom(null);
+                toast({ variant: "destructive", title: "تم حذف الغرفة", description: "تم حذف الغرفة من قبل المشرف.", duration: 2000})
+            }
+        });
+        return () => unsubscribe();
+    }, [currentRoom]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
