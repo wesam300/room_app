@@ -59,7 +59,7 @@ export const useUser = (userId: string | null) => {
     });
 
     return () => unsubscribe();
-  }, [userId]);
+  }, [userId, loading, userData]);
 
   return { userData, loading, error, setUserData: updateUserData };
 };
@@ -102,7 +102,7 @@ export const useRooms = () => {
     loadInitialAndListen();
 
     return () => unsubscribe();
-  }, []);
+  }, [loading]);
 
   const createRoom = useCallback(async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' >) => {
     try {
@@ -145,7 +145,10 @@ export const useChatMessages = (roomId: string | null) => {
       setError("Failed to load chat messages.");
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      joinTimestampRef.current = null; // Reset timestamp when leaving room
+    }
   }, [roomId]);
 
   const sendMessage = useCallback(async (messageData: Omit<ChatMessageData, 'id' |'createdAt'>) => {
