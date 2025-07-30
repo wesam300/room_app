@@ -115,6 +115,10 @@ export default function RoomMic({
         setIsPopoverOpen(false);
     };
 
+    const isTargetVip9 = userData?.vipLevel === 9;
+    const canKick = isOwner && !isTargetVip9;
+
+
     const popoverContent = (
         <div className="flex flex-col gap-2 p-2 w-56">
             {slot.user && userData ? (
@@ -171,7 +175,7 @@ export default function RoomMic({
                                    <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onAdminMute(index))}>
                                        {slot.isMuted ? <Mic className="w-4 h-4"/> : <MicOff className="w-4 h-4"/>}
                                    </Button>
-                                   <Button variant="destructive" size="sm" onClick={() => handleInteraction(() => onDescend(index))}>
+                                   <Button variant="destructive" size="sm" onClick={() => handleInteraction(() => onDescend(index))} disabled={!canKick}>
                                       طرد
                                    </Button>
                                </div>
@@ -248,7 +252,7 @@ export default function RoomMic({
                        )}
                        <span className={cn(
                            "text-xs text-muted-foreground truncate max-w-16",
-                           userData?.vipLevel === 8 && "font-bold text-yellow-400"
+                           (userData?.vipLevel ?? 0) >= 8 && "font-bold text-yellow-400"
                        )}>
                          {slot.user ? slot.user.name : `no.${index + 1}`}
                        </span>
@@ -261,3 +265,5 @@ export default function RoomMic({
         </Popover>
     )
 }
+
+    

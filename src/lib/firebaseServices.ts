@@ -593,12 +593,23 @@ export const roomServices = {
   },
   
   async deleteRoom(roomId: string): Promise<void> {
+    const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
     try {
-      const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-      await deleteDoc(roomRef);
+        const roomDoc = await getDoc(roomRef);
+        if (!roomDoc.exists()) {
+            throw new Error("Room not found.");
+        }
+        const roomData = roomDoc.data() as RoomData;
+        
+        const owner = await userServices.getUser(roomData.ownerId);
+        if (owner?.vipLevel === 9) {
+            throw new Error("لا يمكن حذف غرفة يمتلكها مستخدم VIP 9.");
+        }
+
+        await deleteDoc(roomRef);
     } catch (error) {
-      console.error('Error deleting room from Firestore:', error);
-      throw error;
+        console.error('Error deleting room from Firestore:', error);
+        throw error;
     }
   },
   
@@ -1013,3 +1024,5 @@ export const appStatusServices = {
         });
     }
 };
+
+    

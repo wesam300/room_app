@@ -66,9 +66,9 @@ const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 4, name: 'VIP 4', price: 100000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة ملونة'], gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
     { level: 5, name: 'VIP 5', price: 200000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة بلون مختلف', 'ايدي مميز لمدة اسبوع'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
     { level: 6, name: 'VIP 6', price: 400000000, features: ['شارة VIP 6', 'مكافآت يومية مضاعفة', 'دعم فني فوري', 'فقاعة دردشة حصرية', 'ID مميز سداسي مع إمكانية إهدائه', 'زيادة طفيفة في نسبة الربح بالألعاب'], gradient: 'from-purple-500 via-purple-700 to-violet-900', textColor: 'text-white' },
-    { level: 7, name: 'VIP 7', price: 700000000, features: ['شارة VIP 7', 'مكافآت يومية مضاعفة من الإدارة', 'دعم فني فوري 24 ساعة', 'فقاعة دردشة حصرية ومميزة', 'ID خماسي مميز مع إمكانية إهداء ID آخر', 'زيادة ملحوظة في نسبة الربح بالألعاب'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
+    { level: 7, name: 'VIP 7', price: 700000000, features: ['شارة VIP 7', 'مكافآت يومية من الإدارة', 'دعم فني فوري 24 ساعة', 'فقاعة دردشة حصرية ومميزة', 'ID خماسي مميز مع إمكانية إهداء ID آخر', 'زيادة ملحوظة في نسبة الربح بالألعاب'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
     { level: 8, name: 'VIP 8', price: 1000000000, features: ['شارة VIP 8', 'مكافآت يومية', 'دعم فني فوري', 'فقاعة دردشة فريدة', 'ID رباعي مميز مع ID سداسي كهدية', 'زيادة فائقة في نسبة الربح', 'اسم لاعب ملون على المايك'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
-    { level: 9, name: 'VIP 9', price: 1500000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
+    { level: 9, name: 'VIP 9', price: 1500000000, features: ['شارة VIP 9 النهائية', 'مكافأة يومية 50 مليون', 'دعم فني فوري وشخصي', 'فقاعة دردشة ذهبية فريدة', 'ID ثلاثي مميز مع ID خماسي كهدية', 'أعلى نسبة ربح في الألعاب', 'اسم لاعب ذهبي على المايك', 'حصانة من الطرد (من المايك أو الغرفة)'], gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
 ];
 
 
@@ -708,7 +708,9 @@ function RoomScreen({
                                        )}
                                     </div>
                                     <div className={cn("p-2 rounded-lg rounded-tl-none",
-                                        vipLevel >= 8
+                                        vipLevel >= 9
+                                            ? "bg-gradient-to-br from-yellow-400/30 via-amber-300/30 to-orange-500/30 border border-amber-400"
+                                        : vipLevel >= 8
                                             ? "bg-gradient-to-br from-slate-800/30 via-zinc-600/30 to-slate-800/30 border border-yellow-300/80"
                                         : vipLevel === 7
                                             ? "bg-gradient-to-br from-pink-500/30 to-fuchsia-600/30 border border-fuchsia-400"
@@ -1483,7 +1485,7 @@ function AdminPanel() {
             setTargetRoomId("");
         } catch (error) {
             console.error("Admin ban room failed:", error);
-            toast({ variant: "destructive", title: "فشلت العملية", description: "لم يتم العثور على الغرفة أو حدث خطأ آخر.", duration: 2000 });
+            toast({ variant: "destructive", title: "فشلت العملية", description: (error as Error).message, duration: 2000 });
         }
     };
     
@@ -2445,3 +2447,5 @@ export default function HomePage() {
             onLogout={handleLogout}
         />;
 }
+
+    
