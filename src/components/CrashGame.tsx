@@ -28,7 +28,7 @@ interface HistoryItem {
 
 // --- Constants for Game Cycle ---
 const BETTING_DURATION = 10000; // 10 seconds
-const FLIGHT_DURATION = 7000;  // 7 seconds
+const FLIGHT_DURATION = 10000;  // 10 seconds, the actual flight time will be determined by the crash point
 const COOLDOWN_DURATION = 3000; // 3 seconds
 const TOTAL_CYCLE_DURATION = BETTING_DURATION + FLIGHT_DURATION + COOLDOWN_DURATION;
 
@@ -48,31 +48,32 @@ function formatNumber(num: number): string {
 
 // Deterministic crash point calculation based on a seed (roundId)
 const getCrashPoint = (seed: number, difficulty: DifficultyLevel): number => {
+    // This function generates a pseudo-random number between 0 and 1 based on the seed.
     const pseudoRandom = (offset = 0) => {
       let x = Math.sin(seed + offset) * 10000;
       return x - Math.floor(x);
     };
-    
-    const r = pseudoRandom();
 
-    switch (difficulty) {
-        case 'very_easy':
-            return 3 + r * 12;
-        case 'easy':
-            return 2 + r * 8;
-        case 'medium':
-            return 1 / (1 - r * 0.95);
-        case 'medium_hard':
-            return 1 + Math.pow(r, 2) * 3;
-        case 'hard':
-            return 1 + Math.pow(r, 3) * 1.5;
-        case 'very_hard':
-            return 1 + Math.pow(r, 4) * 0.5;
-        case 'impossible':
-            return 1.00;
-        default:
-            return 1 / (1 - r * 0.9);
+    // Rule: Crash at 1.00x frequently (e.g., ~20% of the time)
+    // We can use the roundId (seed) to make this deterministic.
+    if (seed % 5 === 0) { // Crashes on every 5th round ID
+        return 1.00;
     }
+    
+    // Rule: Rarely go above 3.00x
+    // Let's make it happen on a specific interval, e.g., every 13 rounds
+    if (seed % 13 === 0) {
+        // High-payout round: between 3x and 15x
+        return 3 + pseudoRandom(1) * 12;
+    }
+
+    // Rule: Normal rounds are capped around 3.00x
+    // This will generate a value between 1.01 and 3.00, with more results towards the lower end.
+    const r = pseudoRandom(2);
+    // Using Math.pow(r, 3) makes lower values more frequent
+    const crashPoint = 1.01 + Math.pow(r, 3) * 2; 
+    
+    return parseFloat(crashPoint.toFixed(2));
 };
 
 export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: CrashGameProps) {
@@ -129,14 +130,16 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
         // --- IN_PROGRESS (FLIGHT) PHASE ---
         currentGameState = GAME_STATE.IN_PROGRESS;
         const flightTime = timeInCycle - BETTING_DURATION;
-        const progress = flightTime / FLIGHT_DURATION;
+        const timeToCrash = (FLIGHT_DURATION / 10) * Math.log(crashPoint) * 2; // Time it takes to reach crashPoint
         
-        // Exponential growth for multiplier
-        currentMultiplier = 1 + progress * (crashPoint - 1) * progress;
-
-        if (currentMultiplier >= crashPoint) {
-            currentGameState = GAME_STATE.CRASHED;
-            currentMultiplier = crashPoint;
+        if (flightTime > timeToCrash) {
+             currentGameState = GAME_STATE.CRASHED;
+             currentMultiplier = crashPoint;
+        } else {
+            // Slower at the start, accelerates as it goes
+            const progress = flightTime / timeToCrash;
+            // Using an exponential curve for the multiplier to simulate acceleration
+            currentMultiplier = Math.pow(crashPoint, progress);
         }
 
     } else {
