@@ -363,6 +363,7 @@ function RoomScreen({
     const [isGiftSheetOpen, setIsGiftSheetOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
+    const [hasMicPermission, setHasMicPermission] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
@@ -377,10 +378,31 @@ function RoomScreen({
     
     // --- Voice Chat Hook ---
     useVoiceChat(
-        myMicIndex !== -1 ? room.id : null,
+        hasMicPermission && myMicIndex !== -1 ? room.id : null,
         user.profile.userId,
         isMuted
     );
+
+    useEffect(() => {
+        const getMicPermission = async () => {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            // We don't need to use the stream directly here, just ask for permission
+            stream.getTracks().forEach(track => track.stop());
+            setHasMicPermission(true);
+          } catch (error) {
+            console.error('Error accessing microphone:', error);
+            setHasMicPermission(false);
+            toast({
+              variant: 'destructive',
+              title: 'صلاحية المايكروفون مرفوضة',
+              description: 'يرجى تفعيل صلاحية المايكروفون في المتصفح لاستخدام الدردشة الصوتية.',
+              duration: 5000,
+            });
+          }
+        };
+        getMicPermission();
+    }, [toast]);
 
 
     useEffect(() => {

@@ -1,17 +1,69 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow public read/write access to all collections
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Rules for user profiles
+    match /users/{userId} {
+      // Anyone can read a user's profile
+      allow read: if true;
+      // Only the user themselves or an admin can create/update their profile
+      allow write: if isAuthenticated() && (request.auth.uid == userId || request.auth.token.admin == true);
     }
     
-    // Voice chat signaling rules
+    // Rules for rooms
+    match /rooms/{roomId} {
+        // Anyone can read room data
+        allow read: if true;
+        // Only authenticated users can create rooms
+        allow create: if isAuthenticated();
+        // Only authenticated users can update room data (e.g., join/leave count, mic slots)
+        allow update: if isAuthenticated();
+        // Only admins can delete rooms
+        allow delete: if isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Rules for chat messages
+    match /chat_messages/{messageId} {
+        // Anyone can read chat messages
+        allow read: if true;
+        // Only authenticated users can create chat messages
+        allow create: if isAuthenticated();
+        // Messages are immutable
+        allow update, delete: if false;
+    }
+    
+    // Rules for voice chat signaling
     match /voiceRooms/{roomId}/{collection}/{docId} {
-      allow read, write: if request.auth != null;
+        allow read, write: if isAuthenticated();
+    }
+
+    // Rules for game settings (admin only)
+    match /game_settings/{gameId} {
+        allow read: if true;
+        allow write: if isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Rules for gifts (read-only for clients)
+    match /gifts/{giftId} {
+        allow read: if true;
+        allow write: if isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Rules for games metadata (read-only for clients)
+    match /games/{gameId} {
+        allow read: if true;
+        allow write: if isAuthenticated() && request.auth.token.admin == true;
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if true; // Temporarily allow for development, tighten later
     }
   }
 }
