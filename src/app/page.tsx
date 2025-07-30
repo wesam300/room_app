@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -66,7 +67,7 @@ const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 5, name: 'VIP 5', price: 200000000, features: ['شارة', 'مكافئات يومية', 'دعم فني متواصل 24 ساعة', 'فقاعة دردشة بلون مختلف', 'ايدي مميز لمدة اسبوع'], gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
     { level: 6, name: 'VIP 6', price: 400000000, features: ['شارة VIP 6', 'مكافآت يومية مضاعفة', 'دعم فني فوري', 'فقاعة دردشة حصرية', 'ID مميز سداسي مع إمكانية إهدائه', 'زيادة طفيفة في نسبة الربح بالألعاب'], gradient: 'from-purple-500 via-purple-700 to-violet-900', textColor: 'text-white' },
     { level: 7, name: 'VIP 7', price: 700000000, features: ['شارة VIP 7', 'مكافآت يومية مضاعفة من الإدارة', 'دعم فني فوري 24 ساعة', 'فقاعة دردشة حصرية ومميزة', 'ID خماسي مميز مع إمكانية إهداء ID آخر', 'زيادة ملحوظة في نسبة الربح بالألعاب'], gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
-    { level: 8, name: 'VIP 8', price: 1000000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
+    { level: 8, name: 'VIP 8', price: 1000000000, features: ['شارة VIP 8', 'مكافآت يومية', 'دعم فني فوري', 'فقاعة دردشة فريدة', 'ID رباعي مميز مع ID سداسي كهدية', 'زيادة فائقة في نسبة الربح', 'اسم لاعب ملون على المايك'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
     { level: 9, name: 'VIP 9', price: 1500000000, features: ['ميزة 1', 'ميزة 2'], gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
 ];
 
@@ -707,7 +708,9 @@ function RoomScreen({
                                        )}
                                     </div>
                                     <div className={cn("p-2 rounded-lg rounded-tl-none",
-                                        vipLevel >= 7
+                                        vipLevel >= 8
+                                            ? "bg-gradient-to-br from-slate-800/30 via-zinc-600/30 to-slate-800/30 border border-yellow-300/80"
+                                        : vipLevel === 7
                                             ? "bg-gradient-to-br from-pink-500/30 to-fuchsia-600/30 border border-fuchsia-400"
                                         : vipLevel === 6
                                             ? "bg-gradient-to-br from-purple-500/30 via-purple-700/30 to-violet-900/30 border border-purple-400"

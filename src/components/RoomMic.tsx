@@ -246,7 +246,10 @@ export default function RoomMic({
                                 <Medal className="w-3 h-3" />
                            </div>
                        )}
-                       <span className="text-xs text-muted-foreground truncate max-w-16">
+                       <span className={cn(
+                           "text-xs text-muted-foreground truncate max-w-16",
+                           userData?.vipLevel === 8 && "font-bold text-yellow-400"
+                       )}>
                          {slot.user ? slot.user.name : `no.${index + 1}`}
                        </span>
                     </div>

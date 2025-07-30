@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -396,11 +397,14 @@ export const userServices = {
             updatedAt: serverTimestamp()
         };
         
-        // Special feature for VIP 7
+        // Special ID features based on VIP level
         if (vipLevel === 7) {
-            const newDisplayId = await this.findUniqueDisplayId(5);
-            updates['profile.displayId'] = newDisplayId;
+            updates['profile.displayId'] = await this.findUniqueDisplayId(5);
+        } else if (vipLevel === 8) {
+            updates['profile.displayId'] = await this.findUniqueDisplayId(4);
+            // Note: Gifting a second ID would require another UI flow and transaction logic.
         }
+
 
         transaction.update(userRef, updates);
     });
