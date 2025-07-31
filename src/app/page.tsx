@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useRooms, useChatMessages, useRoomSupporters, useGifts, useRoomUsers, useGames, useAppStatus } from "@/hooks/useFirebase";
@@ -1969,6 +1970,13 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Ro
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <div className="mb-2">
+                <Button variant="outline" className="w-full">
+                    <Trophy className="w-4 h-4 ml-2" />
+                    التوب
+                </Button>
+                <Separator className="my-2 bg-primary/20"/>
+            </div>
             <header className="flex items-center justify-between mb-4 gap-2">
                 <div className="relative flex-1">
                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
@@ -2097,7 +2105,7 @@ function MainApp({
             }
         });
         return () => unsubscribe();
-    }, [currentRoom]);
+    }, [currentRoom?.id, toast]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
@@ -2646,5 +2654,3 @@ export default function HomePage() {
             appStatus={appStatus}
         />;
 }
-
-
