@@ -529,7 +529,8 @@ function RoomScreen({
 
             // Announce the gift in chat
             if (recipientProfile) {
-                const messageText = `لقد أرسل ${user.profile.name} هدية ${gift.name} إلى ${recipientProfile.name}`;
+                const quantityText = quantity > 1 ? `x${quantity} ` : '';
+                const messageText = `لقد أرسل ${user.profile.name} هدية ${quantityText}${gift.name} إلى ${recipientProfile.name}`;
                 sendChatMessage({
                     roomId: room.id,
                     user: {
