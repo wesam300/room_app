@@ -72,6 +72,7 @@ export interface RoomData {
   ownerId: string;
   image: string;
   userCount: number;
+  totalSupport?: number;
   micSlots: MicSlotData[];
   isRoomMuted: boolean;
   createdAt: Timestamp;
@@ -347,6 +348,7 @@ export const userServices = {
     await runTransaction(db, async (transaction) => {
         const senderRef = doc(db, COLLECTIONS.USERS, senderId);
         const recipientRef = doc(db, COLLECTIONS.USERS, recipientId);
+        const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
 
         const [senderDoc, recipientDoc] = await Promise.all([
             transaction.get(senderRef),
@@ -388,6 +390,12 @@ export const userServices = {
         transaction.update(senderRef, {
             totalSupportGiven: increment(totalCost),
             level: newLevel,
+            updatedAt: serverTimestamp(),
+        });
+        
+        // 5. Update total support for the room
+        transaction.update(roomRef, {
+            totalSupport: increment(totalCost),
             updatedAt: serverTimestamp(),
         });
     });
@@ -577,7 +585,7 @@ const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map(() => ({
 
 // Room Services
 export const roomServices = {
-  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>): Promise<void> {
+  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>): Promise<void> {
     try {
       let newRoomId: string;
       let roomRef;
@@ -603,6 +611,7 @@ export const roomServices = {
           ...finalRoomData,
           id: newRoomId,
           userCount: 0,
+          totalSupport: 0,
           micSlots: INITIAL_MIC_SLOTS,
           isRoomMuted: false,
       }
@@ -893,6 +902,18 @@ export const supporterServices = {
         return querySnapshot.docs.map(doc => doc.data() as UserData);
     } catch (error) {
         console.error('Error getting global top charisma:', error);
+        throw error;
+    }
+  },
+  
+  async getTopRoomsBySupport(limitCount: number): Promise<RoomData[]> {
+    try {
+        const roomsRef = collection(db, COLLECTIONS.ROOMS);
+        const q = query(roomsRef, orderBy('totalSupport', 'desc'), limit(limitCount));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as RoomData);
+    } catch (error) {
+        console.error('Error getting top rooms by support:', error);
         throw error;
     }
   },

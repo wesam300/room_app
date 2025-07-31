@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -421,7 +421,7 @@ function RoomScreen({
     const [hasMicPermission, setHasMicPermission] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
-    const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
+    const totalRoomSupport = room.totalSupport ?? 0;
 
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
     
@@ -2071,10 +2071,10 @@ function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaim
     );
 }
 
-function TopSupportersScreen({ onBack }: { onBack: () => void }) {
-    const [leaderboardData, setLeaderboardData] = useState<UserData[]>([]);
+function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRoom: (room: RoomData) => void; }) {
+    const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'wealth' | 'charisma'>('wealth');
+    const [activeTab, setActiveTab] = useState<'wealth' | 'charisma' | 'rooms'>('wealth');
 
     useEffect(() => {
         const fetchLeaderboard = async () => {
@@ -2083,12 +2083,15 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                 let data;
                 if (activeTab === 'wealth') {
                     data = await supporterServices.getGlobalTopSupporters(30);
-                } else {
+                } else if (activeTab === 'charisma') {
                     data = await supporterServices.getGlobalTopCharisma(30);
+                } else if (activeTab === 'rooms') {
+                    data = await supporterServices.getTopRoomsBySupport(30);
                 }
-                setLeaderboardData(data);
+                setLeaderboardData(data || []);
             } catch (error) {
                 console.error(`Failed to fetch top ${activeTab}:`, error);
+                setLeaderboardData([]);
             } finally {
                 setLoading(false);
             }
@@ -2106,7 +2109,7 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
         const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
 
         return (
-            <div className={cn("flex flex-col items-center gap-1", style.container)}>
+            <div className={cn("flex flex-col items-center gap-1 pt-4", style.container)}>
                 <div className="relative">
                     <Avatar className={cn("w-20 h-20 border-4", style.border)}>
                         <AvatarImage src={user.profile.image} alt={user.profile.name} />
@@ -2126,6 +2129,70 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
     const topThree = leaderboardData.slice(0, 3);
     const rest = leaderboardData.slice(3);
 
+    const renderUserList = () => (
+        <>
+            <div className="grid grid-cols-3 grid-rows-2 items-end h-56 mb-8">
+                {topThree[1] && <TopPlayerCard user={topThree[1]} rank={2} />}
+                {topThree[0] && <TopPlayerCard user={topThree[0]} rank={1} />}
+                {topThree[2] && <TopPlayerCard user={topThree[2]} rank={3} />}
+            </div>
+            
+            <div className="space-y-3">
+                {rest.map((user: UserData, index) => {
+                    const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
+                    return (
+                    <div key={user.profile.userId} className="flex items-center bg-black/20 p-2 rounded-lg">
+                        <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 4}</span>
+                        <Avatar className="w-12 h-12 ml-3">
+                            <AvatarImage src={user.profile.image} alt={user.profile.name}/>
+                            <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <p className="font-semibold text-white truncate">{user.profile.name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                                {user.vipLevel && user.vipLevel > 0 && <VipBadge level={user.vipLevel} />}
+                                <div className="flex items-center justify-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                                    <Star className="w-3 h-3 text-yellow-400" />
+                                    <span>{calculateLevel(user.totalSupportGiven).level}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Trophy className="w-4 h-4 text-yellow-400" />
+                            <span className="font-bold text-yellow-300 text-sm">{formatNumber(displayValue)}</span>
+                        </div>
+                    </div>
+                )})}
+            </div>
+        </>
+    );
+
+    const renderRoomList = () => (
+        <div className="space-y-3">
+            {leaderboardData.map((room: RoomData, index) => (
+                <button 
+                    key={room.id}
+                    onClick={() => onEnterRoom(room)}
+                    className="w-full flex items-center bg-black/20 p-2 rounded-lg text-right hover:bg-black/40 transition-colors"
+                >
+                    <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 1}</span>
+                    <Avatar className="w-12 h-12 ml-3">
+                        <AvatarImage src={room.image} alt={room.name}/>
+                        <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                        <p className="font-semibold text-white truncate">{room.name}</p>
+                        <p className="text-xs text-muted-foreground">ID: {room.id}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <Trophy className="w-4 h-4 text-yellow-400" />
+                        <span className="font-bold text-yellow-300 text-sm">{formatNumber(room.totalSupport ?? 0)}</span>
+                    </div>
+                </button>
+            ))}
+        </div>
+    );
+
     return (
         <div className="flex flex-col h-full bg-gradient-to-b from-[#4a2e05] via-[#2d1c03] to-background text-white">
             <header className="flex-shrink-0 p-4">
@@ -2134,7 +2201,8 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                         <ChevronLeft />
                     </Button>
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
+                         <button onClick={() => setActiveTab('rooms')} className={cn("text-lg font-bold", activeTab !== 'rooms' && 'text-white/50')}><Home className="w-5 h-5 inline-block ml-1" />الغرف</button>
+                         <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
                         <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
                     </div>
                     <div></div>
@@ -2152,42 +2220,12 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                     <div className="text-center text-muted-foreground mt-20">
                        <p>...جاري تحميل قائمة الصدارة</p>
                     </div>
+                ) : leaderboardData.length === 0 ? (
+                    <div className="text-center text-muted-foreground mt-20">
+                       <p>لا يوجد بيانات لعرضها حاليًا.</p>
+                    </div>
                 ) : (
-                    <>
-                        <div className="grid grid-cols-3 grid-rows-2 items-end h-56 mb-8">
-                            {topThree[1] && <TopPlayerCard user={topThree[1]} rank={2} />}
-                            {topThree[0] && <TopPlayerCard user={topThree[0]} rank={1} />}
-                            {topThree[2] && <TopPlayerCard user={topThree[2]} rank={3} />}
-                        </div>
-                        
-                        <div className="space-y-3">
-                            {rest.map((user, index) => {
-                                const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
-                                return (
-                                <div key={user.profile.userId} className="flex items-center bg-black/20 p-2 rounded-lg">
-                                    <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 4}</span>
-                                    <Avatar className="w-12 h-12 ml-3">
-                                        <AvatarImage src={user.profile.image} alt={user.profile.name}/>
-                                        <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-white truncate">{user.profile.name}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            {user.vipLevel && user.vipLevel > 0 && <VipBadge level={user.vipLevel} />}
-                                            <div className="flex items-center justify-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
-                                                <Star className="w-3 h-3 text-yellow-400" />
-                                                <span>{calculateLevel(user.totalSupportGiven).level}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Trophy className="w-4 h-4 text-yellow-400" />
-                                        <span className="font-bold text-yellow-300 text-sm">{formatNumber(displayValue)}</span>
-                                    </div>
-                                </div>
-                            )})}
-                        </div>
-                    </>
+                    activeTab === 'rooms' ? renderRoomList() : renderUserList()
                 )}
             </div>
         </div>
@@ -2377,7 +2415,7 @@ function MainApp({
         }
         
         if (view === 'leaderboard') {
-            return <TopSupportersScreen onBack={() => setView('roomsList')} />;
+            return <TopRoomsScreen onBack={() => setView('roomsList')} onEnterRoom={handleEnterRoom} />;
         }
 
         if (view === 'inRoom' && currentRoom) {
