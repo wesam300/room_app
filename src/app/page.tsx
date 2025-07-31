@@ -682,7 +682,7 @@ function RoomScreen({
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
-                        {(room.micSlots || []).slice(0, 15).map((slot, index) => {
+                        {(room.micSlots || []).map((slot, index) => {
                             const userData = slot.user ? roomUsersData.get(slot.user.userId) : null;
                             return (
                                 <RoomMic 
@@ -2169,27 +2169,30 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
 
     const renderRoomList = () => (
         <div className="space-y-3">
-            {leaderboardData.map((room: RoomData, index) => (
-                <button 
-                    key={room.id}
-                    onClick={() => onEnterRoom(room)}
-                    className="w-full flex items-center bg-black/20 p-2 rounded-lg text-right hover:bg-black/40 transition-colors"
-                >
-                    <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 1}</span>
-                    <Avatar className="w-12 h-12 ml-3">
-                        <AvatarImage src={room.image} alt={room.name}/>
-                        <AvatarFallback>{room.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                        <p className="font-semibold text-white truncate">{room.name}</p>
-                        <p className="text-xs text-muted-foreground">ID: {room.id}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <Trophy className="w-4 h-4 text-yellow-400" />
-                        <span className="font-bold text-yellow-300 text-sm">{formatNumber(room.totalSupport ?? 0)}</span>
-                    </div>
-                </button>
-            ))}
+            {leaderboardData.map((room: RoomData, index) => {
+                 if (!room || !room.name) return null; // Defensive check
+                 return (
+                    <button 
+                        key={room.id}
+                        onClick={() => onEnterRoom(room)}
+                        className="w-full flex items-center bg-black/20 p-2 rounded-lg text-right hover:bg-black/40 transition-colors"
+                    >
+                        <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 1}</span>
+                        <Avatar className="w-12 h-12 ml-3">
+                            <AvatarImage src={room.image} alt={room.name}/>
+                            <AvatarFallback>{room.name ? room.name.charAt(0) : '?'}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <p className="font-semibold text-white truncate">{room.name}</p>
+                            <p className="text-xs text-muted-foreground">ID: {room.id}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Trophy className="w-4 h-4 text-yellow-400" />
+                            <span className="font-bold text-yellow-300 text-sm">{formatNumber(room.totalSupport ?? 0)}</span>
+                        </div>
+                    </button>
+                 )
+            })}
         </div>
     );
 
