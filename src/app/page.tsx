@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -1748,7 +1747,7 @@ function ProfileScreen({
 }: { 
     user: UserData, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    onNavigate: (view: 'coins' | 'silver' | 'level' | 'vipLevels') => void,
+    onNavigate: (view: 'coins' | 'silver' | 'level' | 'vipLevels' | 'leaderboard') => void,
     onLogout: () => void,
     appStatus: AppStatusData | null,
 }) {
@@ -1918,7 +1917,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { toast } = useToast();
@@ -1963,7 +1962,10 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Ro
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
             <div className="mb-4">
-                <button className="relative w-full h-32 bg-gradient-to-br from-black/20 to-yellow-900/40 rounded-2xl border-2 border-yellow-500/50 flex items-center justify-center text-white font-bold overflow-hidden cursor-pointer group">
+                <button
+                    onClick={() => onNavigate('leaderboard')}
+                    className="relative w-full h-32 bg-gradient-to-br from-black/20 to-yellow-900/40 rounded-2xl border-2 border-yellow-500/50 flex items-center justify-center text-white font-bold overflow-hidden cursor-pointer group"
+                >
                     <Trophy className="absolute w-40 h-40 text-yellow-400/10 -rotate-12 -left-4 top-4 group-hover:scale-110 transition-transform duration-300" />
                     <div className="z-10 text-center">
                         <Trophy className="w-10 h-10 text-yellow-300 drop-shadow-lg mx-auto mb-1" />
@@ -2067,6 +2069,126 @@ function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaim
     );
 }
 
+function TopSupportersScreen({ onBack }: { onBack: () => void }) {
+    const [topSupporters, setTopSupporters] = useState<UserData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'wealth' | 'charisma'>('wealth');
+
+    useEffect(() => {
+        const fetchSupporters = async () => {
+            setLoading(true);
+            try {
+                const supporters = await supporterServices.getGlobalTopSupporters(30);
+                setTopSupporters(supporters);
+            } catch (error) {
+                console.error("Failed to fetch top supporters:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (activeTab === 'wealth') {
+            fetchSupporters();
+        } else {
+            setTopSupporters([]); // Clear for other tabs for now
+        }
+    }, [activeTab]);
+
+    const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
+        const styles = {
+            1: { container: "row-start-1 col-start-2 z-10 scale-110", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
+            2: { container: "row-start-2 col-start-3 mt-8", crown: <Crown className="w-6 h-6 text-gray-300" />, border: "border-gray-300" },
+            3: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-amber-600" />, border: "border-amber-600" }
+        };
+        const style = styles[rank as keyof typeof styles];
+
+        return (
+            <div className={cn("flex flex-col items-center gap-1", style.container)}>
+                <div className="relative">
+                    <Avatar className={cn("w-20 h-20 border-4", style.border)}>
+                        <AvatarImage src={user.profile.image} alt={user.profile.name} />
+                        <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">{style.crown}</div>
+                </div>
+                <p className="font-bold text-white text-sm truncate max-w-24">{user.profile.name}</p>
+                <div className="flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4 text-yellow-400" />
+                    <p className="font-bold text-yellow-300 text-xs">{formatNumber(user.totalSupportGiven)}</p>
+                </div>
+            </div>
+        );
+    };
+
+    const topThree = topSupporters.slice(0, 3);
+    const rest = topSupporters.slice(3);
+
+    return (
+        <div className="flex flex-col h-full bg-gradient-to-b from-[#4a2e05] via-[#2d1c03] to-background text-white">
+            <header className="flex-shrink-0 p-4">
+                <div className="flex items-center justify-between mb-4">
+                    <Button variant="ghost" size="icon" onClick={onBack}>
+                        <ChevronLeft />
+                    </Button>
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
+                        <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
+                    </div>
+                    <div></div>
+                </div>
+                 <div className="flex justify-center">
+                    <div className="bg-black/30 p-1 rounded-full flex gap-1">
+                        <Button variant="ghost" className="rounded-full bg-primary/20 text-white">أسبوعية</Button>
+                        <Button variant="ghost" className="rounded-full text-white/70">شهرية</Button>
+                    </div>
+                 </div>
+            </header>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+                {loading ? (
+                    <div className="text-center text-muted-foreground mt-20">
+                       <p>...جاري تحميل قائمة الصدارة</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-3 grid-rows-2 items-end h-56 mb-8">
+                            {topThree[1] && <TopPlayerCard user={topThree[1]} rank={2} />}
+                            {topThree[0] && <TopPlayerCard user={topThree[0]} rank={1} />}
+                            {topThree[2] && <TopPlayerCard user={topThree[2]} rank={3} />}
+                        </div>
+                        
+                        <div className="space-y-3">
+                            {rest.map((user, index) => (
+                                <div key={user.profile.userId} className="flex items-center bg-black/20 p-2 rounded-lg">
+                                    <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 4}</span>
+                                    <Avatar className="w-12 h-12 ml-3">
+                                        <AvatarImage src={user.profile.image} alt={user.profile.name}/>
+                                        <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-white truncate">{user.profile.name}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            {user.vipLevel && user.vipLevel > 0 && <VipBadge level={user.vipLevel} />}
+                                            <div className="flex items-center justify-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                                                <Star className="w-3 h-3 text-yellow-400" />
+                                                <span>{calculateLevel(user.totalSupportGiven).level}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <Trophy className="w-4 h-4 text-yellow-400" />
+                                        <span className="font-bold text-yellow-300 text-sm">{formatNumber(user.totalSupportGiven)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
 function MainApp({ 
     user, 
     onUserDataUpdate,
@@ -2078,7 +2200,7 @@ function MainApp({
     onLogout: () => void,
     appStatus: AppStatusData | null,
 }) {
-    const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
+    const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events' | 'leaderboard'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level' | 'vipLevels'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
@@ -2102,7 +2224,7 @@ function MainApp({
             }
         });
         return () => unsubscribe();
-    }, [currentRoom?.id]);
+    }, [currentRoom?.id, toast]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
@@ -2232,6 +2354,14 @@ function MainApp({
         }
     };
 
+    const handleNavigate = (targetView: 'coins' | 'silver' | 'level' | 'vipLevels' | 'leaderboard') => {
+        if (targetView === 'leaderboard') {
+            setView('leaderboard');
+        } else {
+            setProfileView(targetView);
+        }
+    };
+
     const renderContent = () => {
         if (isJoiningRoom) {
              return (
@@ -2239,6 +2369,10 @@ function MainApp({
                     <p className="text-xl font-bold">...جاري تحميل الغرفة</p>
                 </div>
             );
+        }
+        
+        if (view === 'leaderboard') {
+            return <TopSupportersScreen onBack={() => setView('roomsList')} />;
         }
 
         if (view === 'inRoom' && currentRoom) {
@@ -2274,14 +2408,14 @@ function MainApp({
                         <ProfileScreen 
                             user={user} 
                             onUserUpdate={handleUserUpdate}
-                            onNavigate={(view) => setProfileView(view)}
+                            onNavigate={handleNavigate}
                             onLogout={onLogout}
                             appStatus={appStatus}
                         />
                     );
             }
         }
-        return <RoomsListScreen onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user.profile}/>;
+        return <RoomsListScreen onEnterRoom={handleEnterRoom} onCreateRoom={createRoomWrapper} user={user.profile} onNavigate={handleNavigate} />;
     };
 
 
@@ -2298,7 +2432,7 @@ function MainApp({
             <main className="flex-1 overflow-y-auto bg-background">
                 {renderContent()}
             </main>
-             {view !== 'inRoom' && (
+             {view !== 'inRoom' && view !== 'leaderboard' && (
                  <footer className="flex justify-around items-center p-2 border-t border-border bg-background/80 backdrop-blur-sm sticky bottom-0">
                      <button 
                         onClick={() => { setView('roomsList'); setProfileView('profile'); }}

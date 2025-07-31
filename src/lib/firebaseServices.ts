@@ -857,6 +857,18 @@ export const supporterServices = {
     }, { merge: true });
   },
 
+  async getGlobalTopSupporters(limitCount: number): Promise<UserData[]> {
+    try {
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, orderBy('totalSupportGiven', 'desc'), limit(limitCount));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as UserData);
+    } catch (error) {
+        console.error('Error getting global top supporters:', error);
+        throw error;
+    }
+  },
+
   onRoomSupportersChange(roomId: string, callback: (supporters: RoomSupporterData[], error?: Error) => void) {
     const supportersRef = collection(db, COLLECTIONS.ROOM_SUPPORTERS);
     const q = query(
@@ -1131,6 +1143,7 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 
 
 
