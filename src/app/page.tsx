@@ -1955,14 +1955,6 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Ro
             });
         }
     };
-
-    if (roomsLoading) {
-        return (
-           <div className="text-center text-muted-foreground mt-20">
-               <p>...جاري تحميل الغرف</p>
-           </div>
-       );
-    }
     
     const filteredRooms = rooms.filter(room =>
         room.id.toLowerCase().includes(searchQuery.toLowerCase().trim())
@@ -1970,12 +1962,15 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Ro
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
-            <div className="mb-2">
-                <Button variant="outline" className="w-full">
-                    <Trophy className="w-4 h-4 ml-2" />
-                    التوب
-                </Button>
-                <Separator className="my-2 bg-primary/20"/>
+            <div className="mb-4">
+                <button className="relative w-full h-32 bg-gradient-to-br from-black/20 to-yellow-900/40 rounded-2xl border-2 border-yellow-500/50 flex items-center justify-center text-white font-bold overflow-hidden cursor-pointer group">
+                    <Trophy className="absolute w-40 h-40 text-yellow-400/10 -rotate-12 -left-4 top-4 group-hover:scale-110 transition-transform duration-300" />
+                    <div className="z-10 text-center">
+                        <Trophy className="w-10 h-10 text-yellow-300 drop-shadow-lg mx-auto mb-1" />
+                        <h2 className="text-3xl font-black tracking-tighter">التوب</h2>
+                        <p className="text-xs text-yellow-200/80">قوائم الصدارة</p>
+                    </div>
+                </button>
             </div>
             <header className="flex items-center justify-between mb-4 gap-2">
                 <div className="relative flex-1">
@@ -1990,42 +1985,44 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Ro
                 <Button variant="outline" size="icon" onClick={() => setIsCreateRoomOpen(true)}><PlusCircle className="w-5 h-5"/></Button>
             </header>
             <CreateRoomDialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen} onCreateRoom={handleCreateRoom} />
-            <div className="flex-1 overflow-y-auto space-y-3">
-                {rooms.length === 0 && !roomsLoading ? (
-                     <div className="text-center text-muted-foreground mt-20">
-                        <p>لا توجد غرف متاحة حالياً.</p>
-                        <p>انقر على علامة + لإنشاء غرفة جديدة!</p>
-                    </div>
-                ) : filteredRooms.length === 0 && searchQuery ? (
-                     <div className="text-center text-muted-foreground mt-20">
-                        <p>لا توجد نتائج مطابقة لبحثك.</p>
-                    </div>
-                ) : filteredRooms.map(room => (
-                    <div 
-                        key={room.id} 
-                        onClick={() => onEnterRoom(room)} 
-                        className="bg-gradient-to-l from-yellow-900/20 via-yellow-600/20 to-yellow-900/20 p-0.5 rounded-2xl cursor-pointer"
-                    >
-                        <div className="bg-[#412c1c] rounded-2xl p-3 flex items-center gap-4">
-                            <div className="relative flex-shrink-0">
-                                <img src={room.image} data-ai-hint="room entrance" alt={room.name} className="w-20 h-20 rounded-lg object-cover" />
-                                <div className="absolute -top-2 -left-2 bg-black/50 border border-yellow-500 rounded-md px-2 py-0.5 text-xs font-bold flex items-center gap-1">
-                                    <Signal className="w-3 h-3 text-green-400" />
-                                    <span>{room.userCount}</span>
+             {roomsLoading ? (
+                <div className="text-center text-muted-foreground mt-20">
+                   <p>...جاري تحميل الغرف</p>
+                </div>
+            ) : (
+                <div className="flex-1 overflow-y-auto space-y-3">
+                    {filteredRooms.length === 0 ? (
+                         <div className="text-center text-muted-foreground mt-20">
+                            <p>{searchQuery ? "لا توجد نتائج مطابقة لبحثك." : "لا توجد غرف متاحة حالياً."}</p>
+                            {!searchQuery && <p>انقر على علامة + لإنشاء غرفة جديدة!</p>}
+                        </div>
+                    ) : filteredRooms.map(room => (
+                        <div 
+                            key={room.id} 
+                            onClick={() => onEnterRoom(room)} 
+                            className="bg-gradient-to-l from-yellow-900/20 via-yellow-600/20 to-yellow-900/20 p-0.5 rounded-2xl cursor-pointer"
+                        >
+                            <div className="bg-[#412c1c] rounded-2xl p-3 flex items-center gap-4">
+                                <div className="relative flex-shrink-0">
+                                    <img src={room.image} data-ai-hint="room entrance" alt={room.name} className="w-20 h-20 rounded-lg object-cover" />
+                                    <div className="absolute -top-2 -left-2 bg-black/50 border border-yellow-500 rounded-md px-2 py-0.5 text-xs font-bold flex items-center gap-1">
+                                        <Signal className="w-3 h-3 text-green-400" />
+                                        <span>{room.userCount}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex-1 text-right overflow-hidden">
-                                <h2 className="font-bold text-lg text-white truncate">{room.name}</h2>
-                                <p className="text-sm text-gray-300 truncate">{room.description}</p>
-                                <div className="flex items-center justify-end gap-1 mt-1">
-                                    <span className="text-xs text-gray-400">ID: {room.id}</span>
-                                    <Trophy className="w-3 h-3 text-yellow-400" />
+                                <div className="flex-1 text-right overflow-hidden">
+                                    <h2 className="font-bold text-lg text-white truncate">{room.name}</h2>
+                                    <p className="text-sm text-gray-300 truncate">{room.description}</p>
+                                    <div className="flex items-center justify-end gap-1 mt-1">
+                                        <span className="text-xs text-gray-400">ID: {room.id}</span>
+                                        <Trophy className="w-3 h-3 text-yellow-400" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
@@ -2105,7 +2102,7 @@ function MainApp({
             }
         });
         return () => unsubscribe();
-    }, [currentRoom?.id, toast]);
+    }, [currentRoom?.id]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
