@@ -1002,7 +1002,7 @@ export const appStatusServices = {
         if (!docSnap.exists()) {
             await setDoc(statusRef, {
                 isMaintenanceMode: false,
-                micFrameImageUrl: "https://firebasestorage.googleapis.com/v0/b/fruity-fortune-x5pb6.appspot.com/o/app_assets%2Fmic_frame.png?alt=media&token=e15d8620-834c-473d-8255-467770856c54",
+                micFrameImageUrl: "https://i.imgur.com/d1uCD9q.jpg",
                 updatedAt: serverTimestamp()
             });
         }
@@ -1066,11 +1066,11 @@ export const appStatusServices = {
                 callback(data);
             } else {
                 // If the document doesn't exist, assume defaults
-                callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://firebasestorage.googleapis.com/v0/b/fruity-fortune-x5pb6.appspot.com/o/app_assets%2Fmic_frame.png?alt=media&token=e15d8620-834c-473d-8255-467770856c54" });
+                callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://i.imgur.com/d1uCD9q.jpg" });
             }
         }, (error) => {
             console.error('Error listening to app status changes:', error);
-            callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://firebasestorage.googleapis.com/v0/b/fruity-fortune-x5pb6.appspot.com/o/app_assets%2Fmic_frame.png?alt=media&token=e15d8620-834c-473d-8255-467770856c54" }, error); // Default on error
+            callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://i.imgur.com/d1uCD9q.jpg" }, error); // Default on error
         });
     }
 };
@@ -1156,5 +1156,6 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 
 
