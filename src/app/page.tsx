@@ -692,7 +692,7 @@ function RoomScreen({
                                     index={index}
                                     isOwner={isOwner}
                                     currentUser={user.profile}
-                                    micFrameImageUrl={appStatus?.micFrameImageUrl ?? null}
+                                    micFrameImageUrl={appStatus?.micFrameImageUrl ?? "https://i.imgur.com/d1uCD9q.jpg"}
                                     onAscend={() => handleMicAction('ascend', index)}
                                     onDescend={() => handleMicAction('descend', index)}
                                     onToggleLock={() => handleMicAction('toggle_lock', index)}
@@ -1974,6 +1974,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 
 function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
     const { toast } = useToast();
     const { rooms, loading: roomsLoading, error: roomsError } = useRooms();
 
@@ -2016,22 +2017,37 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user }: { onEnterRoom: (Ro
            </div>
        );
     }
+    
+    const filteredRooms = rooms.filter(room =>
+        room.id.toLowerCase().includes(searchQuery.toLowerCase().trim())
+    );
 
     return (
         <div className="p-4 flex flex-col h-full text-foreground bg-background">
-            <header className="flex items-center justify-between mb-4">
-                <Button variant="ghost" size="icon"><Search className="w-5 h-5"/></Button>
-                <h1 className="text-2xl font-bold text-primary">الغرف</h1>
+            <header className="flex items-center justify-between mb-4 gap-2">
+                <div className="relative flex-1">
+                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
+                     <Input 
+                        placeholder="ابحث عن غرفة بالـ ID..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-black/30 border-primary/20 pl-10 text-right"
+                    />
+                </div>
                 <Button variant="outline" size="icon" onClick={() => setIsCreateRoomOpen(true)}><PlusCircle className="w-5 h-5"/></Button>
             </header>
             <CreateRoomDialog open={isCreateRoomOpen} onOpenChange={setIsCreateRoomOpen} onCreateRoom={handleCreateRoom} />
             <div className="flex-1 overflow-y-auto space-y-3">
-                {rooms.length === 0 ? (
+                {rooms.length === 0 && !roomsLoading ? (
                      <div className="text-center text-muted-foreground mt-20">
                         <p>لا توجد غرف متاحة حالياً.</p>
                         <p>انقر على علامة + لإنشاء غرفة جديدة!</p>
                     </div>
-                ) : rooms.map(room => (
+                ) : filteredRooms.length === 0 && searchQuery ? (
+                     <div className="text-center text-muted-foreground mt-20">
+                        <p>لا توجد نتائج مطابقة لبحثك.</p>
+                    </div>
+                ) : filteredRooms.map(room => (
                     <div 
                         key={room.id} 
                         onClick={() => onEnterRoom(room)} 
@@ -2685,3 +2701,4 @@ export default function HomePage() {
             appStatus={appStatus}
         />;
 }
+
