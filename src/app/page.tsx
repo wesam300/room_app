@@ -349,6 +349,12 @@ function RoomScreen({
     onExit, 
     onUserDataUpdate,
     appStatus
+}: {
+    room: RoomData,
+    user: UserData,
+    onExit: () => void,
+    onUserDataUpdate: (updater: (prev: UserData) => UserData) => void,
+    appStatus: AppStatusData | null
 }) {
     const { toast } = useToast();
     const [activeGame, setActiveGame] = useState<string | null>(null);
@@ -1422,14 +1428,15 @@ function AdminMicFrameManager({ appStatus }: { appStatus: AppStatusData | null }
 
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (file) {
-            try {
-                await appStatusServices.setMicFrameImage(file);
-                toast({ title: "تم تحديث إطار المايك بنجاح!", description: "قد تحتاج إلى إعادة تحميل الغرفة لرؤية التغييرات.", duration: 2000 });
-            } catch (error) {
-                console.error("Failed to update mic frame image:", error);
-                toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
-            }
+        if (!file) return;
+
+        try {
+            const imageUrl = await appStatusServices.setMicFrameImage(file);
+            await appStatusServices.updateMicFrameUrlInDb(imageUrl);
+            toast({ title: "تم تحديث إطار المايك بنجاح!", description: "قد تحتاج إلى إعادة تحميل الغرفة لرؤية التغييرات.", duration: 2000 });
+        } catch (error) {
+            console.error("Failed to update mic frame image:", error);
+            toast({ variant: "destructive", title: "فشل تحديث الصورة", description: (error as Error).message, duration: 2000 });
         }
     };
 
@@ -2636,4 +2643,5 @@ export default function HomePage() {
             appStatus={appStatus}
         />;
 }
+
 

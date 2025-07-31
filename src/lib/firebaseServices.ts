@@ -1025,17 +1025,25 @@ export const appStatusServices = {
     },
 
     async setMicFrameImage(imageFile: File): Promise<string> {
-        const imageUrl = await uploadImageAndGetUrl(imageFile, 'app_assets/mic_frame.png');
+        try {
+            const imageUrl = await uploadImageAndGetUrl(imageFile, 'app_assets/mic_frame.png');
+            return imageUrl;
+        } catch (error) {
+            console.error('Error uploading mic frame image:', error);
+            throw new Error("فشل رفع الصورة إلى التخزين.");
+        }
+    },
+    
+    async updateMicFrameUrlInDb(imageUrl: string): Promise<void> {
         try {
             const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
             await setDoc(statusRef, {
                 micFrameImageUrl: imageUrl,
                 updatedAt: serverTimestamp()
             }, { merge: true });
-            return imageUrl;
         } catch (error) {
-            console.error('Error setting mic frame image:', error);
-            throw error;
+            console.error('Error saving mic frame image URL to DB:', error);
+            throw new Error("فشل حفظ رابط الصورة في قاعدة البيانات.");
         }
     },
 
@@ -1137,3 +1145,4 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
