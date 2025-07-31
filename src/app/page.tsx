@@ -1349,10 +1349,9 @@ function AdminGameManager() {
     )
 }
 
-function AdminProfileButtonsManager() {
+function AdminProfileButtonsManager({ appStatus }: { appStatus: AppStatusData | null }) {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { appStatus } = useAppStatus();
     const [selectedButtonKey, setSelectedButtonKey] = useState<string | null>(null);
 
     const buttonKeys = ['level', 'vip', 'store', 'medal'] as const;
@@ -1417,16 +1416,15 @@ function AdminProfileButtonsManager() {
     );
 }
 
-function AdminMicFrameManager() {
+function AdminMicFrameManager({ appStatus }: { appStatus: AppStatusData | null }) {
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { appStatus } = useAppStatus();
 
     const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             try {
-                const imageUrl = await appStatusServices.setMicFrameImage(file);
+                await appStatusServices.setMicFrameImage(file);
                 toast({ title: "تم تحديث إطار المايك بنجاح!", description: "قد تحتاج إلى إعادة تحميل الغرفة لرؤية التغييرات.", duration: 2000 });
             } catch (error) {
                 console.error("Failed to update mic frame image:", error);
@@ -1461,7 +1459,7 @@ function AdminMicFrameManager() {
     )
 }
 
-function AdminPanel() {
+function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
     const { toast } = useToast();
     const [targetUserId, setTargetUserId] = useState("");
     const [newDisplayId, setNewDisplayId] = useState("");
@@ -1704,9 +1702,9 @@ function AdminPanel() {
                 <hr className="border-primary/20"/>
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
-                <AdminProfileButtonsManager />
+                <AdminProfileButtonsManager appStatus={appStatus} />
                 <hr className="border-primary/20"/>
-                <AdminMicFrameManager />
+                <AdminMicFrameManager appStatus={appStatus} />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
@@ -1752,15 +1750,16 @@ function ProfileScreen({
     onUserUpdate, 
     onNavigate,
     onLogout,
+    appStatus,
 }: { 
     user: UserData, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
     onNavigate: (view: 'coins' | 'silver' | 'level' | 'vipLevels') => void,
     onLogout: () => void,
+    appStatus: AppStatusData | null,
 }) {
     const { toast } = useToast();
     const isAdmin = ADMIN_USER_IDS.includes(user.profile.userId);
-    const { appStatus } = useAppStatus();
 
     const handleCopyId = () => {
         const idToCopy = user.profile.displayId || user.profile.userId;
@@ -1839,7 +1838,7 @@ function ProfileScreen({
             </div>
 
 
-            {isAdmin && <AdminPanel />}
+            {isAdmin && <AdminPanel appStatus={appStatus} />}
             <Button onClick={onLogout} variant="destructive" className="mt-auto">تسجيل الخروج</Button>
 
         </div>
@@ -2263,6 +2262,7 @@ function MainApp({
                             onUserUpdate={handleUserUpdate}
                             onNavigate={(view) => setProfileView(view)}
                             onLogout={onLogout}
+                            appStatus={appStatus}
                         />
                     );
             }
@@ -2636,3 +2636,4 @@ export default function HomePage() {
             appStatus={appStatus}
         />;
 }
+
