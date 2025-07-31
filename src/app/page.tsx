@@ -692,7 +692,6 @@ function RoomScreen({
                                     index={index}
                                     isOwner={isOwner}
                                     currentUser={user.profile}
-                                    micFrameImageUrl={appStatus?.micFrameImageUrl ?? "https://i.imgur.com/d1uCD9q.jpg"}
                                     onAscend={() => handleMicAction('ascend', index)}
                                     onDescend={() => handleMicAction('descend', index)}
                                     onToggleLock={() => handleMicAction('toggle_lock', index)}
@@ -1455,58 +1454,6 @@ function AdminProfileButtonsManager({ appStatus }: { appStatus: AppStatusData | 
     );
 }
 
-function AdminMicFrameManager({ appStatus }: { appStatus: AppStatusData | null }) {
-    const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-
-    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        try {
-            const imageUrl = await appStatusServices.setMicFrameImage(file);
-            await appStatusServices.updateMicFrameUrlInDb(imageUrl);
-            toast({ title: "تم تحديث إطار المايك بنجاح!", description: "قد تحتاج إلى إعادة تحميل الغرفة لرؤية التغييرات.", duration: 2000 });
-        } catch (error) {
-            console.error("Failed to update mic frame image:", error);
-            toast({ variant: "destructive", title: "فشل تحديث الصورة", description: (error as Error).message, duration: 2000 });
-        }
-    };
-
-    return (
-        <div className="space-y-2">
-            <h4 className="font-semibold">إدارة إطار المايك</h4>
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/png, image/webp"
-                className="hidden"
-            />
-            <div className="flex items-center gap-4">
-                 <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative group w-24 h-24 bg-black/30 rounded-lg flex items-center justify-center border-2 border-dashed border-primary/30 cursor-pointer hover:border-primary transition-colors"
-                >
-                    {appStatus?.micFrameImageUrl ? (
-                        <img src={appStatus.micFrameImageUrl} alt="Mic Frame Preview" className="w-full h-full object-contain p-2" />
-                    ) : (
-                        <ImageIcon className="w-10 h-10 text-muted-foreground" />
-                    )}
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                        <Edit className="w-8 h-8 text-white"/>
-                    </div>
-                </button>
-                <p className="text-xs text-muted-foreground flex-1">
-                    انقر على المربع لتغيير الإطار.
-                    <br />
-                    يفضل استخدام صورة PNG بخلفية شفافة.
-                </p>
-            </div>
-        </div>
-    )
-}
-
 function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
     const { toast } = useToast();
     const [targetUserId, setTargetUserId] = useState("");
@@ -1751,8 +1698,6 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
                 <AdminProfileButtonsManager appStatus={appStatus} />
-                <hr className="border-primary/20"/>
-                <AdminMicFrameManager appStatus={appStatus} />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
@@ -2701,4 +2646,5 @@ export default function HomePage() {
             appStatus={appStatus}
         />;
 }
+
 

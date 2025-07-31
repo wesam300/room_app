@@ -27,7 +27,6 @@ interface RoomMicProps {
     isOwner: boolean;
     currentUser: UserProfile;
     room: RoomData;
-    micFrameImageUrl: string | null;
     onAscend: (index: number) => void;
     onDescend: (index: number) => void;
     onToggleLock: (index: number) => void;
@@ -67,7 +66,6 @@ export default function RoomMic({
     isOwner,
     currentUser,
     room,
-    micFrameImageUrl,
     onAscend,
     onDescend,
     onToggleLock,
@@ -229,13 +227,6 @@ export default function RoomMic({
                                     <AvatarImage src={slot.user.image} alt={slot.user.name} />
                                     <AvatarFallback>{slot.user.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
-                                {micFrameImageUrl && (
-                                    <img
-                                        src={micFrameImageUrl}
-                                        alt="Mic Frame"
-                                        className="absolute inset-[-10px] w-[calc(100%+20px)] h-[calc(100%+20px)] object-contain pointer-events-none"
-                                    />
-                                )}
                                  {slot.isMuted && (
                                     <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                                         <MicOff className="w-6 h-6 text-white"/>
@@ -276,4 +267,5 @@ export default function RoomMic({
 }
 
     
+
 

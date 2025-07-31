@@ -137,7 +137,6 @@ export interface AppStatusData {
         store?: string;
         medal?: string;
     };
-    micFrameImageUrl?: string;
     updatedAt: Timestamp | Date;
 }
 
@@ -1002,7 +1001,6 @@ export const appStatusServices = {
         if (!docSnap.exists()) {
             await setDoc(statusRef, {
                 isMaintenanceMode: false,
-                micFrameImageUrl: "https://i.imgur.com/d1uCD9q.jpg",
                 updatedAt: serverTimestamp()
             });
         }
@@ -1035,29 +1033,6 @@ export const appStatusServices = {
         }
     },
 
-    async setMicFrameImage(imageFile: File): Promise<string> {
-        try {
-            const imageUrl = await uploadImageAndGetUrl(imageFile, 'app_assets/mic_frame.png');
-            return imageUrl;
-        } catch (error) {
-            console.error('Error uploading mic frame image:', error);
-            throw new Error("فشل رفع الصورة إلى التخزين.");
-        }
-    },
-    
-    async updateMicFrameUrlInDb(imageUrl: string): Promise<void> {
-        try {
-            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
-            await setDoc(statusRef, {
-                micFrameImageUrl: imageUrl,
-                updatedAt: serverTimestamp()
-            }, { merge: true });
-        } catch (error) {
-            console.error('Error saving mic frame image URL to DB:', error);
-            throw new Error("فشل حفظ رابط الصورة في قاعدة البيانات.");
-        }
-    },
-
     onAppStatusChange(callback: (status: AppStatusData, error?: Error) => void): () => void {
         const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
         return onSnapshot(statusRef, (doc) => {
@@ -1066,11 +1041,11 @@ export const appStatusServices = {
                 callback(data);
             } else {
                 // If the document doesn't exist, assume defaults
-                callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://i.imgur.com/d1uCD9q.jpg" });
+                callback({ isMaintenanceMode: false, updatedAt: new Date() });
             }
         }, (error) => {
             console.error('Error listening to app status changes:', error);
-            callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://i.imgur.com/d1uCD9q.jpg" }, error); // Default on error
+            callback({ isMaintenanceMode: false, updatedAt: new Date() }, error); // Default on error
         });
     }
 };
@@ -1156,6 +1131,7 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 
 
 
