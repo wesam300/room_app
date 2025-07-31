@@ -342,10 +342,10 @@ export const userServices = {
     senderProfile: UserProfile,
     gift: GiftItem,
     quantity: number
-  ): Promise<void> {
+  ): Promise<UserProfile | null> {
     const totalCost = gift.price * quantity;
 
-    await runTransaction(db, async (transaction) => {
+    return await runTransaction(db, async (transaction) => {
         const senderRef = doc(db, COLLECTIONS.USERS, senderId);
         const recipientRef = doc(db, COLLECTIONS.USERS, recipientId);
         const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
@@ -361,6 +361,9 @@ export const userServices = {
         if (!recipientDoc.exists()) {
             throw new Error("Recipient not found.");
         }
+        
+        const recipientProfile = recipientDoc.data().profile as UserProfile;
+
 
         // 1. Deduct balance from sender
         transaction.update(senderRef, { balance: increment(-totalCost) });
@@ -398,6 +401,8 @@ export const userServices = {
             totalSupport: increment(totalCost),
             updatedAt: serverTimestamp(),
         });
+
+        return recipientProfile;
     });
   },
 

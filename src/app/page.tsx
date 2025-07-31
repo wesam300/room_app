@@ -515,7 +515,7 @@ function RoomScreen({
         }
     
         try {
-            await userServices.sendGiftAndUpdateLevels(
+            const recipientProfile = await userServices.sendGiftAndUpdateLevels(
                 user.profile.userId,
                 recipient.userId,
                 room.id,
@@ -526,6 +526,20 @@ function RoomScreen({
     
             toast({ title: "تم إرسال الهدية!", description: `لقد أرسلت ${quantity}x ${gift.name} إلى ${recipient.name}.`, duration: 2000 });
             setIsGiftSheetOpen(false);
+
+            // Announce the gift in chat
+            if (recipientProfile) {
+                const messageText = `لقد أرسل ${user.profile.name} هدية ${gift.name} إلى ${recipientProfile.name}`;
+                sendChatMessage({
+                    roomId: room.id,
+                    user: {
+                        name: "النظام",
+                        userId: "system",
+                        image: "https://placehold.co/64x64/ffd700/000000.png?text=🎁",
+                    },
+                    text: messageText,
+                });
+            }
 
         } catch (error) {
             console.error("Error sending gift:", error);
@@ -783,6 +797,7 @@ function RoomScreen({
                                        )}
                                     </div>
                                     <div className={cn("p-2 rounded-lg rounded-tl-none",
+                                        msg.user.userId === 'system' ? "bg-yellow-400/20 border border-yellow-500" :
                                         vipLevel >= 9
                                             ? "bg-gradient-to-br from-yellow-400/30 via-amber-300/30 to-orange-500/30 border border-amber-400"
                                         : vipLevel >= 8
