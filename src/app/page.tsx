@@ -368,6 +368,7 @@ function RoomScreen({
     const [hasMicPermission, setHasMicPermission] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
+    const { appStatus } = useAppStatus();
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
@@ -652,6 +653,7 @@ function RoomScreen({
                                     index={index}
                                     isOwner={isOwner}
                                     currentUser={user.profile}
+                                    micFrameImageUrl={appStatus?.micFrameImageUrl ?? null}
                                     onAscend={() => handleMicAction('ascend', index)}
                                     onDescend={() => handleMicAction('descend', index)}
                                     onToggleLock={() => handleMicAction('toggle_lock', index)}
@@ -1415,6 +1417,50 @@ function AdminProfileButtonsManager() {
     );
 }
 
+function AdminMicFrameManager() {
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { appStatus } = useAppStatus();
+
+    const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            try {
+                const imageUrl = await appStatusServices.setMicFrameImage(file);
+                toast({ title: "تم تحديث إطار المايك بنجاح!", description: "قد تحتاج إلى إعادة تحميل الغرفة لرؤية التغييرات.", duration: 2000 });
+            } catch (error) {
+                console.error("Failed to update mic frame image:", error);
+                toast({ variant: "destructive", title: "فشل تحديث الصورة", duration: 2000 });
+            }
+        }
+    };
+
+    return (
+        <div className="space-y-2">
+            <h4 className="font-semibold">إدارة إطار المايك</h4>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                accept="image/png, image/webp"
+                className="hidden"
+            />
+            <div className="flex items-center gap-4">
+                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    تغيير إطار المايك
+                </Button>
+                {appStatus?.micFrameImageUrl && (
+                    <div className="relative w-20 h-20">
+                        <img src={appStatus.micFrameImageUrl} alt="Mic Frame Preview" className="w-full h-full object-contain" />
+                    </div>
+                )}
+            </div>
+             <p className="text-xs text-muted-foreground">يفضل استخدام صورة PNG بخلفية شفافة.</p>
+        </div>
+    )
+}
+
 function AdminPanel() {
     const { toast } = useToast();
     const [targetUserId, setTargetUserId] = useState("");
@@ -1659,6 +1705,8 @@ function AdminPanel() {
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
                 <AdminProfileButtonsManager />
+                <hr className="border-primary/20"/>
+                <AdminMicFrameManager />
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>

@@ -137,6 +137,7 @@ export interface AppStatusData {
         store?: string;
         medal?: string;
     };
+    micFrameImageUrl?: string;
     updatedAt: Timestamp | Date;
 }
 
@@ -1019,6 +1020,21 @@ export const appStatusServices = {
             }, { merge: true });
         } catch (error) {
             console.error(`Error setting ${buttonKey} button image:`, error);
+            throw error;
+        }
+    },
+
+    async setMicFrameImage(imageFile: File): Promise<string> {
+        const imageUrl = await uploadImageAndGetUrl(imageFile, 'app_assets/mic_frame.png');
+        try {
+            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+            await setDoc(statusRef, {
+                micFrameImageUrl: imageUrl,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+            return imageUrl;
+        } catch (error) {
+            console.error('Error setting mic frame image:', error);
             throw error;
         }
     },
