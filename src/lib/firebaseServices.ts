@@ -996,6 +996,17 @@ export const gameMetaServices = {
 
 // App Status Services
 export const appStatusServices = {
+    async initializeAppStatus() {
+        const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+        const docSnap = await getDoc(statusRef);
+        if (!docSnap.exists()) {
+            await setDoc(statusRef, {
+                isMaintenanceMode: false,
+                micFrameImageUrl: "https://firebasestorage.googleapis.com/v0/b/fruity-fortune-x5pb6.appspot.com/o/app_assets%2Fmic_frame.png?alt=media&token=e15d8620-834c-473d-8255-467770856c54",
+                updatedAt: serverTimestamp()
+            });
+        }
+    },
     async setMaintenanceMode(status: boolean): Promise<void> {
         try {
             const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
@@ -1055,11 +1066,11 @@ export const appStatusServices = {
                 callback(data);
             } else {
                 // If the document doesn't exist, assume defaults
-                callback({ isMaintenanceMode: false, updatedAt: new Date() });
+                callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://firebasestorage.googleapis.com/v0/b/fruity-fortune-x5pb6.appspot.com/o/app_assets%2Fmic_frame.png?alt=media&token=e15d8620-834c-473d-8255-467770856c54" });
             }
         }, (error) => {
             console.error('Error listening to app status changes:', error);
-            callback({ isMaintenanceMode: false, updatedAt: new Date() }, error); // Default on error
+            callback({ isMaintenanceMode: false, updatedAt: new Date(), micFrameImageUrl: "https://firebasestorage.googleapis.com/v0/b/fruity-fortune-x5pb6.appspot.com/o/app_assets%2Fmic_frame.png?alt=media&token=e15d8620-834c-473d-8255-467770856c54" }, error); // Default on error
         });
     }
 };
@@ -1145,4 +1156,5 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 

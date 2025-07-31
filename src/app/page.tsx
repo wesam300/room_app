@@ -2376,6 +2376,7 @@ export default function HomePage() {
     giftServices.initializeGifts();
     gameMetaServices.initializeGames();
     invitationCodeServices.initializeCodes(INITIAL_INVITATION_CODES);
+    appStatusServices.initializeAppStatus();
   }, []);
 
   useEffect(() => {
