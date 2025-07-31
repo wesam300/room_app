@@ -50,6 +50,7 @@ export interface UserData {
   lastClaimTimestamp: number | null;
   level: number;
   totalSupportGiven: number;
+  totalCharisma?: number;
   vipLevel?: number;
   vipExpiry?: Timestamp | null;
   isBanned?: boolean;
@@ -215,6 +216,7 @@ export const userServices = {
            },
            level: userData.level || 0,
            totalSupportGiven: userData.totalSupportGiven || 0,
+           totalCharisma: userData.totalCharisma || 0,
            isOfficial: userData.isOfficial || false,
            vipLevel: userData.vipLevel || 0,
            createdAt: serverTimestamp(),
@@ -241,6 +243,7 @@ export const userServices = {
         // Ensure default values for leveling system if they don't exist
         data.level = data.level ?? 0;
         data.totalSupportGiven = data.totalSupportGiven ?? 0;
+        data.totalCharisma = data.totalCharisma ?? 0;
         data.isOfficial = data.isOfficial ?? false;
         data.vipLevel = data.vipLevel ?? 0;
         return data;
@@ -343,18 +346,29 @@ export const userServices = {
 
     await runTransaction(db, async (transaction) => {
         const senderRef = doc(db, COLLECTIONS.USERS, senderId);
-        const senderDoc = await transaction.get(senderRef);
+        const recipientRef = doc(db, COLLECTIONS.USERS, recipientId);
 
+        const [senderDoc, recipientDoc] = await Promise.all([
+            transaction.get(senderRef),
+            transaction.get(recipientRef)
+        ]);
+        
         if (!senderDoc.exists() || senderDoc.data().balance < totalCost) {
             throw new Error("Insufficient balance.");
+        }
+        if (!recipientDoc.exists()) {
+            throw new Error("Recipient not found.");
         }
 
         // 1. Deduct balance from sender
         transaction.update(senderRef, { balance: increment(-totalCost) });
 
-        // 2. Add silver balance to recipient
-        const recipientRef = doc(db, COLLECTIONS.USERS, recipientId);
-        transaction.update(recipientRef, { silverBalance: increment(totalCost * 0.20) });
+        // 2. Increment recipient's total charisma and silver balance
+        transaction.update(recipientRef, { 
+            totalCharisma: increment(totalCost),
+            silverBalance: increment(totalCost * 0.20),
+            updatedAt: serverTimestamp()
+        });
 
         // 3. Update room supporter data for the sender
         const supporterRef = doc(db, COLLECTIONS.ROOM_SUPPORTERS, `${roomId}_${senderId}`);
@@ -502,6 +516,7 @@ export const userServices = {
             // Ensure default values
             data.level = data.level ?? 0;
             data.totalSupportGiven = data.totalSupportGiven ?? 0;
+            data.totalCharisma = data.totalCharisma ?? 0;
             data.isOfficial = data.isOfficial ?? false;
             data.vipLevel = data.vipLevel ?? 0;
             callback(data);
@@ -534,6 +549,7 @@ export const userServices = {
           if (user) {
             user.level = user.level ?? 0;
             user.totalSupportGiven = user.totalSupportGiven ?? 0;
+            user.totalCharisma = user.totalCharisma ?? 0;
             user.isOfficial = user.isOfficial ?? false;
             user.vipLevel = user.vipLevel ?? 0;
           }
@@ -869,6 +885,18 @@ export const supporterServices = {
     }
   },
 
+  async getGlobalTopCharisma(limitCount: number): Promise<UserData[]> {
+    try {
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const q = query(usersRef, orderBy('totalCharisma', 'desc'), limit(limitCount));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => doc.data() as UserData);
+    } catch (error) {
+        console.error('Error getting global top charisma:', error);
+        throw error;
+    }
+  },
+
   async resetAllSupporters(): Promise<void> {
     try {
         const usersRef = collection(db, COLLECTIONS.USERS);
@@ -879,6 +907,7 @@ export const supporterServices = {
             const userRef = doc.ref;
             batch.update(userRef, {
                 totalSupportGiven: 0,
+                totalCharisma: 0,
                 level: 0,
                 updatedAt: serverTimestamp()
             });
@@ -1166,10 +1195,3 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
-
-
-
-
-
-
-

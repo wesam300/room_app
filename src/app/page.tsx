@@ -77,18 +77,6 @@ const VIP_LEVELS_DATA: VipLevel[] = [
 const GIFT_QUANTITIES = [1, 7, 77, 777, 7777];
 
 
-function formatNumber(num: number): string {
-    if (num >= 1000000) {
-        const millions = num / 1000000;
-        return millions % 1 === 0 ? `${millions}m` : `${millions.toFixed(1)}m`;
-    }
-    if (num >= 1000) {
-        const thousands = num / 1000;
-        return thousands % 1 === 0 ? `${thousands.toFixed(1)}k` : `${thousands.toFixed(1)}k`;
-    }
-    return num.toLocaleString('en-US');
-}
-
 const VipBadge = ({ level }: { level: number }) => {
     if (level === 0) return null;
     const design = VIP_LEVELS_DATA.find(d => d.level === level);
@@ -100,6 +88,19 @@ const VipBadge = ({ level }: { level: number }) => {
         </div>
     );
 };
+
+
+function formatNumber(num: number): string {
+    if (num >= 1000000) {
+        const millions = num / 1000000;
+        return millions % 1 === 0 ? `${millions}m` : `${millions.toFixed(1)}m`;
+    }
+    if (num >= 1000) {
+        const thousands = num / 1000;
+        return thousands % 1 === 0 ? `${thousands.toFixed(1)}k` : `${thousands.toFixed(1)}k`;
+    }
+    return num.toLocaleString('en-US');
+}
 
 // New Gift Sheet Component
 function GiftSheet({
@@ -2071,28 +2072,28 @@ function EventsScreen({ onClaimReward, canClaim, timeUntilNextClaim }: { onClaim
 }
 
 function TopSupportersScreen({ onBack }: { onBack: () => void }) {
-    const [topSupporters, setTopSupporters] = useState<UserData[]>([]);
+    const [leaderboardData, setLeaderboardData] = useState<UserData[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'wealth' | 'charisma'>('wealth');
 
     useEffect(() => {
-        const fetchSupporters = async () => {
+        const fetchLeaderboard = async () => {
             setLoading(true);
             try {
-                const supporters = await supporterServices.getGlobalTopSupporters(30);
-                setTopSupporters(supporters);
+                let data;
+                if (activeTab === 'wealth') {
+                    data = await supporterServices.getGlobalTopSupporters(30);
+                } else {
+                    data = await supporterServices.getGlobalTopCharisma(30);
+                }
+                setLeaderboardData(data);
             } catch (error) {
-                console.error("Failed to fetch top supporters:", error);
+                console.error(`Failed to fetch top ${activeTab}:`, error);
             } finally {
                 setLoading(false);
             }
         };
-
-        if (activeTab === 'wealth') {
-            fetchSupporters();
-        } else {
-            setTopSupporters([]); // Clear for other tabs for now
-        }
+        fetchLeaderboard();
     }, [activeTab]);
 
     const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
@@ -2102,6 +2103,7 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
             3: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-amber-600" />, border: "border-amber-600" }
         };
         const style = styles[rank as keyof typeof styles];
+        const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
 
         return (
             <div className={cn("flex flex-col items-center gap-1", style.container)}>
@@ -2115,14 +2117,14 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                 <p className="font-bold text-white text-sm truncate max-w-24">{user.profile.name}</p>
                 <div className="flex items-center gap-1.5">
                     <Trophy className="w-4 h-4 text-yellow-400" />
-                    <p className="font-bold text-yellow-300 text-xs">{formatNumber(user.totalSupportGiven)}</p>
+                    <p className="font-bold text-yellow-300 text-xs">{formatNumber(displayValue)}</p>
                 </div>
             </div>
         );
     };
 
-    const topThree = topSupporters.slice(0, 3);
-    const rest = topSupporters.slice(3);
+    const topThree = leaderboardData.slice(0, 3);
+    const rest = leaderboardData.slice(3);
 
     return (
         <div className="flex flex-col h-full bg-gradient-to-b from-[#4a2e05] via-[#2d1c03] to-background text-white">
@@ -2132,8 +2134,8 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                         <ChevronLeft />
                     </Button>
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
                         <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
+                        <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
                     </div>
                     <div></div>
                 </div>
@@ -2159,7 +2161,9 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                         </div>
                         
                         <div className="space-y-3">
-                            {rest.map((user, index) => (
+                            {rest.map((user, index) => {
+                                const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
+                                return (
                                 <div key={user.profile.userId} className="flex items-center bg-black/20 p-2 rounded-lg">
                                     <span className="w-8 text-center font-bold text-lg text-muted-foreground">{index + 4}</span>
                                     <Avatar className="w-12 h-12 ml-3">
@@ -2178,10 +2182,10 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                                     </div>
                                     <div className="flex items-center gap-1.5">
                                         <Trophy className="w-4 h-4 text-yellow-400" />
-                                        <span className="font-bold text-yellow-300 text-sm">{formatNumber(user.totalSupportGiven)}</span>
+                                        <span className="font-bold text-yellow-300 text-sm">{formatNumber(displayValue)}</span>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                         </div>
                     </>
                 )}
@@ -2590,6 +2594,7 @@ export default function HomePage() {
         lastClaimTimestamp: null,
         level: 0,
         totalSupportGiven: 0,
+        totalCharisma: 0,
         vipLevel: 0,
         isBanned: false,
         isOfficial: false,
