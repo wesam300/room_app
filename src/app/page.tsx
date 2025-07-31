@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices, AppStatusData } from "@/lib/firebaseServices";
 import { INITIAL_INVITATION_CODES } from '@/lib/invitationCodes';
 
 
@@ -347,7 +347,8 @@ function RoomScreen({
     room, 
     user, 
     onExit, 
-    onUserDataUpdate
+    onUserDataUpdate,
+    appStatus
 }) {
     const { toast } = useToast();
     const [activeGame, setActiveGame] = useState<string | null>(null);
@@ -368,7 +369,6 @@ function RoomScreen({
     const [hasMicPermission, setHasMicPermission] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
-    const { appStatus } = useAppStatus();
     const totalRoomSupport = roomSupporters.reduce((acc, supporter) => acc + supporter.totalGiftValue, 0);
 
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
@@ -2058,10 +2058,12 @@ function MainApp({
     user, 
     onUserDataUpdate,
     onLogout,
+    appStatus,
 }: { 
     user: UserData, 
     onUserDataUpdate: (updater: (data: UserData) => UserData) => void
     onLogout: () => void,
+    appStatus: AppStatusData | null,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level' | 'vipLevels'>('profile');
@@ -2233,6 +2235,7 @@ function MainApp({
                     user={user} 
                     onExit={handleExitRoom} 
                     onUserDataUpdate={onUserDataUpdate}
+                    appStatus={appStatus}
                 />
             );
         }
@@ -2630,5 +2633,6 @@ export default function HomePage() {
             user={userData}
             onUserDataUpdate={handleSetUserData}
             onLogout={handleLogout}
+            appStatus={appStatus}
         />;
 }
