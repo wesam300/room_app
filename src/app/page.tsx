@@ -89,6 +89,18 @@ function formatNumber(num: number): string {
     return num.toLocaleString('en-US');
 }
 
+const VipBadge = ({ level }: { level: number }) => {
+    if (level === 0) return null;
+    const design = VIP_LEVELS_DATA.find(d => d.level === level);
+    if (!design) return null;
+
+    return (
+        <div className={cn("px-1.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-br", design.gradient, design.textColor)}>
+            <span>VIP{level}</span>
+        </div>
+    );
+};
+
 // New Gift Sheet Component
 function GiftSheet({
     isOpen,
@@ -536,18 +548,6 @@ function RoomScreen({
         if (gameId === 'fruity_fortune' || gameId === 'crash') {
             setActiveGame(gameId);
         }
-    };
-
-    const VipBadge = ({ level }: { level: number }) => {
-        if (level === 0) return null;
-        const design = VIP_LEVELS_DATA.find(d => d.level === level);
-        if (!design) return null;
-
-        return (
-            <div className={cn("px-1.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-br", design.gradient, design.textColor)}>
-                <span>VIP{level}</span>
-            </div>
-        );
     };
 
     const RoomHeader = () => {
@@ -1956,6 +1956,7 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEn
     };
     
     const filteredRooms = rooms.filter(room =>
+        room.name.toLowerCase().includes(searchQuery.toLowerCase().trim()) || 
         room.id.toLowerCase().includes(searchQuery.toLowerCase().trim())
     );
 
@@ -1978,7 +1979,7 @@ function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEn
                 <div className="relative flex-1">
                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"/>
                      <Input 
-                        placeholder="ابحث عن غرفة بالـ ID..."
+                        placeholder="ابحث بالاسم أو الـ ID..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="bg-black/30 border-primary/20 pl-10 text-right"
