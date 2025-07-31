@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -12,7 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -1451,17 +1450,25 @@ function AdminMicFrameManager({ appStatus }: { appStatus: AppStatusData | null }
                 className="hidden"
             />
             <div className="flex items-center gap-4">
-                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    تغيير إطار المايك
-                </Button>
-                {appStatus?.micFrameImageUrl && (
-                    <div className="relative w-20 h-20">
-                        <img src={appStatus.micFrameImageUrl} alt="Mic Frame Preview" className="w-full h-full object-contain" />
+                 <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="relative group w-24 h-24 bg-black/30 rounded-lg flex items-center justify-center border-2 border-dashed border-primary/30 cursor-pointer hover:border-primary transition-colors"
+                >
+                    {appStatus?.micFrameImageUrl ? (
+                        <img src={appStatus.micFrameImageUrl} alt="Mic Frame Preview" className="w-full h-full object-contain p-2" />
+                    ) : (
+                        <ImageIcon className="w-10 h-10 text-muted-foreground" />
+                    )}
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                        <Edit className="w-8 h-8 text-white"/>
                     </div>
-                )}
+                </button>
+                <p className="text-xs text-muted-foreground flex-1">
+                    انقر على المربع لتغيير الإطار.
+                    <br />
+                    يفضل استخدام صورة PNG بخلفية شفافة.
+                </p>
             </div>
-             <p className="text-xs text-muted-foreground">يفضل استخدام صورة PNG بخلفية شفافة.</p>
         </div>
     )
 }
@@ -2643,5 +2650,3 @@ export default function HomePage() {
             appStatus={appStatus}
         />;
 }
-
-
