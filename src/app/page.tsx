@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -12,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -73,6 +74,7 @@ const VIP_LEVELS_DATA: VipLevel[] = [
     { level: 8, name: 'VIP 8', price: 1000000000, features: ['شارة VIP 8', 'مكافآت يومية', 'دعم فني فوري', 'فقاعة دردشة فريدة', 'ID رباعي مميز مع ID سداسي كهدية', 'زيادة فائقة في نسبة الربح', 'اسم لاعب ملون على المايك'], gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
     { level: 9, name: 'VIP 9', price: 1500000000, features: ['شارة VIP 9 النهائية', 'مكافأة يومية 50 مليون', 'دعم فني فوري وشخصي', 'فقاعة دردشة ذهبية فريدة', 'ID ثلاثي مميز مع ID خماسي كهدية', 'أعلى نسبة ربح في الألعاب', 'اسم لاعب ذهبي على المايك', 'حصانة من الطرد (من المايك أو الغرفة)'], gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
 ];
+const GIFT_QUANTITIES = [1, 7, 77, 777, 7777];
 
 
 function formatNumber(num: number): string {
@@ -107,6 +109,7 @@ function GiftSheet({
     const [selectedRecipient, setSelectedRecipient] = useState<UserProfile | null>(initialRecipient);
     const [selectedGift, setSelectedGift] = useState<GiftItem | null>(null);
     const [quantity, setQuantity] = useState(1);
+    const [isQuantityPopoverOpen, setIsQuantityPopoverOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -133,6 +136,11 @@ function GiftSheet({
             onSendGift(selectedGift, selectedRecipient, quantity);
         }
     };
+
+    const handleSelectQuantity = (q: number) => {
+        setQuantity(q);
+        setIsQuantityPopoverOpen(false);
+    }
     
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -193,13 +201,38 @@ function GiftSheet({
                         <Trophy className="w-6 h-6 text-yellow-400" />
                         <span className="font-bold text-lg">{formatNumber(balance)}</span>
                     </div>
-                    <Button
-                        size="lg"
-                        onClick={handleSendClick}
-                        disabled={!selectedGift || !selectedRecipient}
-                    >
-                        إرسال
-                    </Button>
+                    <div className="flex gap-2">
+                        <Popover open={isQuantityPopoverOpen} onOpenChange={setIsQuantityPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className="font-bold">
+                                    x{quantity}
+                                    <ChevronUp className="ml-1 h-4 w-4 shrink-0 transition-transform duration-200" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-32 p-1" dir="rtl">
+                                <div className="grid gap-1">
+                                    {GIFT_QUANTITIES.map((q) => (
+                                        <Button
+                                            key={q}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="w-full justify-start"
+                                            onClick={() => handleSelectQuantity(q)}
+                                        >
+                                            x{q}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                        <Button
+                            size="lg"
+                            onClick={handleSendClick}
+                            disabled={!selectedGift || !selectedRecipient}
+                        >
+                            إرسال
+                        </Button>
+                    </div>
                 </div>
             </SheetContent>
         </Sheet>
@@ -648,7 +681,7 @@ function RoomScreen({
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
-                        {(room.micSlots || []).map((slot, index) => {
+                        {(room.micSlots || []).slice(0, 15).map((slot, index) => {
                             const userData = slot.user ? roomUsersData.get(slot.user.userId) : null;
                             return (
                                 <RoomMic 
