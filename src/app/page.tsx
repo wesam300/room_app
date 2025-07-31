@@ -2097,7 +2097,7 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
 
     const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
         const styles = {
-            1: { container: "row-start-1 col-start-2 z-10 scale-110", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
+            1: { container: "row-start-1 col-start-2 z-10 scale-110 pt-4", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
             2: { container: "row-start-2 col-start-3 mt-8", crown: <Crown className="w-6 h-6 text-gray-300" />, border: "border-gray-300" },
             3: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-amber-600" />, border: "border-amber-600" }
         };
@@ -2132,8 +2132,8 @@ function TopSupportersScreen({ onBack }: { onBack: () => void }) {
                         <ChevronLeft />
                     </Button>
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
                         <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
+                        <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
                     </div>
                     <div></div>
                 </div>
@@ -2511,6 +2511,21 @@ export default function HomePage() {
     gameMetaServices.initializeGames();
     invitationCodeServices.initializeCodes(INITIAL_INVITATION_CODES);
     appStatusServices.initializeAppStatus();
+
+    // One-time reset for supporters
+    const hasReset = localStorage.getItem('supporterReset_v1');
+    if (!hasReset) {
+      console.log("Performing one-time supporter data reset...");
+      supporterServices.resetAllSupporters()
+        .then(() => {
+          console.log("Supporter data reset successfully.");
+          localStorage.setItem('supporterReset_v1', 'true');
+        })
+        .catch(err => {
+          console.error("Failed to reset supporter data:", err);
+        });
+    }
+
   }, []);
 
   useEffect(() => {

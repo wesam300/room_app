@@ -869,6 +869,29 @@ export const supporterServices = {
     }
   },
 
+  async resetAllSupporters(): Promise<void> {
+    try {
+        const usersRef = collection(db, COLLECTIONS.USERS);
+        const querySnapshot = await getDocs(usersRef);
+        const batch = writeBatch(db);
+        
+        querySnapshot.forEach(doc => {
+            const userRef = doc.ref;
+            batch.update(userRef, {
+                totalSupportGiven: 0,
+                level: 0,
+                updatedAt: serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+        console.log(`Reset supporter data for ${querySnapshot.size} users.`);
+    } catch (error) {
+        console.error('Error resetting all supporters:', error);
+        throw error;
+    }
+  },
+
   onRoomSupportersChange(roomId: string, callback: (supporters: RoomSupporterData[], error?: Error) => void) {
     const supportersRef = collection(db, COLLECTIONS.ROOM_SUPPORTERS);
     const q = query(
@@ -1143,6 +1166,7 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 
 
 
