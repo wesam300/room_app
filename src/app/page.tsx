@@ -2401,9 +2401,9 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
                         <ChevronLeft />
                     </Button>
                     <div className="flex items-center gap-4">
-                         <button onClick={() => setActiveTab('rooms')} className={cn("text-lg font-bold", activeTab !== 'rooms' && 'text-white/50')}><Home className="w-5 h-5 inline-block ml-1" />الغرف</button>
+                         <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
                          <button onClick={() => setActiveTab('charisma')} className={cn("text-lg font-bold", activeTab !== 'charisma' && 'text-white/50')}>الجاذبية</button>
-                        <button onClick={() => setActiveTab('wealth')} className={cn("text-lg font-bold", activeTab !== 'wealth' && 'text-white/50')}>الثروة</button>
+                         <button onClick={() => setActiveTab('rooms')} className={cn("text-lg font-bold", activeTab !== 'rooms' && 'text-white/50')}><Home className="w-5 h-5 inline-block ml-1" />الغرف</button>
                     </div>
                     <div></div>
                 </div>
