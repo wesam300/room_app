@@ -77,18 +77,31 @@ const VIP_LEVELS_DATA: VipLevel[] = [
 const GIFT_QUANTITIES = [1, 7, 77, 777, 7777];
 
 
+// --- Shared Helper Components ---
+
 const VipBadge = ({ level }: { level: number }) => {
-    if (level === 0) return null;
-    const design = VIP_LEVELS_DATA.find(d => d.level === level);
-    if (!design) return null;
+    const vipLevelDesigns = [
+        { name: 'VIP 1', gradient: 'from-gray-500 to-gray-700', textColor: 'text-white' },
+        { name: 'VIP 2', gradient: 'from-cyan-500 to-blue-500', textColor: 'text-white' },
+        { name: 'VIP 3', gradient: 'from-emerald-500 to-green-600', textColor: 'text-white' },
+        { name: 'VIP 4', gradient: 'from-amber-500 to-yellow-600', textColor: 'text-black' },
+        { name: 'VIP 5', gradient: 'from-red-500 to-rose-600', textColor: 'text-white' },
+        { name: 'VIP 6', gradient: 'from-purple-500 to-violet-600', textColor: 'text-white' },
+        { name: 'VIP 7', gradient: 'from-pink-500 to-fuchsia-600', textColor: 'text-white' },
+        { name: 'VIP 8', gradient: 'from-slate-800 via-zinc-600 to-slate-800', textColor: 'text-yellow-300' },
+        { name: 'VIP 9', gradient: 'from-yellow-400 via-amber-300 to-orange-500', textColor: 'text-black' },
+    ];
+
+    if (level < 1 || level > vipLevelDesigns.length) return null;
+    const design = vipLevelDesigns[level - 1];
 
     return (
-        <div className={cn("px-1.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-br", design.gradient, design.textColor)}>
-            <span>VIP{level}</span>
+        <div className={cn("px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 bg-gradient-to-br", design.gradient, design.textColor)}>
+             <span>VIP</span>
+             <span>{level}</span>
         </div>
     );
 };
-
 
 function formatNumber(num: number): string {
     if (num >= 1000000) {
@@ -100,6 +113,119 @@ function formatNumber(num: number): string {
         return thousands % 1 === 0 ? `${thousands.toFixed(1)}k` : `${thousands.toFixed(1)}k`;
     }
     return num.toLocaleString('en-US');
+}
+
+// User Profile Popover Content - Reusable for Mics and Chat
+function UserProfilePopoverContent({
+    targetUser,
+    targetUserData,
+    currentUser,
+    isOwner,
+    micSlotIndex, // Index on mic, if applicable
+    isMuted,
+    onDescend,
+    onAdminMute,
+    onToggleMute,
+    onOpenGiftDialog,
+    onClose, // Function to close the popover
+}: {
+    targetUser: UserProfile;
+    targetUserData: UserData | null;
+    currentUser: UserProfile;
+    isOwner: boolean;
+    micSlotIndex: number | null;
+    isMuted: boolean;
+    onDescend: (index: number) => void;
+    onAdminMute: (index: number) => void;
+    onToggleMute: (index: number) => void;
+    onOpenGiftDialog: (recipient: UserProfile) => void;
+    onClose: () => void;
+}) {
+    const { toast } = useToast();
+    if (!targetUserData) return <div className="p-4">...تحميل</div>;
+
+    const levelInfo = calculateLevel(targetUserData.totalSupportGiven);
+    const isCurrentUser = targetUser.userId === currentUser.userId;
+    const isTargetOnMic = micSlotIndex !== null;
+
+    const handleCopyUserId = () => {
+        navigator.clipboard.writeText(targetUser.displayId || targetUser.userId);
+        toast({ title: "تم نسخ ID المستخدم", duration: 2000 });
+        onClose();
+    };
+
+    const handleInteraction = (action: () => void) => {
+        action();
+        onClose();
+    };
+
+    const isTargetVip9 = targetUserData?.vipLevel === 9;
+    const canKick = isOwner && !isTargetVip9;
+
+    return (
+        <div className="flex flex-col gap-2 p-2 w-56">
+            <div className="flex flex-col items-center gap-3 text-center">
+                <Avatar className="w-20 h-20 border-2 border-primary">
+                    <AvatarImage src={targetUser.image} alt={targetUser.name} />
+                    <AvatarFallback>{targetUser.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex items-center gap-2">
+                    <p className="font-bold text-lg">{targetUser.name}</p>
+                    {targetUserData.isOfficial && (
+                        <div className="flex items-center gap-1 text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded-full text-xs font-bold">
+                            <Medal className="w-4 h-4" />
+                            <span>رسمي</span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                    {targetUserData.vipLevel && targetUserData.vipLevel > 0 && <VipBadge level={targetUserData.vipLevel} />}
+                    {levelInfo && (
+                        <div className="flex items-center justify-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                            <Star className="w-4 h-4 text-yellow-400" />
+                            <span>المستوى {levelInfo.level}</span>
+                        </div>
+                    )}
+                </div>
+
+                <button onClick={handleCopyUserId} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+                    <span>ID: {targetUser.displayId || targetUser.userId}</span>
+                    <Copy className="w-3 h-3" />
+                </button>
+                
+                <div className="w-full border-t border-border my-1"></div>
+
+                {isCurrentUser && isTargetOnMic && micSlotIndex !== null ? (
+                    // Options for MYSELF ON MIC
+                    <div className="w-full grid gap-2">
+                        <Button variant="outline" onClick={() => handleInteraction(() => onToggleMute(micSlotIndex))}>
+                            {isMuted ? <Mic className="ml-2"/> : <MicOff className="ml-2"/>}
+                            {isMuted ? "إلغاء الكتم" : "كتم المايك"}
+                        </Button>
+                        <Button variant="destructive" onClick={() => handleInteraction(() => onDescend(micSlotIndex))}>النزول من المايك</Button>
+                    </div>
+                ) : (
+                    // Options for ANOTHER USER (on mic or in chat)
+                    <div className="w-full grid gap-2">
+                        <Button onClick={() => handleInteraction(() => onOpenGiftDialog(targetUser))}>
+                            <Gift className="w-4 h-4 ml-2" />
+                            إرسال هدية
+                        </Button>
+                        {isOwner && isTargetOnMic && micSlotIndex !== null && (
+                            <div className="grid grid-cols-2 gap-2 w-full pt-2 border-t border-border">
+                                <Button variant="outline" size="sm" onClick={() => handleInteraction(() => onAdminMute(micSlotIndex))}>
+                                    {isMuted ? <Mic className="w-4 h-4"/> : <MicOff className="w-4 h-4"/>}
+                                </Button>
+                                <Button variant="destructive" size="sm" onClick={() => handleInteraction(() => onDescend(micSlotIndex))} disabled={!canKick}>
+                                    طرد
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }
 
 // New Gift Sheet Component
@@ -429,10 +555,15 @@ function RoomScreen({
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
     
     // --- Data fetching for all active users (on mics and in chat) ---
-    const userIdsOnMics = usersOnMics.map(u => u.userId);
-    const userIdsInChat = chatMessages.map(msg => msg.user.userId);
-    const allUserIdsInRoom = [...new Set([...userIdsOnMics, userIdsInChat.filter(id => id), user.profile.userId].flat())];
-    const { users: roomUsersData } = useRoomUsers(allUserIdsInRoom);
+    const userIdsInRoom = useMemo(() => {
+        const userIdsOnMics = usersOnMics.map(u => u.userId);
+        const userIdsInChat = chatMessages.map(msg => msg.user.userId);
+        return [...new Set([user.profile.userId, ...userIdsOnMics, ...userIdsInChat.filter(id => id && id !== 'system')])];
+    }, [usersOnMics, chatMessages, user.profile.userId]);
+    const { users: roomUsersData } = useRoomUsers(userIdsInRoom);
+
+    // State for chat popovers
+    const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
     
     // --- Voice Chat Hook ---
     useVoiceChat(
@@ -709,21 +840,20 @@ function RoomScreen({
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
                         {(room.micSlots || []).map((slot, index) => {
-                            const userData = slot.user ? roomUsersData.get(slot.user.userId) : null;
                             return (
                                 <RoomMic 
                                     key={index}
                                     room={room}
                                     slot={slot} 
-                                    userData={userData}
+                                    userData={slot.user ? roomUsersData.get(slot.user.userId) : null}
                                     index={index}
                                     isOwner={isOwner}
                                     currentUser={user.profile}
                                     onAscend={() => handleMicAction('ascend', index)}
-                                    onDescend={() => handleMicAction('descend', index)}
-                                    onToggleLock={() => handleMicAction('toggle_lock', index)}
-                                    onToggleMute={() => handleMicAction('toggle_mute', index)}
-                                    onAdminMute={() => handleMicAction('admin_mute', index)}
+                                    onDescend={(idx) => handleMicAction('descend', idx)}
+                                    onToggleLock={(idx) => handleMicAction('toggle_lock', idx)}
+                                    onToggleMute={(idx) => handleMicAction('toggle_mute', idx)}
+                                    onAdminMute={(idx) => handleMicAction('admin_mute', idx)}
                                     onOpenGiftDialog={handleOpenGiftSheet}
                                 />
                             );
@@ -764,14 +894,39 @@ function RoomScreen({
                     >
                         {chatMessages.map(msg => {
                           const chatUserData = msg.user ? roomUsersData.get(msg.user.userId) : null;
+                          if (!msg || !msg.user || !msg.user.name) return null;
+                          
                           const vipLevel = chatUserData?.vipLevel ?? 0;
                           
-                          return (msg && msg.user && msg.user.name) && (
+                          return (
                             <div key={msg.id} className="flex items-start gap-2.5">
-                                <Avatar className="w-8 h-8">
-                                    <AvatarImage src={msg.user.image} />
-                                    <AvatarFallback>{msg.user.name ? msg.user.name.charAt(0) : ""}</AvatarFallback>
-                                </Avatar>
+                                <Popover open={openPopoverId === msg.id} onOpenChange={(isOpen) => setOpenPopoverId(isOpen ? msg.id : null)}>
+                                    <PopoverTrigger asChild disabled={!chatUserData}>
+                                        <button disabled={!chatUserData}>
+                                            <Avatar className="w-8 h-8">
+                                                <AvatarImage src={msg.user.image} />
+                                                <AvatarFallback>{msg.user.name ? msg.user.name.charAt(0) : ""}</AvatarFallback>
+                                            </Avatar>
+                                        </button>
+                                    </PopoverTrigger>
+                                    {chatUserData && (
+                                        <PopoverContent className="w-auto p-0" dir="rtl">
+                                            <UserProfilePopoverContent
+                                                targetUser={msg.user}
+                                                targetUserData={chatUserData}
+                                                currentUser={user.profile}
+                                                isOwner={isOwner}
+                                                micSlotIndex={null} // Not on a mic
+                                                isMuted={false}
+                                                onDescend={() => {}} // Not applicable
+                                                onAdminMute={() => {}} // Not applicable
+                                                onToggleMute={() => {}} // Not applicable
+                                                onOpenGiftDialog={handleOpenGiftSheet}
+                                                onClose={() => setOpenPopoverId(null)}
+                                            />
+                                        </PopoverContent>
+                                    )}
+                                </Popover>
                                 <div className="flex flex-col items-start">
                                     <div className="flex items-center gap-2">
                                        <span className="text-sm text-muted-foreground">{msg.user.name}</span>
@@ -2127,7 +2282,7 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
 
     const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
         const styles = {
-            1: { container: "row-start-1 col-start-2 z-10 scale-110 pt-4", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
+            1: { container: "row-start-1 col-start-2 z-10 scale-110 pt-8", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
             2: { container: "row-start-2 col-start-3 mt-8", crown: <Crown className="w-6 h-6 text-gray-300" />, border: "border-gray-300" },
             3: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-amber-600" />, border: "border-amber-600" }
         };
@@ -2135,7 +2290,7 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
         const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
 
         return (
-            <div className={cn("flex flex-col items-center gap-1 pt-4", style.container)}>
+            <div className={cn("flex flex-col items-center gap-1", style.container)}>
                 <div className="relative">
                     <Avatar className={cn("w-20 h-20 border-4", style.border)}>
                         <AvatarImage src={user.profile.image} alt={user.profile.name} />
