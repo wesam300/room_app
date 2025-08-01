@@ -53,25 +53,44 @@ const getCrashPoint = (seed: number, difficulty: DifficultyLevel): number => {
       let x = Math.sin(seed + offset) * 10000;
       return x - Math.floor(x);
     };
+    
+    // Base crash point - higher for easier difficulties
+    let baseCrash: number;
+    let power: number;
+    
+    switch (difficulty) {
+        case 'very_easy':
+            baseCrash = 2.0; power = 0.5; break; // High chance for high multipliers
+        case 'easy':
+            baseCrash = 1.5; power = 1; break;
+        case 'medium':
+            baseCrash = 1.1; power = 2; break; // More crashes at lower values
+        case 'medium_hard':
+            baseCrash = 1.05; power = 2.5; break;
+        case 'hard':
+            baseCrash = 1.0; power = 3; break;
+        case 'very_hard':
+            baseCrash = 1.0; power = 4; break; // Most crashes are very low
+        case 'impossible':
+            return 1.00; // Always crash immediately
+        default:
+            baseCrash = 1.1; power = 2; break;
+    }
 
-    // Rule: Crash at 1.00x frequently (e.g., ~20% of the time)
-    // We can use the roundId (seed) to make this deterministic.
-    if (seed % 5 === 0) { // Crashes on every 5th round ID
+    // A low chance to have an instant crash, except on easy modes
+    if (difficulty !== 'very_easy' && difficulty !== 'easy' && seed % 10 < 2) {
         return 1.00;
     }
     
-    // Rule: Rarely go above 3.00x
-    // Let's make it happen on a specific interval, e.g., every 13 rounds
-    if (seed % 13 === 0) {
-        // High-payout round: between 3x and 15x
-        return 3 + pseudoRandom(1) * 12;
+    // A rare chance for a very high multiplier, influenced by difficulty
+    if (seed % 20 === 0) {
+       const veryHighMultiplier = difficulty === 'very_easy' ? 25 : (difficulty === 'easy' ? 15 : 8);
+       return 3 + pseudoRandom(1) * veryHighMultiplier;
     }
-
-    // Rule: Normal rounds are capped around 3.00x
-    // This will generate a value between 1.01 and 3.00, with more results towards the lower end.
-    const r = pseudoRandom(2);
-    // Using Math.pow(r, 3) makes lower values more frequent
-    const crashPoint = 1.01 + Math.pow(r, 3) * 2; 
+    
+    // Using Math.pow makes lower values more frequent as power increases
+    const randomComponent = Math.pow(pseudoRandom(2), power) * 2;
+    const crashPoint = baseCrash + randomComponent;
     
     return parseFloat(crashPoint.toFixed(2));
 };
