@@ -42,6 +42,13 @@ export interface UserProfile {
     displayId?: string;
 }
 
+export interface InvestmentData {
+    amount: number;
+    startTime: number; // Unix timestamp in ms
+    endTime: number; // Unix timestamp in ms
+    durationHours: number;
+}
+
 export interface UserData {
   profile: UserProfile;
   balance: number;
@@ -54,6 +61,7 @@ export interface UserData {
   vipExpiry?: Timestamp | null;
   isBanned?: boolean;
   isOfficial?: boolean;
+  investment: InvestmentData | null;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -223,6 +231,7 @@ export const userServices = {
            totalCharisma: userData.totalCharisma || 0,
            isOfficial: userData.isOfficial || false,
            vipLevel: userData.vipLevel || 0,
+           investment: userData.investment || null,
            createdAt: serverTimestamp(),
            updatedAt: serverTimestamp(),
          });
@@ -250,6 +259,7 @@ export const userServices = {
         data.totalCharisma = data.totalCharisma ?? 0;
         data.isOfficial = data.isOfficial ?? false;
         data.vipLevel = data.vipLevel ?? 0;
+        data.investment = data.investment ?? null;
         return data;
       }
       return null;
@@ -476,6 +486,7 @@ export const userServices = {
           isOfficial: false,
           level: 0,
           totalSupportGiven: 0,
+          investment: null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -507,6 +518,60 @@ export const userServices = {
     }
   },
 
+  async manageInvestment(action: 'start' | 'collect', userId: string, options?: { amount: number, hours: number }): Promise<{ collectedAmount?: number, profit?: number }> {
+    const investmentOptions = [
+        { hours: 1, profit: 2 }, { hours: 5, profit: 4 }, { hours: 10, profit: 7 },
+        { hours: 15, profit: 9 }, { hours: 20, profit: 10 }, { hours: 24, profit: 12 },
+    ];
+    const MAX_INVESTMENT = 100000000;
+
+    return runTransaction(db, async (transaction) => {
+        const userRef = doc(db, COLLECTIONS.USERS, userId);
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) throw new Error("User not found.");
+        const userData = userDoc.data() as UserData;
+
+        if (action === 'start') {
+            if (!options) throw new Error("Investment options are required to start.");
+            const { amount, hours } = options;
+            if (userData.investment) throw new Error("لديك استثمار نشط بالفعل.");
+            if (amount > userData.balance) throw new Error("رصيد غير كافٍ.");
+            if (amount > MAX_INVESTMENT) throw new Error(`الحد الأقصى للاستثمار هو ${formatNumber(MAX_INVESTMENT)}.`);
+
+            const startTime = Date.now();
+            const endTime = startTime + hours * 60 * 60 * 1000;
+            const newInvestment: InvestmentData = { amount, startTime, endTime, durationHours: hours };
+
+            transaction.update(userRef, {
+                balance: increment(-amount),
+                investment: newInvestment,
+                updatedAt: serverTimestamp(),
+            });
+            return {};
+        }
+
+        if (action === 'collect') {
+            const investment = userData.investment;
+            if (!investment) throw new Error("لا يوجد استثمار لجمعه.");
+            if (Date.now() < investment.endTime) throw new Error("لم ينته وقت الاستثمار بعد.");
+
+            const selectedOption = investmentOptions.find(opt => opt.hours === investment.durationHours);
+            const profitPercentage = selectedOption ? selectedOption.profit : 0;
+            const profit = Math.floor(investment.amount * (profitPercentage / 100));
+            const collectedAmount = investment.amount + profit;
+
+            transaction.update(userRef, {
+                balance: increment(collectedAmount),
+                investment: null,
+                updatedAt: serverTimestamp(),
+            });
+            return { collectedAmount, profit };
+        }
+        
+        throw new Error("Invalid investment action.");
+    });
+  },
+
   onUserChange(userId: string, callback: (userData: UserData | null) => void) {
     try {
       const userRef = doc(db, COLLECTIONS.USERS, userId);
@@ -519,6 +584,7 @@ export const userServices = {
             data.totalCharisma = data.totalCharisma ?? 0;
             data.isOfficial = data.isOfficial ?? false;
             data.vipLevel = data.vipLevel ?? 0;
+            data.investment = data.investment ?? null;
             callback(data);
         } else {
             callback(null);
@@ -552,6 +618,7 @@ export const userServices = {
             user.totalCharisma = user.totalCharisma ?? 0;
             user.isOfficial = user.isOfficial ?? false;
             user.vipLevel = user.vipLevel ?? 0;
+            user.investment = user.investment ?? null;
           }
           callback([user]); // Callback with each user update individually
         }, (error) => {
@@ -1290,6 +1357,7 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 
 
 

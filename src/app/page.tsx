@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video, UserMinus, UserCheck } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video, UserMinus, UserCheck, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices, AppStatusData } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices, AppStatusData, InvestmentData } from "@/lib/firebaseServices";
 import { INITIAL_INVITATION_CODES } from '@/lib/invitationCodes';
 import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 
 // --- Types ---
@@ -2238,6 +2240,144 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
     );
 }
 
+function InvestmentScreen({ onBack, user, onUserDataUpdate, onStartInvestment, onCollectInvestment }: { onBack: () => void, user: UserData, onUserDataUpdate: (updater: (prev: UserData) => UserData) => void, onStartInvestment: (amount: number, hours: number) => void, onCollectInvestment: () => void }) {
+    const { toast } = useToast();
+    const [amount, setAmount] = useState('');
+    const [duration, setDuration] = useState('1'); // Default duration in hours
+    const [timeLeft, setTimeLeft] = useState('');
+
+    const investmentOptions = [
+        { hours: 1, profit: 2 },
+        { hours: 5, profit: 4 },
+        { hours: 10, profit: 7 },
+        { hours: 15, profit: 9 },
+        { hours: 20, profit: 10 },
+        { hours: 24, profit: 12 },
+    ];
+    const MAX_INVESTMENT = 100000000;
+
+    useEffect(() => {
+        if (!user.investment) {
+            setTimeLeft('');
+            return;
+        }
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const endTime = user.investment!.endTime;
+            const diff = endTime - now;
+
+            if (diff <= 0) {
+                setTimeLeft("انتهى الوقت!");
+                clearInterval(interval);
+            } else {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [user.investment]);
+    
+    useEffect(() => {
+        // Auto-collect if the screen is opened and time is up
+        if (user.investment && user.investment.endTime <= Date.now()) {
+            onCollectInvestment();
+        }
+    }, [user.investment, onCollectInvestment]);
+
+    const handleStartInvestment = () => {
+        const investmentAmount = parseInt(amount, 10);
+        if (isNaN(investmentAmount) || investmentAmount <= 0) {
+            toast({ variant: 'destructive', title: 'مبلغ غير صالح', description: 'الرجاء إدخال مبلغ صحيح للاستثمار.' });
+            return;
+        }
+        if (investmentAmount > MAX_INVESTMENT) {
+            toast({ variant: 'destructive', title: 'تم تجاوز الحد الأقصى', description: `لا يمكن استثمار أكثر من ${formatNumber(MAX_INVESTMENT)}.` });
+            return;
+        }
+        if (investmentAmount > user.balance) {
+            toast({ variant: 'destructive', title: 'رصيد غير كافٍ' });
+            return;
+        }
+        onStartInvestment(investmentAmount, parseInt(duration, 10));
+    };
+    
+    if (user.investment) {
+        const investmentData = user.investment;
+        const selectedOption = investmentOptions.find(opt => opt.hours === investmentData.durationHours);
+        const profit = selectedOption ? (investmentData.amount * selectedOption.profit) / 100 : 0;
+        const isTimeUp = investmentData.endTime <= Date.now();
+
+        return (
+            <div className="p-4 flex flex-col h-full text-foreground bg-background">
+                <header className="flex items-center justify-between mb-4">
+                    <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="w-6 h-6" /></Button>
+                    <h2 className="text-xl font-bold">استثماري الحالي</h2>
+                    <div></div>
+                </header>
+                <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <p className="text-muted-foreground">المبلغ المستثمر</p>
+                    <p className="text-5xl font-bold text-primary my-2">{formatNumber(investmentData.amount)}</p>
+                    <p className="text-muted-foreground">الربح المتوقع: <span className="text-green-400 font-semibold">+{formatNumber(profit)}</span></p>
+                    
+                    <div className="my-8 w-full max-w-sm bg-black/20 p-6 rounded-2xl">
+                        <p className="text-muted-foreground">الوقت المتبقي</p>
+                        <p className="text-4xl font-mono font-bold my-2">{timeLeft}</p>
+                    </div>
+
+                    <Button size="lg" className="w-full max-w-sm" onClick={onCollectInvestment} disabled={!isTimeUp}>
+                        {isTimeUp ? 'جمع الأرباح' : 'الاستثمار جاري...'}
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="p-4 flex flex-col h-full text-foreground bg-background">
+            <header className="flex items-center justify-between mb-4">
+                <Button variant="ghost" size="icon" onClick={onBack}><ChevronLeft className="w-6 h-6" /></Button>
+                <h2 className="text-xl font-bold">استثمار الكوينز</h2>
+                <div></div>
+            </header>
+            <div className="flex-1 flex flex-col">
+                <div className="bg-black/20 p-4 rounded-xl mb-4 text-right">
+                    <Label htmlFor="investment-amount">أدخل المبلغ (الحد الأقصى: {formatNumber(MAX_INVESTMENT)})</Label>
+                    <Input
+                        id="investment-amount"
+                        type="number"
+                        placeholder="0"
+                        value={amount}
+                        onChange={e => setAmount(e.target.value)}
+                        className="text-left mt-2"
+                    />
+                </div>
+
+                <div className="bg-black/20 p-4 rounded-xl text-right">
+                    <Label>اختر مدة الاستثمار</Label>
+                    <RadioGroup value={duration} onValueChange={setDuration} className="mt-2 grid grid-cols-2 gap-2">
+                        {investmentOptions.map(option => (
+                            <div key={option.hours} className="flex items-center">
+                                <RadioGroupItem value={String(option.hours)} id={`h-${option.hours}`} />
+                                <Label htmlFor={`h-${option.hours}`} className="mr-2 cursor-pointer flex justify-between w-full">
+                                    <span>{option.hours} ساعة</span>
+                                    <span className="text-green-400">+{option.profit}%</span>
+                                </Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
+                </div>
+
+                <Button size="lg" className="w-full mt-auto" onClick={handleStartInvestment}>
+                    بدء الاستثمار
+                </Button>
+            </div>
+        </div>
+    );
+}
 
 function ProfileScreen({ 
     user, 
@@ -2248,7 +2388,7 @@ function ProfileScreen({
 }: { 
     user: UserData, 
     onUserUpdate: (updatedUser: Pick<UserProfile, 'name' | 'image'>) => void, 
-    onNavigate: (view: 'coins' | 'silver' | 'level' | 'vipLevels' | 'leaderboard') => void,
+    onNavigate: (view: 'coins' | 'silver' | 'level' | 'vipLevels' | 'leaderboard' | 'investment') => void,
     onLogout: () => void,
     appStatus: AppStatusData | null,
 }) {
@@ -2328,6 +2468,13 @@ function ProfileScreen({
                             <span className="text-xs text-muted-foreground font-semibold">{buttonDefaults[key].name}</span>
                         </div>
                     ))}
+                </div>
+
+                <div className="mt-4">
+                    <Button variant="outline" className="w-full" onClick={() => onNavigate('investment')}>
+                        <TrendingUp className="ml-2" />
+                        استثمار الكوينز
+                    </Button>
                 </div>
             </div>
 
@@ -2750,7 +2897,7 @@ function MainApp({
     appStatus: AppStatusData | null,
 }) {
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events' | 'leaderboard'>('roomsList');
-    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level' | 'vipLevels'>('profile');
+    const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level' | 'vipLevels' | 'investment'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
     const [minimizedRoom, setMinimizedRoom] = useState<Room | null>(null);
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
@@ -2924,7 +3071,26 @@ function MainApp({
         }
     };
 
-    const handleNavigate = (targetView: 'coins' | 'silver' | 'level' | 'vipLevels' | 'leaderboard') => {
+    const handleStartInvestment = async (amount: number, hours: number) => {
+        try {
+            await userServices.manageInvestment('start', user.profile.userId, { amount, hours });
+            toast({ title: 'بدأ الاستثمار بنجاح!', description: `تم استثمار ${formatNumber(amount)} كوينز.` });
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'فشل بدء الاستثمار', description: (error as Error).message });
+        }
+    };
+
+    const handleCollectInvestment = useCallback(async () => {
+        try {
+            const { collectedAmount, profit } = await userServices.manageInvestment('collect', user.profile.userId);
+            toast({ title: 'تم جمع الأرباح!', description: `تمت إضافة ${formatNumber(collectedAmount)} (ربح ${formatNumber(profit)}) إلى رصيدك.` });
+        } catch (error) {
+             toast({ variant: 'destructive', title: 'فشل جمع الأرباح', description: (error as Error).message });
+        }
+    }, [user.profile.userId]);
+
+
+    const handleNavigate = (targetView: 'coins' | 'silver' | 'level' | 'vipLevels' | 'leaderboard' | 'investment') => {
         if (targetView === 'leaderboard') {
             setView('leaderboard');
         } else {
@@ -2974,6 +3140,8 @@ function MainApp({
                     return <LevelScreen onBack={() => setProfileView('profile')} user={user} />;
                 case 'vipLevels':
                     return <VipScreen onBack={() => setProfileView('profile')} onSelectVipLevel={setSelectedVipLevel} />;
+                case 'investment':
+                    return <InvestmentScreen onBack={() => setProfileView('profile')} user={user} onUserDataUpdate={onUserDataUpdate} onStartInvestment={handleStartInvestment} onCollectInvestment={handleCollectInvestment} />;
                 default:
                     return (
                         <ProfileScreen 
@@ -3184,6 +3352,7 @@ export default function HomePage() {
         vipLevel: 0,
         isBanned: false,
         isOfficial: false,
+        investment: null,
     };
 
     try {
