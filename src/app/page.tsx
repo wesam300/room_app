@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -392,13 +392,15 @@ function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean,
 function RoomScreen({ 
     room, 
     user, 
-    onExit, 
+    onExit,
+    onMinimize, 
     onUserDataUpdate,
     appStatus
 }: {
     room: RoomData,
     user: UserData,
     onExit: () => void,
+    onMinimize: () => void,
     onUserDataUpdate: (updater: (prev: UserData) => UserData) => void,
     appStatus: AppStatusData | null
 }) {
@@ -419,6 +421,7 @@ function RoomScreen({
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
     const [hasMicPermission, setHasMicPermission] = useState(false);
+    const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = room.totalSupport ?? 0;
@@ -592,7 +595,7 @@ function RoomScreen({
               </div>
             </button>
             <div className="flex items-center gap-2">
-                <AlertDialog>
+                <AlertDialog open={isExitAlertOpen} onOpenChange={setIsExitAlertOpen}>
                     <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="bg-black/20 rounded-full">
                             <X className="w-6 h-6 text-primary" />
@@ -600,14 +603,21 @@ function RoomScreen({
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                            <AlertDialogTitle>هل أنت متأكد؟</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                هل تريد حقًا مغادرة الغرفة؟
+                            <AlertDialogTitle className="text-right">مغادرة الغرفة</AlertDialogTitle>
+                            <AlertDialogDescription className="text-right">
+                                هل تريد مغادرة الغرفة أم تصغيرها للمتابعة في التطبيق؟
                             </AlertDialogDescription>
                         </AlertDialogHeader>
-                        <AlertDialogFooter>
+                        <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                            <Button onClick={() => { onMinimize(); setIsExitAlertOpen(false); }} variant="outline">
+                                <Minus className="ml-2 h-4 w-4" />
+                                تصغير
+                            </Button>
+                            <AlertDialogAction onClick={onExit}>
+                                <LogOut className="ml-2 h-4 w-4" />
+                                مغادرة
+                            </AlertDialogAction>
                             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                            <AlertDialogAction onClick={onExit}>مغادرة</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -2265,6 +2275,7 @@ function MainApp({
     const [view, setView] = useState<'roomsList' | 'inRoom' | 'profile' | 'events' | 'leaderboard'>('roomsList');
     const [profileView, setProfileView] = useState<'profile' | 'coins' | 'silver' | 'level' | 'vipLevels'>('profile');
     const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+    const [minimizedRoom, setMinimizedRoom] = useState<Room | null>(null);
     const [isJoiningRoom, setIsJoiningRoom] = useState(false);
     const [canClaim, setCanClaim] = useState(false);
     const [timeUntilNextClaim, setTimeUntilNextClaim] = useState('');
@@ -2278,15 +2289,19 @@ function MainApp({
             const updatedRoom = rooms.find(r => r.id === currentRoom.id);
             if (updatedRoom) {
                 setCurrentRoom(updatedRoom);
+                if (minimizedRoom && minimizedRoom.id === updatedRoom.id) {
+                    setMinimizedRoom(updatedRoom);
+                }
             } else {
                 // Room might have been deleted
                 setView('roomsList');
                 setCurrentRoom(null);
+                setMinimizedRoom(null);
                 toast({ variant: "destructive", title: "تم حذف الغرفة", description: "تم حذف الغرفة من قبل المشرف.", duration: 2000})
             }
         });
         return () => unsubscribe();
-    }, [currentRoom?.id, toast]);
+    }, [currentRoom?.id, minimizedRoom?.id, toast]);
     
     useEffect(() => {
         const updateClaimTimer = () => {
@@ -2326,10 +2341,14 @@ function MainApp({
     const handleEnterRoom = async (room: Room) => {
         setIsJoiningRoom(true);
         try {
-            await roomServices.joinRoom(room.id, user.profile.userId);
+            // If re-entering a minimized room, we don't need to call joinRoom again
+            if (!minimizedRoom || minimizedRoom.id !== room.id) {
+                await roomServices.joinRoom(room.id, user.profile.userId);
+            }
             const freshRoomData = await roomServices.getRoom(room.id); 
             if (freshRoomData) {
                 setCurrentRoom(freshRoomData);
+                setMinimizedRoom(null);
                 setView('inRoom');
             } else {
                  console.error("Failed to fetch fresh room data for room:", room.id);
@@ -2356,9 +2375,18 @@ function MainApp({
             }
         }
         setCurrentRoom(null);
+        setMinimizedRoom(null);
         setView('roomsList');
     }
     
+    const handleMinimizeRoom = () => {
+        if (currentRoom) {
+            setMinimizedRoom(currentRoom);
+            setCurrentRoom(null);
+            setView('roomsList'); // Or wherever you want to go after minimizing
+        }
+    };
+
     const handleUserUpdate = (updatedProfile: Pick<UserProfile, 'name' | 'image'>) => {
         onUserDataUpdate(prev => ({ ...prev, profile: { ...prev.profile, ...updatedProfile } }));
     };
@@ -2442,7 +2470,8 @@ function MainApp({
                 <RoomScreen 
                     room={currentRoom}
                     user={user} 
-                    onExit={handleExitRoom} 
+                    onExit={handleExitRoom}
+                    onMinimize={handleMinimizeRoom}
                     onUserDataUpdate={onUserDataUpdate}
                     appStatus={appStatus}
                 />
@@ -2482,7 +2511,7 @@ function MainApp({
 
 
     return (
-        <div className="h-screen flex flex-col">
+        <div className="h-screen flex flex-col relative">
             <VipDetailsSheet 
                 isOpen={!!selectedVipLevel}
                 onOpenChange={(open) => !open && setSelectedVipLevel(null)}
@@ -2525,6 +2554,26 @@ function MainApp({
                     </button>
                 </footer>
             )}
+             <AnimatePresence>
+                {minimizedRoom && view !== 'inRoom' && (
+                    <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        className="fixed bottom-20 left-4 z-50"
+                    >
+                        <button 
+                            onClick={() => handleEnterRoom(minimizedRoom)} 
+                            className="w-16 h-16 rounded-full bg-background border-2 border-primary shadow-lg hover:scale-110 transition-transform"
+                        >
+                            <Avatar className="w-full h-full">
+                                <AvatarImage src={minimizedRoom.image} alt={minimizedRoom.name} />
+                                <AvatarFallback>{minimizedRoom.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
