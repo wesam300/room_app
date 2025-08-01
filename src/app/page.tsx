@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -855,7 +855,23 @@ function RoomScreen({
                                     onToggleMute={(idx) => handleMicAction('toggle_mute', idx)}
                                     onAdminMute={(idx) => handleMicAction('admin_mute', idx)}
                                     onOpenGiftDialog={handleOpenGiftSheet}
-                                />
+                                >
+                                    {slot.user && roomUsersData.get(slot.user.userId) && (
+                                         <UserProfilePopoverContent
+                                            targetUser={slot.user}
+                                            targetUserData={roomUsersData.get(slot.user.userId)!}
+                                            currentUser={user.profile}
+                                            isOwner={isOwner}
+                                            micSlotIndex={index}
+                                            isMuted={slot.isMuted}
+                                            onDescend={handleMicAction.bind(null, 'descend')}
+                                            onAdminMute={handleMicAction.bind(null, 'admin_mute')}
+                                            onToggleMute={handleMicAction.bind(null, 'toggle_mute')}
+                                            onOpenGiftDialog={handleOpenGiftSheet}
+                                            onClose={() => { /* Popover handles its own close state */ }}
+                                        />
+                                    )}
+                                </RoomMic>
                             );
                         })}
                     </div>
