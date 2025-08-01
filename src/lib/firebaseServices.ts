@@ -139,6 +139,7 @@ export interface AppStatusData {
         store?: string;
         medal?: string;
     };
+    roomEntryGiftUrl?: string;
     updatedAt: Timestamp | Date;
 }
 
@@ -634,11 +635,6 @@ export const roomServices = {
   async deleteRoom(roomId: string): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
     try {
-        const roomDoc = await getDoc(roomRef);
-        if (!roomDoc.exists()) {
-            throw new Error("Room not found.");
-        }
-        
         await deleteDoc(roomRef);
     } catch (error) {
         console.error('Error deleting room from Firestore:', error);
@@ -1125,6 +1121,19 @@ export const appStatusServices = {
             }, { merge: true });
         } catch (error) {
             console.error(`Error setting ${buttonKey} button image:`, error);
+            throw error;
+        }
+    },
+
+    async setRoomEntryGift(videoUrl: string): Promise<void> {
+        try {
+            const statusRef = doc(db, COLLECTIONS.APP_STATUS, 'global');
+            await setDoc(statusRef, {
+                roomEntryGiftUrl: videoUrl,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error(`Error setting room entry gift:`, error);
             throw error;
         }
     },

@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -548,6 +548,7 @@ function RoomScreen({
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
     const [hasMicPermission, setHasMicPermission] = useState(false);
     const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
+    const [showEntryGift, setShowEntryGift] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = room.totalSupport ?? 0;
@@ -571,6 +572,16 @@ function RoomScreen({
         user.profile.userId,
         isMuted
     );
+
+    useEffect(() => {
+        // Show entry gift animation if available and not shown this session
+        const giftShownInSession = sessionStorage.getItem(`entryGiftShown_${room.id}`);
+        if (appStatus?.roomEntryGiftUrl && !giftShownInSession) {
+            setShowEntryGift(true);
+            sessionStorage.setItem(`entryGiftShown_${room.id}`, 'true');
+        }
+    }, [room.id, appStatus?.roomEntryGiftUrl]);
+
 
     useEffect(() => {
         const getMicPermission = async () => {
@@ -767,6 +778,24 @@ function RoomScreen({
 
     return (
          <div className="relative flex flex-col h-screen bg-background text-foreground overflow-hidden">
+             {showEntryGift && appStatus?.roomEntryGiftUrl && (
+                <motion.div
+                    className="absolute inset-0 z-50 flex items-center justify-center bg-black/50"
+                    initial={{ opacity: 1 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                >
+                    <video
+                        src={appStatus.roomEntryGiftUrl}
+                        autoPlay
+                        muted
+                        playsInline
+                        onEnded={() => setShowEntryGift(false)}
+                        className="max-w-full max-h-full"
+                    />
+                </motion.div>
+            )}
+
              <div className="absolute inset-0 bg-cover bg-center z-0">
                 <div className="absolute inset-0 bg-black/50"></div>
              </div>
@@ -1637,7 +1666,7 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
     const [targetRoomId, setTargetRoomId] = useState("");
     const [generatedCode, setGeneratedCode] = useState<string | null>(null);
     const { games } = useGames();
-
+    const entryGiftVideoInputRef = useRef<HTMLInputElement>(null);
 
     const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
         const numAmount = parseInt(amount, 10);
@@ -1787,6 +1816,20 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
             toast({ title: "تم نسخ الكود بنجاح", duration: 2000 });
         }
     };
+    
+    const handleEntryGiftUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            try {
+                const videoUrl = await uploadImageAndGetUrl(file, `entry_gifts/entry_gift_${Date.now()}`);
+                await appStatusServices.setRoomEntryGift(videoUrl);
+                toast({ title: "تم رفع فيديو هدية الدخول بنجاح!", duration: 2000 });
+            } catch (error) {
+                console.error("Failed to upload entry gift video:", error);
+                toast({ variant: "destructive", title: "فشل رفع الفيديو", duration: 2000 });
+            }
+        }
+    };
 
     return (
         <div className="mt-8 p-4 bg-black/20 rounded-lg border border-primary/30">
@@ -1883,6 +1926,21 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
                 <AdminGameManager />
                 <hr className="border-primary/20"/>
                 <AdminProfileButtonsManager appStatus={appStatus} />
+                <hr className="border-primary/20"/>
+                 <div className="space-y-2">
+                    <h4 className="font-semibold">إدارة هدية دخول الغرفة</h4>
+                    <input
+                        type="file"
+                        ref={entryGiftVideoInputRef}
+                        onChange={handleEntryGiftUpload}
+                        accept="video/mp4"
+                        className="hidden"
+                    />
+                    <Button onClick={() => entryGiftVideoInputRef.current?.click()} className="w-full">
+                        <Video className="mr-2" />
+                        رفع فيديو هدية الدخول
+                    </Button>
+                </div>
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
                     <h4 className="font-semibold">التحكم بنسبة الفوز بلعبة كراش</h4>
