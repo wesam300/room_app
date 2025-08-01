@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video, Rocket } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import FruityFortuneGame from "@/components/FruityFortuneGame";
 import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
-import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices, AppStatusData } from "@/lib/firebaseServices";
+import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices, AppStatusData, RoomRocketData } from "@/lib/firebaseServices";
 import { INITIAL_INVITATION_CODES } from '@/lib/invitationCodes';
 
 
@@ -419,6 +419,71 @@ function GameSelectionSheet({
 }
 
 
+function RoomRocketSheet({ open, onOpenChange, room }: { open: boolean, onOpenChange: (open: boolean) => void, room: RoomData | null }) {
+    if (!room || !room.rockets) return null;
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto max-h-[80vh]">
+                <SheetHeader className="p-4 text-center">
+                    <SheetTitle>صواريخ دعم الغرفة</SheetTitle>
+                    <SheetDescription>ادعم الغرفة لتفجير الصواريخ وكسب المكافآت!</SheetDescription>
+                </SheetHeader>
+                <div className="p-4 space-y-4 overflow-y-auto">
+                    {room.rockets.map((rocket) => {
+                        const progress = Math.min(100, (rocket.currentAmount / rocket.targetAmount) * 100);
+                        const isCompleted = rocket.status === 'completed';
+                        return (
+                            <Card key={rocket.level} className={cn("bg-black/20 border-primary/30", isCompleted && "border-green-500/50")}>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Rocket className={cn("w-6 h-6", isCompleted ? "text-green-500" : "text-primary")} />
+                                            <span>الصاروخ المستوى {rocket.level}</span>
+                                        </CardTitle>
+                                        <Badge variant={isCompleted ? "secondary" : "default"}>
+                                            {isCompleted ? "اكتمل" : "نشط"}
+                                        </Badge>
+                                    </div>
+                                    <CardDescription>
+                                        الهدف: {formatNumber(rocket.targetAmount)}
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Progress value={progress} className="mb-3 h-3" />
+                                    <div className="flex justify-between text-xs text-muted-foreground mb-4">
+                                        <span>{formatNumber(rocket.currentAmount)}</span>
+                                        <span>{formatNumber(rocket.targetAmount)}</span>
+                                    </div>
+                                    
+                                    <h4 className="font-semibold mb-2">
+                                        {isCompleted ? "أفضل المساهمين" : "المساهمون الحاليون"}
+                                    </h4>
+                                    <div className="flex justify-around items-center">
+                                        {rocket.contributors.length > 0 ? (
+                                            rocket.contributors.slice(0, 3).map((contributor) => (
+                                                <div key={contributor.userId} className="flex flex-col items-center gap-1">
+                                                    <Avatar className="w-10 h-10">
+                                                        <AvatarImage src={contributor.userImage} alt={contributor.userName} />
+                                                        <AvatarFallback>{contributor.userName.charAt(0)}</AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="text-xs truncate max-w-12">{contributor.userName}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">كن أول المساهمين!</p>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
 function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean, onOpenChange: (open: boolean) => void, room: Room | null, onUpdate: (updates: { name: string, description: string, image: string }) => void }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -549,6 +614,7 @@ function RoomScreen({
     const [hasMicPermission, setHasMicPermission] = useState(false);
     const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
     const [showEntryGift, setShowEntryGift] = useState(false);
+    const [isRocketSheetOpen, setIsRocketSheetOpen] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = room.totalSupport ?? 0;
@@ -660,7 +726,7 @@ function RoomScreen({
         }
     
         try {
-            const recipientProfile = await userServices.sendGiftAndUpdateLevels(
+            const { recipientProfile, rocketExploded, rewards } = await userServices.sendGiftAndUpdateLevels(
                 user.profile.userId,
                 recipient.userId,
                 room.id,
@@ -686,6 +752,18 @@ function RoomScreen({
                     text: messageText,
                 });
             }
+
+            if (rocketExploded) {
+                sendChatMessage({
+                    roomId: room.id,
+                    user: { name: "النظام", userId: "system", image: "https://placehold.co/64x64/f97316/ffffff.png?text=🚀" },
+                    text: `💥 تم تفجير صاروخ الدعم! تهانينا للمساهمين! 💥`,
+                });
+                if (rewards && rewards.some(r => r.userId === user.profile.userId)) {
+                    toast({ title: "🎉 تهانينا!", description: "لقد كنت من أكبر الداعمين وحصلت على مكافأة!", duration: 4000 });
+                }
+            }
+
 
         } catch (error) {
             console.error("Error sending gift:", error);
@@ -822,6 +900,11 @@ function RoomScreen({
                     isOpen={isGameSelectionSheetOpen}
                     onOpenChange={setGameSelectionSheetOpen}
                     onSelectGame={handleSelectGame}
+                />
+                 <RoomRocketSheet
+                    open={isRocketSheetOpen}
+                    onOpenChange={setIsRocketSheetOpen}
+                    room={room}
                 />
 
                 <div className="flex-1 overflow-y-auto">
@@ -1027,6 +1110,14 @@ function RoomScreen({
                             onClick={() => handleOpenGiftSheet(null)}
                         >
                             <Gift className="w-6 h-6 text-primary" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="bg-black/40 rounded-full h-12 w-12"
+                            onClick={() => setIsRocketSheetOpen(true)}
+                        >
+                            <Rocket className="w-6 h-6 text-primary" />
                         </Button>
                          <div className="relative h-12 w-12">
                             <Button
@@ -1821,6 +1912,7 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
         const file = event.target.files?.[0];
         if (file) {
             try {
+                toast({ title: "جاري رفع الفيديو...", duration: 5000 });
                 const videoUrl = await uploadImageAndGetUrl(file, `entry_gifts/entry_gift_${Date.now()}`);
                 await appStatusServices.setRoomEntryGift(videoUrl);
                 toast({ title: "تم رفع فيديو هدية الدخول بنجاح!", duration: 2000 });
@@ -2173,7 +2265,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'rockets'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { toast } = useToast();
@@ -2638,7 +2730,7 @@ function MainApp({
         }
     };
     
-    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' >) => {
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'rockets' >) => {
         try {
             await createRoom(roomData);
         } catch(e) {
