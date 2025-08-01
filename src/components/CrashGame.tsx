@@ -126,14 +126,14 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
         currentGameState = GAME_STATE.BETTING;
         currentCountdown = Math.ceil((BETTING_DURATION - timeInCycle) / 1000);
 
-    } else {
+    } else if (timeInCycle < BETTING_DURATION + MAX_FLIGHT_DURATION) {
         const flightTime = timeInCycle - BETTING_DURATION;
         
-        // This is a more gradual growth formula. The exponent (0.0004) controls the speed.
-        // It ensures the rocket starts very slow and accelerates smoothly.
-        const calculatedMultiplier = Math.pow(1.05, 0.04 * flightTime);
+        // This is a more gradual growth formula. The exponent (e.g. 2) makes it slow at start.
+        // The coefficient (e.g. 0.0004) controls the overall speed.
+        const calculatedMultiplier = 1 + 0.0004 * Math.pow(flightTime, 2);
 
-        if (calculatedMultiplier >= crashPoint || flightTime >= MAX_FLIGHT_DURATION) {
+        if (calculatedMultiplier >= crashPoint) {
              // --- CRASHED (COOLDOWN) PHASE ---
              currentGameState = GAME_STATE.CRASHED;
              currentMultiplier = crashPoint;
@@ -142,6 +142,10 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
             currentGameState = GAME_STATE.IN_PROGRESS;
             currentMultiplier = calculatedMultiplier;
         }
+    } else {
+        // --- COOLDOWN PHASE (after max flight time) ---
+        currentGameState = GAME_STATE.CRASHED;
+        currentMultiplier = crashPoint; // Show the crash point
     }
 
 
