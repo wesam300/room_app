@@ -95,18 +95,11 @@ export default function RoomMic({
                             <div className="relative w-full h-full">
                                 <AnimatePresence>
                                     {showSpeakingAnimation && (
-                                         <motion.div
-                                            className="absolute inset-0 rounded-full border-2 border-yellow-300"
-                                            animate={{
-                                                scale: [1, 1.3, 1],
-                                                opacity: [0.8, 0, 0.8],
-                                            }}
-                                            transition={{
-                                                duration: 1.5,
-                                                repeat: Infinity,
-                                                ease: "easeInOut",
-                                            }}
-                                        />
+                                         <img 
+                                            src="https://i.imgur.com/2xQ3uBZ.jpeg" 
+                                            alt="Speaking frame" 
+                                            className="absolute -top-2.5 -left-2.5 w-[76px] h-[76px] pointer-events-none"
+                                         />
                                     )}
                                 </AnimatePresence>
                                 <Avatar className="w-full h-full border-2 border-primary">
@@ -151,8 +144,3 @@ export default function RoomMic({
         </Popover>
     )
 }
-
-    
-
-
-
