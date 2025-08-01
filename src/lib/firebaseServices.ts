@@ -624,7 +624,7 @@ export const roomServices = {
         await deleteDoc(roomRef);
     } catch (error) {
         console.error('Error deleting room from Firestore:', error);
-        throw error;
+        throw new Error("Failed to delete room.");
     }
   },
   
@@ -896,9 +896,17 @@ export const supporterServices = {
   async getGlobalTopCharisma(limitCount: number): Promise<UserData[]> {
     try {
         const usersRef = collection(db, COLLECTIONS.USERS);
-        const q = query(usersRef, orderBy('totalCharisma', 'desc'), limit(limitCount));
+        const q = query(
+            usersRef, 
+            where('totalCharisma', '>', 0), // Only get users with charisma
+            orderBy('totalCharisma', 'desc'), 
+            limit(limitCount)
+        );
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data() as UserData);
+        const users = querySnapshot.docs
+            .map(doc => doc.data() as UserData)
+            .filter(user => user && user.profile); // Ensure user and profile exist
+        return users;
     } catch (error) {
         console.error('Error getting global top charisma:', error);
         throw error;
@@ -1240,3 +1248,4 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
