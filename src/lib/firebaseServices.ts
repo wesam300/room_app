@@ -73,6 +73,7 @@ export interface RoomData {
   userCount: number;
   totalSupport?: number;
   micSlots: MicSlotData[];
+  attendees: string[];
   isRoomMuted: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -575,7 +576,7 @@ const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map(() => ({
 
 // Room Services
 export const roomServices = {
-  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' >): Promise<void> {
+  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>): Promise<void> {
     try {
       let newRoomId: string;
       let roomRef;
@@ -603,6 +604,7 @@ export const roomServices = {
           userCount: 0,
           totalSupport: 0,
           micSlots: INITIAL_MIC_SLOTS,
+          attendees: [],
           isRoomMuted: false,
       }
       await setDoc(roomRef, {
@@ -703,6 +705,7 @@ export const roomServices = {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
     await updateDoc(roomRef, {
         userCount: increment(1),
+        attendees: arrayUnion(userId),
         updatedAt: serverTimestamp(),
     });
   },
@@ -714,9 +717,35 @@ export const roomServices = {
         if (!roomDoc.exists()) {
             return;
         }
-        const currentCount = roomDoc.data().userCount || 0;
         transaction.update(roomRef, { 
             userCount: increment(-1),
+            attendees: arrayRemove(userId),
+            updatedAt: serverTimestamp(),
+        });
+    });
+  },
+
+  async kickUserFromRoom(roomId: string, userIdToKick: string, currentUserId: string): Promise<void> {
+    await runTransaction(db, async (transaction) => {
+        const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) throw new Error("Room not found.");
+
+        const roomData = roomDoc.data() as RoomData;
+        if (roomData.ownerId !== currentUserId) throw new Error("Only the room owner can kick users.");
+        if (roomData.ownerId === userIdToKick) throw new Error("Owner cannot kick themselves.");
+
+        const micSlots = (roomData.micSlots || []).map(slot => {
+            if (slot.user?.userId === userIdToKick) {
+                return { ...slot, user: null };
+            }
+            return slot;
+        });
+
+        transaction.update(roomRef, {
+            userCount: increment(-1),
+            attendees: arrayRemove(userIdToKick),
+            micSlots: micSlots,
             updatedAt: serverTimestamp(),
         });
     });

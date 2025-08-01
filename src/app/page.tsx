@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video, UserMinus } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -516,6 +516,83 @@ function EditRoomDialog({ open, onOpenChange, room, onUpdate }: { open: boolean,
     );
 }
 
+function RoomUsersSheet({
+    isOpen,
+    onOpenChange,
+    room,
+    currentUser,
+    onKickUser
+}: {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    room: RoomData | null;
+    currentUser: UserData;
+    onKickUser: (userIdToKick: string) => void;
+}) {
+    const isOwner = room?.ownerId === currentUser.profile.userId;
+    const { users: attendeeData } = useRoomUsers(room?.attendees || []);
+
+    const handleKick = (userIdToKick: string, userName: string) => {
+        onKickUser(userIdToKick);
+    };
+
+    return (
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+            <SheetContent side="bottom" className="bg-background border-primary/20 rounded-t-2xl h-auto max-h-[60vh] flex flex-col p-0">
+                <SheetHeader className="p-4 text-center border-b border-primary/20">
+                    <SheetTitle>المتواجدون في الغرفة ({attendeeData.size})</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    {Array.from(attendeeData.values()).map(userData => {
+                        if (!userData) return null;
+                        const userProfile = userData.profile;
+                        const canBeKicked = isOwner && userProfile.userId !== currentUser.profile.userId && userData.vipLevel !== 9;
+
+                        return (
+                            <div key={userProfile.userId} className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="w-10 h-10">
+                                        <AvatarImage src={userProfile.image} alt={userProfile.name} />
+                                        <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex flex-col items-start">
+                                        <span className="font-semibold">{userProfile.name}</span>
+                                        <span className="text-xs text-muted-foreground">ID: {userProfile.displayId || userProfile.userId}</span>
+                                    </div>
+                                </div>
+                                {canBeKicked && (
+                                     <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                             <Button variant="destructive" size="sm">
+                                                <UserMinus className="w-4 h-4 ml-1" />
+                                                طرد
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle className="text-right">هل أنت متأكد؟</AlertDialogTitle>
+                                                <AlertDialogDescription className="text-right">
+                                                    هل تريد بالتأكيد طرد {userProfile.name} من الغرفة؟
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                                                <AlertDialogAction onClick={() => handleKick(userProfile.userId, userProfile.name)}>
+                                                    نعم، طرد المستخدم
+                                                </AlertDialogAction>
+                                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
 function RoomScreen({ 
     room, 
     user, 
@@ -526,7 +603,7 @@ function RoomScreen({
 }: {
     room: RoomData,
     user: UserData,
-    onExit: () => void,
+    onExit: (message?: { title: string, description: string }) => void,
     onMinimize: () => void,
     onUserDataUpdate: (updater: (prev: UserData) => UserData) => void,
     appStatus: AppStatusData | null
@@ -550,6 +627,7 @@ function RoomScreen({
     const [hasMicPermission, setHasMicPermission] = useState(false);
     const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
     const [showEntryGift, setShowEntryGift] = useState(false);
+    const [isUsersSheetOpen, setIsUsersSheetOpen] = useState(false);
 
     const { supporters: roomSupporters } = useRoomSupporters(room.id);
     const totalRoomSupport = room.totalSupport ?? 0;
@@ -560,8 +638,9 @@ function RoomScreen({
     const userIdsInRoom = useMemo(() => {
         const userIdsOnMics = usersOnMics.map(u => u.userId);
         const userIdsInChat = chatMessages.map(msg => msg.user.userId);
-        return [...new Set([user.profile.userId, ...userIdsOnMics, ...userIdsInChat.filter(id => id && id !== 'system')])];
-    }, [usersOnMics, chatMessages, user.profile.userId]);
+        const attendeeIds = room.attendees || [];
+        return [...new Set([user.profile.userId, ...userIdsOnMics, ...userIdsInChat.filter(id => id && id !== 'system'), ...attendeeIds])];
+    }, [usersOnMics, chatMessages, user.profile.userId, room.attendees]);
     const { users: roomUsersData } = useRoomUsers(userIdsInRoom);
 
     // State for chat popovers
@@ -573,6 +652,14 @@ function RoomScreen({
         user.profile.userId,
         isMuted
     );
+    
+    // Check if user was kicked
+    useEffect(() => {
+        if (room && !(room.attendees || []).includes(user.profile.userId)) {
+            onExit({ title: "تم طردك", description: "لقد تم طردك من هذه الغرفة بواسطة المالك." });
+        }
+    }, [room, user.profile.userId, onExit]);
+
 
     useEffect(() => {
         // Show entry gift animation if available and not shown this session
@@ -713,6 +800,16 @@ function RoomScreen({
         }
     };
 
+     const handleKickUser = async (userIdToKick: string) => {
+        try {
+            await roomServices.kickUserFromRoom(room.id, userIdToKick, user.profile.userId);
+            toast({ title: "تم طرد المستخدم بنجاح!", duration: 2000 });
+        } catch (error) {
+            console.error("Error kicking user:", error);
+            toast({ variant: "destructive", title: "فشل طرد المستخدم", description: (error as Error).message, duration: 2000 });
+        }
+    };
+
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
@@ -757,7 +854,7 @@ function RoomScreen({
                                 <Minus className="ml-2 h-4 w-4" />
                                 تصغير
                             </Button>
-                            <AlertDialogAction onClick={onExit}>
+                            <AlertDialogAction onClick={() => onExit()}>
                                 <LogOut className="ml-2 h-4 w-4" />
                                 مغادرة
                             </AlertDialogAction>
@@ -824,6 +921,13 @@ function RoomScreen({
                     onOpenChange={setGameSelectionSheetOpen}
                     onSelectGame={handleSelectGame}
                 />
+                <RoomUsersSheet
+                    isOpen={isUsersSheetOpen}
+                    onOpenChange={setIsUsersSheetOpen}
+                    room={room}
+                    currentUser={user}
+                    onKickUser={handleKickUser}
+                />
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="flex items-center justify-between px-4 mt-2">
@@ -861,11 +965,11 @@ function RoomScreen({
                                 </div>
                             </PopoverContent>
                         </Popover>
-                         <div className="flex items-center gap-2">
+                         <button onClick={() => setIsUsersSheetOpen(true)} className="flex items-center gap-2">
                            <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center border border-primary text-sm font-bold">
                                 {room.userCount}
                             </div>
-                        </div>
+                        </button>
                     </div>
                     
                     <div className="grid grid-cols-5 gap-y-2 gap-x-2 p-4">
@@ -2175,7 +2279,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { toast } = useToast();
@@ -2359,8 +2463,8 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
     const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
         const styles = {
             1: { container: "row-start-1 col-start-2 z-10 scale-110 pt-8", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
-            2: { container: "row-start-2 col-start-3 mt-8", crown: <Crown className="w-6 h-6 text-gray-300" />, border: "border-gray-300" },
-            3: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-amber-600" />, border: "border-amber-600" }
+            2: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-gray-300" />, border: "border-gray-300" },
+            3: { container: "row-start-2 col-start-3 mt-8", crown: <Crown className="w-6 h-6 text-amber-600" />, border: "border-amber-600" }
         };
         const style = styles[rank as keyof typeof styles];
         const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
@@ -2593,7 +2697,7 @@ function MainApp({
         }
     }
 
-    const handleExitRoom = async () => {
+    const handleExitRoom = useCallback(async (toastMessage?: { title: string, description: string }) => {
         if (currentRoom) {
             try {
                 const myCurrentMicIndex = (currentRoom.micSlots || []).findIndex(slot => slot.user?.userId === user.profile.userId);
@@ -2608,7 +2712,10 @@ function MainApp({
         setCurrentRoom(null);
         setMinimizedRoom(null);
         setView('roomsList');
-    }
+        if (toastMessage) {
+            toast({ variant: "destructive", title: toastMessage.title, description: toastMessage.description, duration: 3000 });
+        }
+    }, [currentRoom, user.profile, toast]);
     
     const handleMinimizeRoom = () => {
         if (currentRoom) {
@@ -2640,7 +2747,7 @@ function MainApp({
         }
     };
     
-    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' >) => {
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>) => {
         try {
             await createRoom(roomData);
         } catch(e) {
