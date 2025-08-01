@@ -74,6 +74,7 @@ export interface RoomData {
   totalSupport?: number;
   micSlots: MicSlotData[];
   attendees: string[];
+  bannedUserIds: string[];
   isRoomMuted: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -576,7 +577,7 @@ const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map(() => ({
 
 // Room Services
 export const roomServices = {
-  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>): Promise<void> {
+  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport' | 'bannedUserIds'>): Promise<void> {
     try {
       let newRoomId: string;
       let roomRef;
@@ -605,6 +606,7 @@ export const roomServices = {
           totalSupport: 0,
           micSlots: INITIAL_MIC_SLOTS,
           attendees: [],
+          bannedUserIds: [],
           isRoomMuted: false,
       }
       await setDoc(roomRef, {
@@ -703,10 +705,18 @@ export const roomServices = {
 
   async joinRoom(roomId: string, userId: string): Promise<void> {
     const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
-    await updateDoc(roomRef, {
-        userCount: increment(1),
-        attendees: arrayUnion(userId),
-        updatedAt: serverTimestamp(),
+    await runTransaction(db, async (transaction) => {
+        const roomDoc = await transaction.get(roomRef);
+        if (!roomDoc.exists()) throw new Error("Room not found.");
+        const roomData = roomDoc.data() as RoomData;
+        if ((roomData.bannedUserIds || []).includes(userId)) {
+            throw new Error("أنت محظور من هذه الغرفة.");
+        }
+        transaction.update(roomRef, { 
+            userCount: increment(1),
+            attendees: arrayUnion(userId),
+            updatedAt: serverTimestamp(),
+        });
     });
   },
 
@@ -749,6 +759,37 @@ export const roomServices = {
             updatedAt: serverTimestamp(),
         });
     });
+  },
+
+  async banUserFromRoom(roomId: string, userIdToBan: string, userProfileToBan: UserProfile): Promise<void> {
+      const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+      await runTransaction(db, async (transaction) => {
+          const roomDoc = await transaction.get(roomRef);
+          if (!roomDoc.exists()) throw new Error("Room not found.");
+          const roomData = roomDoc.data() as RoomData;
+
+          // Remove user from mics
+          const micSlots = (roomData.micSlots || []).map(slot => 
+              slot.user?.userId === userIdToBan ? { ...slot, user: null } : slot
+          );
+          
+          // Remove from attendees, decrement count, add to banned list
+          transaction.update(roomRef, {
+              bannedUserIds: arrayUnion(userIdToBan),
+              attendees: arrayRemove(userIdToBan),
+              userCount: increment(-1),
+              micSlots: micSlots,
+              updatedAt: serverTimestamp()
+          });
+      });
+  },
+
+  async unbanUserFromRoom(roomId: string, userIdToUnban: string): Promise<void> {
+      const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
+      await updateDoc(roomRef, {
+          bannedUserIds: arrayRemove(userIdToUnban),
+          updatedAt: serverTimestamp(),
+      });
   },
 
   async loadRooms(): Promise<RoomData[]> {
@@ -1248,4 +1289,5 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 

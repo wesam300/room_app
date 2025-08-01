@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video, UserMinus } from "lucide-react";
+import { Camera, User, Gamepad2, MessageSquare, Copy, ChevronLeft, Search, PlusCircle, Mic, Send, MicOff, Trophy, Users, Share2, Power, Volume2, VolumeX, Gift, Gem, Smile, XCircle, Trash2, Lock, Unlock, Crown, X, Medal, LogOut, Settings, Edit, RefreshCw, Signal, Star, Ban, Wrench, Store, KeyRound, ImageIcon, ChevronUp, Home, Minus, Maximize, Video, UserMinus, UserCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -521,19 +521,25 @@ function RoomUsersSheet({
     onOpenChange,
     room,
     currentUser,
-    onKickUser
+    onKickUser,
+    onBanUser,
 }: {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     room: RoomData | null;
     currentUser: UserData;
     onKickUser: (userIdToKick: string) => void;
+    onBanUser: (userIdToBan: string, userProfile: UserProfile) => void;
 }) {
     const isOwner = room?.ownerId === currentUser.profile.userId;
     const { users: attendeeData } = useRoomUsers(room?.attendees || []);
 
     const handleKick = (userIdToKick: string, userName: string) => {
         onKickUser(userIdToKick);
+    };
+
+    const handleBan = (userDataToBan: UserData) => {
+        onBanUser(userDataToBan.profile.userId, userDataToBan.profile);
     };
 
     return (
@@ -546,7 +552,7 @@ function RoomUsersSheet({
                     {Array.from(attendeeData.values()).map(userData => {
                         if (!userData) return null;
                         const userProfile = userData.profile;
-                        const canBeKicked = isOwner && userProfile.userId !== currentUser.profile.userId && userData.vipLevel !== 9;
+                        const canBeInteractedWith = isOwner && userProfile.userId !== currentUser.profile.userId && userData.vipLevel !== 9;
 
                         return (
                             <div key={userProfile.userId} className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
@@ -560,29 +566,53 @@ function RoomUsersSheet({
                                         <span className="text-xs text-muted-foreground">ID: {userProfile.displayId || userProfile.userId}</span>
                                     </div>
                                 </div>
-                                {canBeKicked && (
-                                     <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                             <Button variant="destructive" size="sm">
-                                                <UserMinus className="w-4 h-4 ml-1" />
-                                                طرد
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle className="text-right">هل أنت متأكد؟</AlertDialogTitle>
-                                                <AlertDialogDescription className="text-right">
-                                                    هل تريد بالتأكيد طرد {userProfile.name} من الغرفة؟
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
-                                                <AlertDialogAction onClick={() => handleKick(userProfile.userId, userProfile.name)}>
-                                                    نعم، طرد المستخدم
-                                                </AlertDialogAction>
-                                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
+                                {canBeInteractedWith && (
+                                     <div className="flex gap-2">
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                 <Button variant="outline" size="sm">
+                                                    <UserMinus className="w-4 h-4 ml-1" />
+                                                    طرد
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="text-right">تأكيد الطرد</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-right">
+                                                        سيتم طرد {userProfile.name} من الغرفة مؤقتًا.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                                                    <AlertDialogAction onClick={() => handleKick(userProfile.userId, userProfile.name)}>
+                                                        نعم، طرد
+                                                    </AlertDialogAction>
+                                                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                 <Button variant="destructive" size="sm">
+                                                    <Ban className="w-4 h-4 ml-1" />
+                                                    حظر
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle className="text-right">تأكيد الحظر</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-right">
+                                                        هل تريد بالتأكيد حظر {userProfile.name} من دخول هذه الغرفة نهائيًا؟
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                                                    <AlertDialogAction onClick={() => handleBan(userData)}>
+                                                        نعم، حظر
+                                                    </AlertDialogAction>
+                                                    <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                     </div>
                                 )}
                             </div>
                         );
@@ -590,6 +620,60 @@ function RoomUsersSheet({
                 </div>
             </SheetContent>
         </Sheet>
+    );
+}
+
+function RoomSettingsDialog({
+    open,
+    onOpenChange,
+    room,
+    onUnbanUser,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    room: RoomData | null;
+    onUnbanUser: (userId: string) => void;
+}) {
+    const { users: bannedUsersData, loading } = useRoomUsers(room?.bannedUserIds || []);
+
+    if (!room) return null;
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="text-right">إعدادات الغرفة</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 text-right">
+                    <h3 className="font-semibold mb-2">المستخدمون المحظورون ({bannedUsersData.size})</h3>
+                    <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                        {loading && <p className="text-muted-foreground">...جاري التحميل</p>}
+                        {!loading && bannedUsersData.size === 0 && <p className="text-muted-foreground">لا يوجد مستخدمون محظورون.</p>}
+                        {Array.from(bannedUsersData.values()).map(user => {
+                            if (!user) return null;
+                            return (
+                                <div key={user.profile.userId} className="flex items-center justify-between bg-black/20 p-2 rounded-lg">
+                                    <div className="flex items-center gap-3">
+                                        <Avatar className="w-10 h-10">
+                                            <AvatarImage src={user.profile.image} alt={user.profile.name} />
+                                            <AvatarFallback>{user.profile.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex flex-col items-start">
+                                            <span className="font-semibold">{user.profile.name}</span>
+                                            <span className="text-xs text-muted-foreground">ID: {user.profile.displayId || user.profile.userId}</span>
+                                        </div>
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => onUnbanUser(user.profile.userId)}>
+                                        <UserCheck className="w-4 h-4 ml-1" />
+                                        فك الحظر
+                                    </Button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -624,6 +708,7 @@ function RoomScreen({
     const [isGiftSheetOpen, setIsGiftSheetOpen] = useState(false);
     const [initialRecipientForGift, setInitialRecipientForGift] = useState<UserProfile | null>(null);
     const [isEditRoomOpen, setIsEditRoomOpen] = useState(false);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [hasMicPermission, setHasMicPermission] = useState(false);
     const [isExitAlertOpen, setIsExitAlertOpen] = useState(false);
     const [showEntryGift, setShowEntryGift] = useState(false);
@@ -634,7 +719,7 @@ function RoomScreen({
 
     const usersOnMics = (room.micSlots || []).map(slot => slot.user).filter((u): u is UserProfile => u !== null);
     
-    // --- Data fetching for all active users (on mics and in chat) ---
+    // --- Data fetching for all active users (on mics, in chat, attendees) ---
     const userIdsInRoom = useMemo(() => {
         const userIdsOnMics = usersOnMics.map(u => u.userId);
         const userIdsInChat = chatMessages.map(msg => msg.user.userId);
@@ -653,10 +738,16 @@ function RoomScreen({
         isMuted
     );
     
-    // Check if user was kicked
+    // Check if user was kicked or banned
     useEffect(() => {
-        if (room && !(room.attendees || []).includes(user.profile.userId)) {
-            onExit({ title: "تم طردك", description: "لقد تم طردك من هذه الغرفة بواسطة المالك." });
+        if (!room) return;
+        const isBanned = (room.bannedUserIds || []).includes(user.profile.userId);
+        const notAnAttendee = !(room.attendees || []).includes(user.profile.userId);
+
+        if (isBanned) {
+            onExit({ title: "تم حظرك", description: "لقد تم حظرك من هذه الغرفة بواسطة المالك." });
+        } else if (notAnAttendee) {
+            onExit({ title: "تم طردك", description: "لقد تم طردك من هذه الغرفة." });
         }
     }, [room, user.profile.userId, onExit]);
 
@@ -789,7 +880,7 @@ function RoomScreen({
     
     const handleHeaderClick = () => {
         if (isOwner) {
-            setIsEditRoomOpen(true);
+            setIsSettingsOpen(true);
         }
     };
 
@@ -809,32 +900,63 @@ function RoomScreen({
             toast({ variant: "destructive", title: "فشل طرد المستخدم", description: (error as Error).message, duration: 2000 });
         }
     };
+    
+    const handleBanUser = async (userIdToBan: string, userProfileToBan: UserProfile) => {
+        try {
+            await roomServices.banUserFromRoom(room.id, userIdToBan, userProfileToBan);
+            toast({ title: "تم حظر المستخدم بنجاح!", duration: 2000 });
+        } catch (error) {
+            console.error("Error banning user:", error);
+            toast({ variant: "destructive", title: "فشل حظر المستخدم", description: (error as Error).message, duration: 2000 });
+        }
+    };
+
+    const handleUnbanUser = async (userIdToUnban: string) => {
+        try {
+            await roomServices.unbanUserFromRoom(room.id, userIdToUnban);
+            toast({ title: "تم فك حظر المستخدم بنجاح!", duration: 2000 });
+        } catch (error) {
+            console.error("Error unbanning user:", error);
+            toast({ variant: "destructive", title: "فشل فك الحظر", description: (error as Error).message, duration: 2000 });
+        }
+    };
 
     const RoomHeader = () => {
       return (
         <header className="flex items-center justify-between p-3 flex-shrink-0 z-10">
-            <button 
-                onClick={handleHeaderClick} 
-                disabled={!isOwner}
-                className={cn(
-                    "flex items-center gap-2 p-1.5 rounded-full bg-black/20",
-                    isOwner && "cursor-pointer hover:bg-black/40"
-                )}
-            >
-              <Avatar className="w-10 h-10">
-                <AvatarImage src={room.image} alt={room.name} />
-                <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div className="text-left">
-                <p className="font-bold text-sm">{room.name}</p>
-                <div className="flex items-center gap-1.5">
-                  <button onClick={(e) => { e.stopPropagation(); handleCopyRoomId(); }} className="text-muted-foreground hover:text-foreground">
-                    <Copy className="h-3 w-3" />
-                  </button>
-                  <span className="text-xs text-muted-foreground">{room.id}</span>
-                </div>
-              </div>
-            </button>
+            <Popover>
+                <PopoverTrigger asChild>
+                    <button 
+                        className={cn(
+                            "flex items-center gap-2 p-1.5 rounded-full bg-black/20",
+                        )}
+                    >
+                      <Avatar className="w-10 h-10">
+                        <AvatarImage src={room.image} alt={room.name} />
+                        <AvatarFallback>{room.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="text-left">
+                        <p className="font-bold text-sm">{room.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">ID: {room.id}</span>
+                        </div>
+                      </div>
+                    </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                    <div className="flex flex-col gap-1 p-1">
+                        <Button variant="ghost" size="sm" className="justify-start" onClick={handleCopyRoomId}>
+                            <Copy className="ml-2"/> نسخ ID الغرفة
+                        </Button>
+                        {isOwner && (
+                            <Button variant="ghost" size="sm" className="justify-start" onClick={() => setIsSettingsOpen(true)}>
+                                <Settings className="ml-2"/> إعدادات الغرفة
+                            </Button>
+                        )}
+                    </div>
+                </PopoverContent>
+            </Popover>
+
             <div className="flex items-center gap-2">
                 <AlertDialog open={isExitAlertOpen} onOpenChange={setIsExitAlertOpen}>
                     <AlertDialogTrigger asChild>
@@ -900,11 +1022,11 @@ function RoomScreen({
              
              <RoomHeader />
              
-             <EditRoomDialog 
-                open={isEditRoomOpen}
-                onOpenChange={setIsEditRoomOpen}
+             <RoomSettingsDialog
+                open={isSettingsOpen}
+                onOpenChange={setIsSettingsOpen}
                 room={room}
-                onUpdate={handleUpdateRoomData}
+                onUnbanUser={handleUnbanUser}
              />
 
              <div className="relative z-10 flex flex-col flex-1 min-h-0">
@@ -927,6 +1049,7 @@ function RoomScreen({
                     room={room}
                     currentUser={user}
                     onKickUser={handleKickUser}
+                    onBanUser={handleBanUser}
                 />
 
                 <div className="flex-1 overflow-y-auto">
@@ -2279,7 +2402,7 @@ function CreateRoomDialog({ open, onOpenChange, onCreateRoom }: { open: boolean,
 }
 
 
-function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
+function RoomsListScreen({ onEnterRoom, onCreateRoom, user, onNavigate }: { onEnterRoom: (Room) => void, onCreateRoom: (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport' | 'bannedUserIds'>) => void, user: UserProfile, onNavigate: (view: 'leaderboard') => void }) {
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const { toast } = useToast();
@@ -2461,7 +2584,7 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
     }, [activeTab]);
 
     const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
-        if (!user || !user.profile) return null; // Defensive check
+        if (!user || !user.profile) return null;
         
         const styles = {
             1: { container: "row-start-1 col-start-2 z-10 scale-110 pt-8", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
@@ -2502,7 +2625,7 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
             
             <div className="space-y-3">
                 {rest.map((user: UserData, index) => {
-                    if (!user || !user.profile) return null; // Defensive check
+                    if (!user || !user.profile) return null;
                     const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
                     return (
                     <div key={user.profile.userId} className="flex items-center bg-black/20 p-2 rounded-lg">
@@ -2534,7 +2657,7 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
     const renderRoomList = () => (
         <div className="space-y-3">
             {leaderboardData.map((room: RoomData, index) => {
-                 if (!room || !room.name) return null; // Defensive check
+                 if (!room || !room.name) return null;
                  return (
                     <button 
                         key={room.id}
@@ -2694,7 +2817,7 @@ function MainApp({
             }
         } catch (error) {
             console.error("Error joining room:", error);
-            toast({ variant: "destructive", title: "خطأ", description: "فشل الانضمام للغرفة.", duration: 2000});
+            toast({ variant: "destructive", title: "خطأ", description: (error as Error).message || "فشل الانضمام للغرفة.", duration: 2000});
         } finally {
             setIsJoiningRoom(false);
         }
@@ -2750,7 +2873,7 @@ function MainApp({
         }
     };
     
-    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport'>) => {
+    const createRoomWrapper = async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'totalSupport' | 'bannedUserIds'>) => {
         try {
             await createRoom(roomData);
         } catch(e) {

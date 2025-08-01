@@ -105,7 +105,7 @@ export const useRooms = () => {
     return () => unsubscribe();
   }, []);
 
-  const createRoom = useCallback(async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' >) => {
+  const createRoom = useCallback(async (roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'attendees' | 'bannedUserIds' >) => {
     try {
       await roomServices.createRoom(roomData);
     } catch (err) {
