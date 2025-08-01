@@ -96,7 +96,7 @@ export default function RoomMic({
                                 <AnimatePresence>
                                     {showSpeakingAnimation && (
                                          <img 
-                                            src="https://i.imgur.com/2xQ3uBZ.jpeg" 
+                                            src="https://i.imgur.com/2xQ3uBZ.gif" 
                                             alt="Speaking frame" 
                                             className="absolute -top-2.5 -left-2.5 w-[76px] h-[76px] pointer-events-none"
                                          />
