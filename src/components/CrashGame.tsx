@@ -130,16 +130,23 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
         // --- IN_PROGRESS (FLIGHT) PHASE ---
         currentGameState = GAME_STATE.IN_PROGRESS;
         const flightTime = timeInCycle - BETTING_DURATION;
-        const timeToCrash = (FLIGHT_DURATION / 10) * Math.log(crashPoint) * 2; // Time it takes to reach crashPoint
+        
+        // This calculates the time it should take to reach the crash point.
+        // We use Math.log to make the time scale non-linearly with the crash point value.
+        // Higher crash points will take longer to reach.
+        const timeToCrash = (FLIGHT_DURATION / 10) * Math.log(crashPoint) * 2;
         
         if (flightTime > timeToCrash) {
              currentGameState = GAME_STATE.CRASHED;
              currentMultiplier = crashPoint;
         } else {
-            // Slower at the start, accelerates as it goes
+            // Slower at the start, accelerates as it goes.
+            // This is the core logic for the gradual acceleration.
+            // The multiplier grows based on how much time has passed relative to the total time to crash.
             const progress = flightTime / timeToCrash;
-            // Using an exponential curve for the multiplier to simulate acceleration
-            currentMultiplier = Math.pow(crashPoint, progress);
+            // The formula `1 * Math.exp(progress * Math.log(crashPoint))` achieves the desired curve.
+            // It starts slow and accelerates exponentially.
+            currentMultiplier = 1 * Math.exp(progress * Math.log(crashPoint));
         }
 
     } else {
