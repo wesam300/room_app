@@ -131,8 +131,8 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
         
         const timeInSeconds = flightTime / 1000;
         // Corrected, very slow growth formula.
-        // A coefficient of ~0.1 makes it take several seconds to reach 2.0x
-        const calculatedMultiplier = 1 + 0.1 * Math.pow(timeInSeconds, 2);
+        // A coefficient of ~0.05 makes it take several seconds to reach 2.0x
+        const calculatedMultiplier = 1 + 0.05 * Math.pow(timeInSeconds, 2);
 
         if (calculatedMultiplier >= crashPoint) {
              // --- CRASHED (COOLDOWN) PHASE ---
