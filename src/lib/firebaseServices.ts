@@ -64,21 +64,6 @@ export interface MicSlotData {
     isLocked: boolean;
 }
 
-export interface RoomRocketContributor {
-    userId: string;
-    userName: string;
-    userImage: string;
-    amount: number;
-}
-
-export interface RoomRocketData {
-    level: number;
-    targetAmount: number;
-    currentAmount: number;
-    status: 'active' | 'completed';
-    contributors: RoomRocketContributor[];
-}
-
 export interface RoomData {
   id: string;
   name: string;
@@ -88,7 +73,6 @@ export interface RoomData {
   userCount: number;
   totalSupport?: number;
   micSlots: MicSlotData[];
-  rockets: RoomRocketData[];
   isRoomMuted: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -359,7 +343,7 @@ export const userServices = {
         senderProfile: UserProfile,
         gift: GiftItem,
         quantity: number
-    ): Promise<{ recipientProfile: UserProfile | null, rocketExploded: boolean, rewards: any[] | null }> {
+    ): Promise<{ recipientProfile: UserProfile | null }> {
         const totalCost = gift.price * quantity;
 
         return await runTransaction(db, async (transaction) => {
@@ -378,7 +362,6 @@ export const userServices = {
             if (!roomDoc.exists()) throw new Error("Room not found.");
 
             const recipientProfile = recipientDoc.data().profile as UserProfile;
-            const roomData = roomDoc.data() as RoomData;
             
             // 1. Deduct balance from sender & update their support given
             const currentTotalSupport = senderDoc.data().totalSupportGiven || 0;
@@ -404,67 +387,7 @@ export const userServices = {
                 updatedAt: serverTimestamp(),
             });
             
-            // 4. Update Room Rocket Progress
-            let rocketExploded = false;
-            let rewards = null;
-            const rockets = roomData.rockets || [];
-            const activeRocketIndex = rockets.findIndex(r => r.status === 'active');
-
-            if (activeRocketIndex !== -1) {
-                const activeRocket = rockets[activeRocketIndex];
-                activeRocket.currentAmount += totalCost;
-
-                // Update contributor
-                const contributorIndex = activeRocket.contributors.findIndex(c => c.userId === senderId);
-                if (contributorIndex !== -1) {
-                    activeRocket.contributors[contributorIndex].amount += totalCost;
-                } else {
-                    activeRocket.contributors.push({
-                        userId: senderId,
-                        userName: senderProfile.name,
-                        userImage: senderProfile.image,
-                        amount: totalCost,
-                    });
-                }
-                // Sort contributors
-                activeRocket.contributors.sort((a, b) => b.amount - a.amount);
-                
-                // Check for explosion
-                if (activeRocket.currentAmount >= activeRocket.targetAmount) {
-                    rocketExploded = true;
-                    activeRocket.status = 'completed';
-
-                    // Distribute rewards to top 3
-                    const topContributors = activeRocket.contributors.slice(0, 3);
-                    rewards = [];
-                    for (const contributor of topContributors) {
-                        const userToRewardRef = doc(db, COLLECTIONS.USERS, contributor.userId);
-                        const coinReward = Math.floor(Math.random() * 10000000) + 1; // 1 to 10M
-                        const xpReward = Math.floor(Math.random() * (activeRocket.targetAmount * 0.01)) + (activeRocket.targetAmount * 0.001); // 0.1% to 1% of target as XP
-                        
-                        const userToRewardDoc = await transaction.get(userToRewardRef);
-                        if(userToRewardDoc.exists()){
-                           const currentXp = userToRewardDoc.data().totalSupportGiven || 0;
-                           const { level: newXpLevel } = calculateLevel(currentXp + xpReward);
-
-                           transaction.update(userToRewardRef, {
-                                balance: increment(coinReward),
-                                totalSupportGiven: increment(xpReward),
-                                level: newXpLevel
-                            });
-                           rewards.push({ userId: contributor.userId, coinReward, xpReward });
-                        }
-                    }
-
-                    // Activate next rocket
-                    if (activeRocketIndex + 1 < rockets.length) {
-                        rockets[activeRocketIndex + 1].status = 'active';
-                    }
-                }
-                transaction.update(roomRef, { rockets: rockets });
-            }
-
-            return { recipientProfile, rocketExploded, rewards };
+            return { recipientProfile };
         });
     },
 
@@ -650,17 +573,9 @@ const INITIAL_MIC_SLOTS: MicSlotData[] = Array(15).fill(null).map(() => ({
     isLocked: false
 }));
 
-const INITIAL_ROCKET_LEVELS: RoomRocketData[] = [
-    { level: 1, targetAmount: 50000000, currentAmount: 0, status: 'active', contributors: [] },
-    { level: 2, targetAmount: 100000000, currentAmount: 0, status: 'inactive', contributors: [] },
-    { level: 3, targetAmount: 250000000, currentAmount: 0, status: 'inactive', contributors: [] },
-    { level: 4, targetAmount: 500000000, currentAmount: 0, status: 'inactive', contributors: [] },
-    { level: 5, targetAmount: 1000000000, currentAmount: 0, status: 'inactive', contributors: [] },
-];
-
 // Room Services
 export const roomServices = {
-  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' | 'rockets' >): Promise<void> {
+  async createRoom(roomData: Omit<RoomData, 'id' | 'createdAt' | 'updatedAt' | 'userCount' | 'micSlots' | 'isRoomMuted' >): Promise<void> {
     try {
       let newRoomId: string;
       let roomRef;
@@ -688,7 +603,6 @@ export const roomServices = {
           userCount: 0,
           totalSupport: 0,
           micSlots: INITIAL_MIC_SLOTS,
-          rockets: INITIAL_ROCKET_LEVELS,
           isRoomMuted: false,
       }
       await setDoc(roomRef, {
