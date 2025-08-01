@@ -2461,6 +2461,8 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
     }, [activeTab]);
 
     const TopPlayerCard = ({ user, rank }: { user: UserData, rank: number }) => {
+        if (!user || !user.profile) return null; // Defensive check
+        
         const styles = {
             1: { container: "row-start-1 col-start-2 z-10 scale-110 pt-8", crown: <Crown className="w-8 h-8 text-yellow-400" />, border: "border-yellow-400" },
             2: { container: "row-start-2 col-start-1 mt-8", crown: <Crown className="w-6 h-6 text-gray-300" />, border: "border-gray-300" },
@@ -2500,6 +2502,7 @@ function TopRoomsScreen({ onBack, onEnterRoom }: { onBack: () => void; onEnterRo
             
             <div className="space-y-3">
                 {rest.map((user: UserData, index) => {
+                    if (!user || !user.profile) return null; // Defensive check
                     const displayValue = activeTab === 'wealth' ? user.totalSupportGiven : (user.totalCharisma ?? 0);
                     return (
                     <div key={user.profile.userId} className="flex items-center bg-black/20 p-2 rounded-lg">
