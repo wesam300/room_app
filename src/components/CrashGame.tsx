@@ -27,10 +27,10 @@ interface HistoryItem {
 }
 
 // --- Constants for Game Cycle ---
-const BETTING_DURATION = 10000; // 10 seconds
-const FLIGHT_DURATION = 10000;  // 10 seconds, the actual flight time will be determined by the crash point
-const COOLDOWN_DURATION = 3000; // 3 seconds
-const TOTAL_CYCLE_DURATION = BETTING_DURATION + FLIGHT_DURATION + COOLDOWN_DURATION;
+const BETTING_DURATION = 10000; // 10 seconds for betting
+const MAX_FLIGHT_DURATION = 10000; // 10 seconds max flight time
+const COOLDOWN_DURATION = 3000; // 3 seconds after crash
+const TOTAL_CYCLE_DURATION = BETTING_DURATION + MAX_FLIGHT_DURATION + COOLDOWN_DURATION;
 
 const GAME_STATE = {
   BETTING: 'betting',
@@ -126,41 +126,32 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
         currentGameState = GAME_STATE.BETTING;
         currentCountdown = Math.ceil((BETTING_DURATION - timeInCycle) / 1000);
 
-    } else if (timeInCycle < BETTING_DURATION + FLIGHT_DURATION) {
-        // --- IN_PROGRESS (FLIGHT) PHASE ---
-        currentGameState = GAME_STATE.IN_PROGRESS;
+    } else {
         const flightTime = timeInCycle - BETTING_DURATION;
         
-        // This calculates the time it should take to reach the crash point.
-        // We use Math.log to make the time scale non-linearly with the crash point value.
-        // Higher crash points will take longer to reach.
-        const timeToCrash = (FLIGHT_DURATION / 10) * Math.log(crashPoint) * 2;
-        
-        if (flightTime > timeToCrash) {
+        // This is a more gradual growth formula. The exponent (0.0004) controls the speed.
+        // It ensures the rocket starts very slow and accelerates smoothly.
+        const calculatedMultiplier = Math.pow(1.05, 0.04 * flightTime);
+
+        if (calculatedMultiplier >= crashPoint || flightTime >= MAX_FLIGHT_DURATION) {
+             // --- CRASHED (COOLDOWN) PHASE ---
              currentGameState = GAME_STATE.CRASHED;
              currentMultiplier = crashPoint;
         } else {
-            // Slower at the start, accelerates as it goes.
-            // This is the core logic for the gradual acceleration.
-            // The multiplier grows based on how much time has passed relative to the total time to crash.
-            const progress = flightTime / timeToCrash;
-            // The formula `1 * Math.exp(progress * Math.log(crashPoint))` achieves the desired curve.
-            // It starts slow and accelerates exponentially.
-            currentMultiplier = 1 * Math.exp(progress * Math.log(crashPoint));
+            // --- IN_PROGRESS (FLIGHT) PHASE ---
+            currentGameState = GAME_STATE.IN_PROGRESS;
+            currentMultiplier = calculatedMultiplier;
         }
-
-    } else {
-        // --- CRASHED (COOLDOWN) PHASE ---
-        currentGameState = GAME_STATE.CRASHED;
-        currentMultiplier = crashPoint;
     }
+
 
     setGameState(currentGameState);
     setMultiplier(currentMultiplier);
     setCountdown(currentCountdown);
     
     // --- Update History ---
-    if (currentGameState === GAME_STATE.CRASHED && roundId > lastHistoryUpdateRoundIdRef.current) {
+    // Update history as soon as the previous round crashes
+    if (currentGameState === GAME_STATE.BETTING && roundId > lastHistoryUpdateRoundIdRef.current) {
         const finalMultiplier = getCrashPoint(roundId - 1, difficulty);
         const newHistoryItem: HistoryItem = {
           multiplier: finalMultiplier,
