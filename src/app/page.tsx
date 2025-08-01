@@ -628,11 +628,13 @@ function RoomSettingsDialog({
     onOpenChange,
     room,
     onUnbanUser,
+    onEditClick,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     room: RoomData | null;
     onUnbanUser: (userId: string) => void;
+    onEditClick: () => void;
 }) {
     const { users: bannedUsersData, loading } = useRoomUsers(room?.bannedUserIds || []);
 
@@ -645,6 +647,12 @@ function RoomSettingsDialog({
                     <DialogTitle className="text-right">إعدادات الغرفة</DialogTitle>
                 </DialogHeader>
                 <div className="py-4 text-right">
+                    <div className="flex justify-end mb-4">
+                        <Button variant="outline" onClick={onEditClick}>
+                            <Edit className="ml-2 h-4 w-4" />
+                            تعديل معلومات الغرفة
+                        </Button>
+                    </div>
                     <h3 className="font-semibold mb-2">المستخدمون المحظورون ({bannedUsersData.size})</h3>
                     <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                         {loading && <p className="text-muted-foreground">...جاري التحميل</p>}
@@ -742,7 +750,8 @@ function RoomScreen({
     useEffect(() => {
         if (!room) return;
         const isBanned = (room.bannedUserIds || []).includes(user.profile.userId);
-        const notAnAttendee = !(room.attendees || []).includes(user.profile.userId);
+        // Only check for kick if not banned, because ban is a superset of kick
+        const notAnAttendee = !isBanned && !(room.attendees || []).includes(user.profile.userId);
 
         if (isBanned) {
             onExit({ title: "تم حظرك", description: "لقد تم حظرك من هذه الغرفة بواسطة المالك." });
@@ -878,12 +887,6 @@ function RoomScreen({
         setIsGiftSheetOpen(true);
     };
     
-    const handleHeaderClick = () => {
-        if (isOwner) {
-            setIsSettingsOpen(true);
-        }
-    };
-
     const handleSelectGame = (gameId: string) => {
         const selectedGame = games.find(g => g.id === gameId);
         if (selectedGame) {
@@ -903,7 +906,7 @@ function RoomScreen({
     
     const handleBanUser = async (userIdToBan: string, userProfileToBan: UserProfile) => {
         try {
-            await roomServices.banUserFromRoom(room.id, userIdToBan, userProfileToBan);
+            await roomServices.banUserFromRoom(room.id, userIdToBan, userProfileToBan, user.profile.userId);
             toast({ title: "تم حظر المستخدم بنجاح!", duration: 2000 });
         } catch (error) {
             console.error("Error banning user:", error);
@@ -949,9 +952,14 @@ function RoomScreen({
                             <Copy className="ml-2"/> نسخ ID الغرفة
                         </Button>
                         {isOwner && (
-                            <Button variant="ghost" size="sm" className="justify-start" onClick={() => setIsSettingsOpen(true)}>
-                                <Settings className="ml-2"/> إعدادات الغرفة
-                            </Button>
+                            <>
+                                <Button variant="ghost" size="sm" className="justify-start" onClick={() => setIsEditRoomOpen(true)}>
+                                    <Edit className="ml-2"/> تعديل الغرفة
+                                </Button>
+                                <Button variant="ghost" size="sm" className="justify-start" onClick={() => setIsSettingsOpen(true)}>
+                                    <Settings className="ml-2"/> إعدادات الغرفة
+                                </Button>
+                            </>
                         )}
                     </div>
                 </PopoverContent>
@@ -1021,12 +1029,20 @@ function RoomScreen({
              </div>
              
              <RoomHeader />
+
+             <EditRoomDialog
+                open={isEditRoomOpen}
+                onOpenChange={setIsEditRoomOpen}
+                room={room}
+                onUpdate={handleUpdateRoomData}
+             />
              
              <RoomSettingsDialog
                 open={isSettingsOpen}
                 onOpenChange={setIsSettingsOpen}
                 room={room}
                 onUnbanUser={handleUnbanUser}
+                onEditClick={() => { setIsSettingsOpen(false); setIsEditRoomOpen(true); }}
              />
 
              <div className="relative z-10 flex flex-col flex-1 min-h-0">

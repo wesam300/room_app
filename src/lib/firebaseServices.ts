@@ -761,12 +761,13 @@ export const roomServices = {
     });
   },
 
-  async banUserFromRoom(roomId: string, userIdToBan: string, userProfileToBan: UserProfile): Promise<void> {
+    async banUserFromRoom(roomId: string, userIdToBan: string, userProfileToBan: UserProfile, currentUserId: string): Promise<void> {
       const roomRef = doc(db, COLLECTIONS.ROOMS, roomId);
       await runTransaction(db, async (transaction) => {
           const roomDoc = await transaction.get(roomRef);
           if (!roomDoc.exists()) throw new Error("Room not found.");
           const roomData = roomDoc.data() as RoomData;
+          if (roomData.ownerId !== currentUserId) throw new Error("Only the room owner can ban users.");
 
           // Remove user from mics
           const micSlots = (roomData.micSlots || []).map(slot => 
@@ -1289,5 +1290,6 @@ export const invitationCodeServices = {
         return newCodes;
     },
 };
+
 
 
