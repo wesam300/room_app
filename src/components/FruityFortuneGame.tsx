@@ -9,11 +9,11 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { useGameHistory, useUser } from '@/hooks/useFirebase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, Coins, Trophy, RefreshCw, Crown } from 'lucide-react';
+import { Timer, Coins, Trophy, RefreshCw, Crown, Wrench } from 'lucide-react';
 import { FruitDisplay, FRUITS, FruitKey } from '@/components/fruits';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { UserData, UserProfile as IUserProfile, gameServices, userServices, DifficultyLevel, UserBetData } from '@/lib/firebaseServices';
+import { UserData, UserProfile as IUserProfile, gameServices, userServices, DifficultyLevel, UserBetData, GameInfo } from '@/lib/firebaseServices';
 
 
 // --- Types ---
@@ -21,6 +21,7 @@ export interface FruityFortuneGameProps {
   user: IUserProfile;
   balance: number;
   onBalanceChange: (updater: (prev: number) => number) => void;
+  gameInfo: GameInfo | null;
 }
 
 interface TopWinner {
@@ -208,7 +209,17 @@ const WinnerCard = ({ winner, rank }: { winner: TopWinner, rank: number }) => {
     )
   }
 
-export default function FruityFortuneGame({ user, balance, onBalanceChange }: FruityFortuneGameProps) {
+function GameMaintenanceScreen() {
+    return (
+        <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans text-center">
+            <Wrench className="w-16 h-16 text-primary mb-4 animate-spin" />
+            <h2 className="text-2xl font-bold">اللعبة قيد الصيانة</h2>
+            <p className="text-muted-foreground mt-2">نحن نعمل على تحسين اللعبة. يرجى المحاولة مرة أخرى لاحقًا.</p>
+        </div>
+    );
+}
+
+export default function FruityFortuneGame({ user, balance, onBalanceChange, gameInfo }: FruityFortuneGameProps) {
   const [isClient, setIsClient] = useState(false);
   const [activeBet, setActiveBet] = useState(BET_AMOUNTS[0]);
   
@@ -233,9 +244,10 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
   const [highlightPosition, setHighlightPosition] = useState<{top: number, left: number, width: number, height: number} | null>(null);
 
   useEffect(() => {
-    const unsubscribe = gameServices.onDifficultyChange('fruity_fortune', setDifficulty);
+    if (!gameInfo) return;
+    const unsubscribe = gameServices.onDifficultyChange(gameInfo.id, setDifficulty);
     return () => unsubscribe();
-  }, []);
+  }, [gameInfo]);
 
   // Load state from Firebase on initial mount
   useEffect(() => {
@@ -319,7 +331,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
   }, [bets, onBalanceChange, difficulty, userData]);
 
   useEffect(() => {
-    if (!isClient) return;
+    if (!isClient || gameInfo?.isUnderMaintenance) return;
 
     const updateGameState = () => {
         if (winnerScreenInfo) {
@@ -415,7 +427,7 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
     return () => {
       clearInterval(interval)
     };
-}, [isClient, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, previousWinner, difficulty, userData]);
+}, [isClient, gameInfo, roundId, isSpinning, bets, winnerScreenInfo, saveGameHistory, calculateAndShowResults, previousWinner, difficulty, userData]);
 
   const handlePlaceBet = (fruit: FruitKey) => {
     if (isSpinning || timer <= 0) {
@@ -448,10 +460,14 @@ export default function FruityFortuneGame({ user, balance, onBalanceChange }: Fr
 
   if (!isClient) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
+      <div className="flex flex-col items-center justify-center h-full bg-gradient-to-br from-[#1a013b] via-[#3d026f] to-[#1a013b] text-white p-4 font-sans" dir="rtl">
         <div className="text-2xl font-bold">...تحميل اللعبة</div>
       </div>
     );
+  }
+
+  if (gameInfo?.isUnderMaintenance) {
+      return <GameMaintenanceScreen />;
   }
   
   const containerVariants = {

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Rocket, Coins, Wallet } from 'lucide-react';
+import { Rocket, Coins, Wallet, Wrench } from 'lucide-react';
 import type { UserProfile as IUserProfile, GameInfo, DifficultyLevel } from '@/lib/firebaseServices';
 import { useToast } from '@/hooks/use-toast';
 import { gameServices } from '@/lib/firebaseServices';
@@ -76,6 +76,16 @@ const getCrashPoint = (seed: number, difficulty: DifficultyLevel): number => {
     return parseFloat(crashPoint.toFixed(2));
 };
 
+function GameMaintenanceScreen() {
+    return (
+        <div className="flex flex-col items-center justify-center h-full bg-black/50 text-white p-4 text-center">
+            <Wrench className="w-16 h-16 text-primary mb-4 animate-spin" />
+            <h2 className="text-2xl font-bold">اللعبة قيد الصيانة</h2>
+            <p className="text-muted-foreground mt-2">نحن نعمل على تحسين اللعبة. يرجى المحاولة مرة أخرى لاحقًا.</p>
+        </div>
+    );
+}
+
 export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: CrashGameProps) {
   const [betAmount, setBetAmount] = useState(BET_AMOUNTS[0]);
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('hard');
@@ -128,11 +138,11 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
 
     } else if (timeInCycle < BETTING_DURATION + MAX_FLIGHT_DURATION) {
         const flightTime = timeInCycle - BETTING_DURATION;
-        
         const timeInSeconds = flightTime / 1000;
-        // Corrected, very slow growth formula.
-        // A coefficient of ~0.05 makes it take several seconds to reach 2.0x
+        
+        // Very slow start, then gradual acceleration
         const calculatedMultiplier = 1 + 0.05 * Math.pow(timeInSeconds, 2);
+
 
         if (calculatedMultiplier >= crashPoint) {
              // --- CRASHED (COOLDOWN) PHASE ---
@@ -260,6 +270,10 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
   const backgroundStyle = gameInfo?.backgroundImage
     ? { backgroundImage: `url(${gameInfo.backgroundImage})` }
     : {};
+
+  if (gameInfo?.isUnderMaintenance) {
+    return <GameMaintenanceScreen />;
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#0d122e] text-white p-4 font-sans" dir="rtl">

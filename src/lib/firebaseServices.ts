@@ -24,7 +24,6 @@ import {
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, COLLECTIONS } from './firebase';
-import { FruityFortuneGameProps } from '@/components/FruityFortuneGame'; // Assuming this is where it's defined
 
 // Helper function for image uploads
 export const uploadImageAndGetUrl = async (imageFile: File, path: string): Promise<string> => {
@@ -129,6 +128,7 @@ export interface GameInfo {
     name: string;
     image: string;
     backgroundImage?: string;
+    isUnderMaintenance?: boolean;
 }
 
 export interface AppStatusData {
@@ -1029,30 +1029,37 @@ export const gameMetaServices = {
     async initializeGames() {
         try {
             const DEFAULT_GAMES: GameInfo[] = [
-                { id: 'fruity_fortune', name: 'فواكه الحظ', image: 'https://placehold.co/150x150/ff9800/ffffff.png', backgroundImage: '' },
-                { id: 'crash', name: 'كراش', image: 'https://placehold.co/150x150/f44336/ffffff.png', backgroundImage: '' },
+                { id: 'fruity_fortune', name: 'فواكه الحظ', image: 'https://placehold.co/150x150/ff9800/ffffff.png', backgroundImage: '', isUnderMaintenance: false },
+                { id: 'crash', name: 'كراش', image: 'https://placehold.co/150x150/f44336/ffffff.png', backgroundImage: '', isUnderMaintenance: false },
             ];
 
             const batch = writeBatch(db);
-            let itemsAdded = 0;
+            let itemsChanged = 0;
 
             for (const game of DEFAULT_GAMES) {
                 const docRef = doc(db, COLLECTIONS.GAMES, game.id);
                 const docSnap = await getDoc(docRef);
                 if (!docSnap.exists()) {
                     batch.set(docRef, game);
-                    itemsAdded++;
+                    itemsChanged++;
                 } else {
                     const existingData = docSnap.data();
+                     const updates: Partial<GameInfo> = {};
                     if (!('backgroundImage' in existingData)) {
-                        batch.update(docRef, { backgroundImage: '' });
-                        itemsAdded++;
+                        updates.backgroundImage = '';
+                    }
+                    if (!('isUnderMaintenance' in existingData)) {
+                         updates.isUnderMaintenance = false;
+                    }
+                    if (Object.keys(updates).length > 0) {
+                        batch.update(docRef, updates);
+                        itemsChanged++;
                     }
                 }
             }
 
-            if (itemsAdded > 0) {
-                console.log(`Adding/updating ${itemsAdded} default games to Firestore...`);
+            if (itemsChanged > 0) {
+                console.log(`Adding/updating ${itemsChanged} default games to Firestore...`);
                 await batch.commit();
             }
         } catch (error) {
@@ -1081,6 +1088,11 @@ export const gameMetaServices = {
         const gameRef = doc(db, COLLECTIONS.GAMES, gameId);
         await updateDoc(gameRef, { backgroundImage: imageUrl });
     },
+    
+    async setGameMaintenanceStatus(gameId: string, status: boolean): Promise<void> {
+        const gameRef = doc(db, COLLECTIONS.GAMES, gameId);
+        await updateDoc(gameRef, { isUnderMaintenance: status });
+    }
 };
 
 // App Status Services

@@ -564,7 +564,8 @@ function RoomScreen({
     };
 
     const handleSelectGame = (gameId: string) => {
-        if (gameId === 'fruity_fortune' || gameId === 'crash') {
+        const selectedGame = games.find(g => g.id === gameId);
+        if (selectedGame) {
             setActiveGame(gameId);
         }
     };
@@ -731,8 +732,8 @@ function RoomScreen({
                 </div>
 
                 <AnimatePresence>
-                    {activeGame === 'fruity_fortune' && (
-                        <motion.div 
+                    {activeGame && (
+                        <motion.div
                             className="absolute inset-x-0 bottom-0 top-[10%] bg-background z-20 rounded-t-2xl overflow-hidden"
                             initial={{ y: "100%" }}
                             animate={{ y: 0 }}
@@ -740,7 +741,8 @@ function RoomScreen({
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         >
                            <div className="relative h-full w-full">
-                               <FruityFortuneGame user={user.profile} balance={user.balance} onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} />
+                                {activeGame === 'fruity_fortune' && <FruityFortuneGame user={user.profile} balance={user.balance} onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} gameInfo={games.find(g => g.id === 'fruity_fortune') || null} />}
+                                {activeGame === 'crash' && <CrashGame user={user.profile} balance={user.balance} onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} gameInfo={games.find(g => g.id === 'crash') || null} />}
                                <Button 
                                     variant="ghost" 
                                     size="icon" 
@@ -750,32 +752,6 @@ function RoomScreen({
                                     <X className="w-6 h-6" />
                                 </Button>
                            </div>
-                        </motion.div>
-                    )}
-                    {activeGame === 'crash' && (
-                        <motion.div
-                            className="absolute inset-x-0 bottom-0 top-[10%] bg-background z-20 rounded-t-2xl overflow-hidden"
-                            initial={{ y: "100%" }}
-                            animate={{ y: 0 }}
-                            exit={{ y: "100%" }}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        >
-                            <div className="relative h-full w-full">
-                                <CrashGame 
-                                    user={user.profile} 
-                                    balance={user.balance} 
-                                    onBalanceChange={(updater) => onUserDataUpdate(prev => ({...prev, balance: typeof updater === 'function' ? updater(prev.balance) : updater}))} 
-                                    gameInfo={games.find(g => g.id === 'crash') || null}
-                                />
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute top-4 right-4 bg-black/50 rounded-full text-white hover:bg-black/70 z-30"
-                                    onClick={() => setActiveGame(null)}
-                                >
-                                    <X className="w-6 h-6" />
-                                </Button>
-                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -1489,6 +1465,7 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
     const [checkedUserBalance, setCheckedUserBalance] = useState<number | null>(null);
     const [targetRoomId, setTargetRoomId] = useState("");
     const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+    const { games } = useGames();
 
 
     const handleUpdateBalance = async (operation: 'add' | 'deduct') => {
@@ -1607,6 +1584,16 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
         } catch (error) {
             console.error("Admin set maintenance mode failed:", error);
             toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث حالة التطبيق.", duration: 2000 });
+        }
+    };
+    
+    const handleGameMaintenance = async (gameId: string, status: boolean) => {
+        try {
+            await gameMetaServices.setGameMaintenanceStatus(gameId, status);
+            toast({ title: "تم تحديث حالة اللعبة", description: `اللعبة الآن ${status ? 'في وضع الصيانة' : 'متاحة'}.`, duration: 2000 });
+        } catch (error) {
+             console.error(`Admin set game maintenance for ${gameId} failed:`, error);
+            toast({ variant: "destructive", title: "فشلت العملية", description: "حدث خطأ أثناء تحديث حالة اللعبة.", duration: 2000 });
         }
     };
 
@@ -1750,6 +1737,19 @@ function AdminPanel({ appStatus }: { appStatus: AppStatusData | null }) {
                          <Button onClick={() => handleSetDifficulty('fruity_fortune', 'very_hard')} variant="outline">صعب جدا</Button>
                          <Button onClick={() => handleSetDifficulty('fruity_fortune', 'impossible')} variant="destructive" className="col-span-2">لا أحد يفوز</Button>
                     </div>
+                </div>
+                 <hr className="border-primary/20"/>
+                <div className="space-y-2">
+                    <h4 className="font-semibold">إدارة حالة الألعاب</h4>
+                     {games.map((game) => (
+                        <div key={game.id} className="p-2 bg-black/30 rounded-lg">
+                             <p className="font-semibold text-center mb-2">{game.name}</p>
+                            <div className="flex gap-2">
+                                <Button onClick={() => handleGameMaintenance(game.id, true)} variant="destructive" className="w-full">تفعيل الصيانة</Button>
+                                <Button onClick={() => handleGameMaintenance(game.id, false)} className="w-full bg-green-600 hover:bg-green-700">إيقاف الصيانة</Button>
+                            </div>
+                        </div>
+                     ))}
                 </div>
                 <hr className="border-primary/20"/>
                 <div className="space-y-2">
