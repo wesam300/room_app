@@ -25,6 +25,7 @@ import CrashGame from "@/components/CrashGame";
 import RoomMic from "@/components/RoomMic";
 import { RoomData, MicSlotData, roomServices, userServices, UserData, supporterServices, gameServices, DifficultyLevel, GiftItem, giftServices, calculateLevel, LEVEL_THRESHOLDS, gameMetaServices, GameInfo, appStatusServices, UserBetData, uploadImageAndGetUrl, invitationCodeServices, AppStatusData, RoomRocketData } from "@/lib/firebaseServices";
 import { INITIAL_INVITATION_CODES } from '@/lib/invitationCodes';
+import { Badge } from '@/components/ui/badge';
 
 
 // --- Types ---
