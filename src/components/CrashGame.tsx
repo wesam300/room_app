@@ -129,9 +129,10 @@ export default function CrashGame({ user, balance, onBalanceChange, gameInfo }: 
     } else if (timeInCycle < BETTING_DURATION + MAX_FLIGHT_DURATION) {
         const flightTime = timeInCycle - BETTING_DURATION;
         
-        // This is a more gradual growth formula. The exponent (e.g. 2) makes it slow at start.
-        // The coefficient (e.g. 0.0004) controls the overall speed.
-        const calculatedMultiplier = 1 + 0.0004 * Math.pow(flightTime, 2);
+        const timeInSeconds = flightTime / 1000;
+        // Corrected, very slow growth formula.
+        // A coefficient of ~0.1 makes it take several seconds to reach 2.0x
+        const calculatedMultiplier = 1 + 0.1 * Math.pow(timeInSeconds, 2);
 
         if (calculatedMultiplier >= crashPoint) {
              // --- CRASHED (COOLDOWN) PHASE ---
