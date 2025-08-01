@@ -638,13 +638,7 @@ export const roomServices = {
         if (!roomDoc.exists()) {
             throw new Error("Room not found.");
         }
-        const roomData = roomDoc.data() as RoomData;
         
-        const owner = await userServices.getUser(roomData.ownerId);
-        if (owner?.vipLevel === 9) {
-            throw new Error("لا يمكن حذف غرفة يمتلكها مستخدم VIP 9.");
-        }
-
         await deleteDoc(roomRef);
     } catch (error) {
         console.error('Error deleting room from Firestore:', error);
